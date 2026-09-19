@@ -187,7 +187,9 @@ const Game = (() => {
   function playGame() {
     const away = state.mySide === 'away' ? state.team : state.opponent;
     const home = state.mySide === 'away' ? state.opponent : state.team;
-    const res = Sim.play(away, home);
+    const round = Tournament.currentRound(state.tour);
+    /* 決勝はコールドゲームにしない */
+    const res = Sim.play(away, home, { noCold: round && round.name === '決勝' });
     state.phase = 'game';
     GameScreen.start({ away, home }, res, () => afterGame(res));
   }
@@ -211,6 +213,8 @@ const Game = (() => {
     Growth.afterGame(state.opponent, Object.assign({}, ctx, { win: !win, oppName: state.team.name }));
     Growth.commitStats(state.team);
     Growth.commitStats(state.opponent);
+    Team.restPitchers(state.team);
+    Team.restPitchers(state.opponent);
 
     /* 成長画面で「誰が」を分かりやすくするため、いまの役割も添えておく */
     report.forEach((r) => {
@@ -276,12 +280,23 @@ const Game = (() => {
   }
 
   function doPoach(incoming, outgoing) {
+    /* どこから来たのかを覚えておく。詳細画面と引退のときに出す */
+    incoming.from = { year: state.year, school: state.opponent.name };
+    incoming.fatigue = 0;
+
     const list = incoming.kind === 'pitcher' ? state.team.pitchers : state.team.batters;
     const idx = list.findIndex((x) => x.id === outgoing.id);
-    if (idx >= 0) list.splice(idx, 1);
-    list.push(incoming);
-    Team.repair(state.team);
-    Team.autoLineup(state.team);
+    /* 放出した選手がいた場所に、そのまま入れる。
+       オーダーも投手の起用順も、その枠だけ差し替える（勝手に組み直さない） */
+    if (idx >= 0) list.splice(idx, 1, incoming); else list.push(incoming);
+
+    state.team.lineup = state.team.lineup.map((sl) =>
+      (sl.pid === outgoing.id ? { pid: incoming.id, pos: sl.pos } : sl));
+    state.team.rotation = (state.team.rotation || []).map((id) =>
+      (id === outgoing.id ? incoming.id : id));
+    if (incoming.kind === 'pitcher' && state.team.rotation.indexOf(incoming.id) < 0) {
+      state.team.rotation.push(incoming.id);
+    }
     advanceRound();
   }
 
@@ -343,6 +358,7 @@ const Game = (() => {
     state.phase = 'offseason';
     state.opponent = null;
     Growth.offseasonPractice(state.team);
+    Team.healPitchers(state.team);
     const retired = Offseason.retiring(state.team).map(Offseason.farewell);
     state.retiredCount = retired.length;
     save();
@@ -399,7 +415,9 @@ const Game = (() => {
   function afterNewcomers() {
     Team.autoLineup(state.team);
     state.poachedFrom = null;
-    startTraining();
+    state.phase = 'train-intro';
+    save();
+    Screens.trainingIntro(state);
   }
 
   /* ---------- 再開 ---------- */
@@ -427,6 +445,7 @@ const Game = (() => {
         Screens.offseason(state, Offseason.retiring(state.team).map(Offseason.farewell)); break;
       case 'new-bat': newcomerBatters(); break;
       case 'new-pit': newcomerPitchers(); break;
+      case 'train-intro': Screens.trainingIntro(state); break;
       default: UI.show('screen-top');
     }
   }
@@ -482,14 +501,18 @@ const Game = (() => {
     applySettings();
     if (saved) {
       UI.el('btn-continue').hidden = false;
-      UI.el('top-note').textContent = '前回の続きが残っています。';
+      UI.el('btn-start').textContent = 'はじめから（データを消す）';
+      UI.el('top-note').textContent = '前回の続きが残っています。「はじめから」を選ぶと、その記録は消えます。';
     }
 
     const on = (id, fn) => { const n = UI.el(id); if (n) n.addEventListener('click', fn); };
 
     on('btn-start', () => {
-      if (Storage.load() && !window.confirm('保存されている進行を消して、最初から始めます。よろしいですか？')) return;
+      if (Storage.load() && !window.confirm('保存されている記録をすべて消して、最初から始めます。よろしいですか？')) return;
       Storage.clear();
+      UI.el('btn-continue').hidden = true;
+      UI.el('btn-start').textContent = 'はじめる';
+      UI.el('top-note').textContent = '';
       start();
     });
     on('btn-continue', () => { const s = Storage.load(); if (s) resume(s); });
@@ -520,6 +543,10 @@ const Game = (() => {
     on('btn-skip', () => GameScreen.skip());
     on('btn-result-next', afterResult);
     on('btn-champion-next', toOffseason);
+    const intro = UI.el('screen-trainintro');
+    if (intro) intro.addEventListener('click', () => {
+      if (state && state.phase === 'train-intro') startTraining();
+    });
     on('btn-off-next', toNewcomers);
 
     if (typeof ADS !== 'undefined') ADS.init();

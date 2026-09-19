@@ -54,7 +54,7 @@ const Training = (() => {
     { key: 'velo',    weight: 18,  pool: (t) => t.pitchers },
     { key: 'break',   weight: 18,  pool: (t) => t.pitchers.filter((p) => p.pitches.some((q) => q.level < 7)) },
     { key: 'newball', weight: 7,   pool: (t) => t.pitchers.filter((p) => p.pitches.length < 6) },
-    { key: 'traj',    weight: 8,   pool: (t) => t.batters.filter((p) => p.traj < 4) },
+    { key: 'traj',    weight: 3,   pool: (t) => t.batters.filter((p) => p.traj < 4) },
   ];
 
   function range(pair) { return RNG.range(pair[0], pair[1]); }

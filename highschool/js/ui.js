@@ -67,7 +67,9 @@ const UI = (() => {
     if (opts && opts.onOpen) opts.onOpen(el('modal-body'));
   }
 
+  /** 閉じる。戻り先（closeModal.back）が指定してあれば、そこへ戻るだけ */
   function closeModal() {
+    if (closeModal.back) { const f = closeModal.back; closeModal.back = null; f(); return; }
     const m = el('modal');
     m.hidden = true;
     document.body.classList.remove('is-modal');
@@ -151,7 +153,13 @@ const UI = (() => {
       ? ['<td class="c"><b class="rankval">' + p.velo + '</b></td>',
          '<td class="c">' + rankNum(p.control) + '</td>',
          '<td class="c">' + rankNum(p.stamina) + '</td>',
-         '<td class="t-break">' + p.pitches.map((q) => esc(q.name) + '<i>' + q.level + '</i>').join('・') + '</td>'].join('')
+         /* 変化球は枠に入れて2つまで。残りは「+n」にして、
+            球種の数で列の幅や行の高さが変わらないようにする
+            （全部は選手の詳細で見られる） */
+         '<td class="t-break">' + p.pitches.slice(0, 2).map((q) =>
+           '<span class="luball">' + esc(q.name) + '<b>' + q.level + '</b></span>').join('') +
+           (p.pitches.length > 2 ? '<span class="luball luball--more">+' + (p.pitches.length - 2) + '</span>' : '') +
+         '</td>'].join('')
       : ['<td class="c"><b class="rankval">' + p.traj + '</b></td>',
          '<td class="c">' + rankNum(p.meet) + '</td>',
          '<td class="c">' + rankNum(p.power) + '</td>',
@@ -165,7 +173,8 @@ const UI = (() => {
       '<td class="c g' + p.grade + '">' + p.grade + '</td>' +
       '<td class="nm">' + esc(p.name) + (p.awakened ? '<em class="awake-dot" title="覚醒">◆</em>' : '') + '</td>' +
       role +
-      '<td class="c">' + (isPit ? '投' : posShort(p.pos)) + '</td>' +
+      /* 投手の一覧に「位置」の列はいらない（全員 投） */
+      (isPit ? '' : '<td class="c">' + posShort(p.pos) + '</td>') +
       '<td class="c hand">' + handMark(p) + '</td>' +
       cells + '</tr>';
   }
@@ -179,8 +188,67 @@ const UI = (() => {
     const roleHead = opts.team ? '<th>いまの役割</th>' : '';
     return '<div class="tablewrap"><table class="roster">' +
       '<thead><tr><th>年</th><th class="nm">選手</th>' + roleHead +
-      '<th>位置</th><th class="hand">利き</th>' + head + '</tr></thead>' +
+      (isPit ? '' : '<th>位置</th>') + '<th class="hand">利き</th>' + head + '</tr></thead>' +
       '<tbody>' + players.map((p) => playerRow(p, opts)).join('') + '</tbody></table></div>';
+  }
+
+  /* ---------- 並び替えのできる選手一覧 ----------
+     放出する選手を選ぶときなど、学年や役割で見たいことがあるので、
+     表の上に並び替えのボタンを付けられるようにしてある。 */
+
+  const SORTS = [
+    { key: 'order',  label: '役割' },
+    { key: 'grade',  label: '学年' },
+    { key: 'rating', label: '能力' },
+    { key: 'pos',    label: '守備位置' },
+  ];
+
+  function posRank(p) {
+    const i = DATASET_POSITIONS.indexOf(p.pos);
+    return i < 0 ? 99 : i;
+  }
+
+  function roleRank(team, p) {
+    if (!team) return 50;
+    if (p.kind === 'pitcher') {
+      const i = (team.rotation || []).indexOf(p.id);
+      return i < 0 ? 90 : i;
+    }
+    const i = (team.lineup || []).findIndex((sl) => sl.pid === p.id);
+    return i < 0 ? 50 : i;
+  }
+
+  function sortPlayers(players, key, team) {
+    const list = players.slice();
+    const byRating = (a, b) => Player.rating(b) - Player.rating(a);
+    if (key === 'grade') list.sort((a, b) => b.grade - a.grade || byRating(a, b));
+    else if (key === 'rating') list.sort(byRating);
+    else if (key === 'pos') list.sort((a, b) => posRank(a) - posRank(b) || byRating(a, b));
+    else if (key === 'order') list.sort((a, b) => roleRank(team, a) - roleRank(team, b));
+    return list;
+  }
+
+  /** 並び替えボタン付きの一覧。root（要素）に描く */
+  function rosterPanel(root, players, opts) {
+    opts = opts || {};
+    let key = opts.sort || (opts.team ? 'order' : 'rating');
+    function draw() {
+      root.innerHTML =
+        '<div class="sortbar"><span class="sortbar__label">並び替え</span>' +
+        SORTS.filter((s2) => s2.key !== 'order' || opts.team)
+          .filter((s2) => s2.key !== 'pos' || players[0].kind !== 'pitcher')
+          .map((s2) => '<button type="button" class="sortbtn' + (s2.key === key ? ' is-on' : '') +
+            '" data-sort="' + s2.key + '">' + s2.label + '</button>').join('') +
+        '</div>' + rosterTable(sortPlayers(players, key, opts.team), opts);
+      root.querySelectorAll('.sortbtn').forEach((b) => b.addEventListener('click', () => {
+        key = b.dataset.sort; draw();
+      }));
+      if (opts.onRow) {
+        root.querySelectorAll('tr.prow').forEach((tr) =>
+          tr.addEventListener('click', () => opts.onRow(tr.dataset.pid, tr, root)));
+      }
+    }
+    draw();
   }
 
   /* ---------- 選手の詳細 ---------- */
@@ -205,6 +273,10 @@ const UI = (() => {
     if (isPit) {
       abilities += '<div class="stat"><span class="stat__label">最速</span><span class="stat__num stat__num--wide">' + p.velo + ' km/h</span></div>';
       abilities += stat('制球', p.control) + stat('スタミナ', p.stamina);
+      abilities += '<div class="stat"><span class="stat__label">疲労</span>' +
+        '<span class="stat__num stat__num--wide lufat lufat--' +
+        ((p.fatigue || 0) >= 70 ? 'hi' : ((p.fatigue || 0) >= 40 ? 'mid' : 'lo')) + '">' +
+        esc(Team.fatigueLabel(p)) + '</span></div>';
       abilities += '</div><h4 class="sub">変化球</h4><ul class="pitchlist">' +
         p.pitches.map((q) => '<li><span>' + esc(q.name) + '</span><b>' + q.level + '</b>' +
           '<i class="bar"><i style="width:' + (q.level / 7 * 100) + '%"></i></i></li>').join('') + '</ul>';
@@ -231,41 +303,46 @@ const UI = (() => {
         (opts.rename === false ? '' : '<button type="button" class="linkbtn" id="pd-rename">名前を変える</button>') +
         '<div class="pdetail__meta">' + p.grade + '年　' + (isPit ? '投手' : posName(p.pos)) + '　' + handMark(p) +
         (p.awakened ? '　<b class="awake">覚醒</b>' : '') + '</div>' +
+        (p.from ? '<div class="pdetail__from">' + p.from.year + '年目に ' + esc(p.from.school) + ' から加入</div>' : '') +
       '</div>' +
       abilities +
       '<h4 class="sub">高校通算成績<span class="sub__note">練習試合を含む</span></h4>' +
       (isPit ? careerPitLine(p.career) : careerBatLine(p.career)) +
-      (isPit && p.batCareer && p.batCareer.ab ? '<h4 class="sub">打撃（通算）</h4>' + careerBatLine(p.batCareer) : '') +
       hl +
       '</div>';
   }
 
-  /** 選手の詳細をふきだしで開く。名前の書き換えもここで受ける */
+  /** 名前の書き換えを受け付ける（詳細をどこに描いても使える） */
+  /** 名前の書き換えを受け付ける（詳細をどこに描いても使える） */
+  function wireRename(body, p, onRename) {
+    const btn = body.querySelector('#pd-rename');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const holder = body.querySelector('#pd-name');
+      holder.innerHTML =
+        '<input type="text" class="field__input field__input--inline" id="pd-input" maxlength="12" value="' + esc(p.name) + '">' +
+        '<button type="button" class="btn btn--small" id="pd-save">決定</button>';
+      const input = body.querySelector('#pd-input');
+      input.focus(); input.select();
+      const save = () => {
+        const v = input.value.trim();
+        if (v) p.name = v.slice(0, 12);
+        holder.textContent = p.name;
+        btn.hidden = false;
+        if (onRename) onRename(p);
+      };
+      body.querySelector('#pd-save').addEventListener('click', save);
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+      btn.hidden = true;
+    });
+  }
+
+  /** 選手の詳細をふきだしで開く */
   function openPlayer(p, opts) {
     opts = opts || {};
     modal(playerDetail(p, opts), {
       kind: 'player',
-      onOpen(body) {
-        const btn = body.querySelector('#pd-rename');
-        if (!btn) return;
-        btn.addEventListener('click', () => {
-          const holder = body.querySelector('#pd-name');
-          holder.innerHTML = '<input type="text" class="field__input field__input--inline" id="pd-input" maxlength="12" value="' + esc(p.name) + '">' +
-            '<button type="button" class="btn btn--small" id="pd-save">決定</button>';
-          const input = body.querySelector('#pd-input');
-          input.focus(); input.select();
-          const save = () => {
-            const v = input.value.trim();
-            if (v) { p.name = v.slice(0, 12); }
-            holder.textContent = p.name;
-            btn.hidden = false;
-            if (opts.onRename) opts.onRename(p);
-          };
-          body.querySelector('#pd-save').addEventListener('click', save);
-          input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
-          btn.hidden = true;
-        });
-      },
+      onOpen(body) { wireRename(body, p, opts.onRename); },
     });
   }
 
@@ -389,16 +466,17 @@ const UI = (() => {
     list.addEventListener('pointercancel', end);
   }
 
-  /* ---------- オーダー編集 ----------
+  /* ---------- オーダー変更 ----------
      野手13人をひとつづきの並びで出す。上から9人がスタメンで、
      残りが控え。控えの選手を上に持ち上げれば、そのままスタメンに入る。
-     （だから「交代」のボタンはいらない） */
+     守備位置は選手について回るので、1人の守備位置を変えても
+     他の選手は動かない。そのかわり重複したら決定を止める。 */
 
   function lineupEditor(team, onDone) {
 
-    /* 打順の位置に守備位置がくっついている。選手が入れ替わっても
-       1番の守備位置は1番に残る */
-    let posOrder = team.lineup.map((sl) => sl.pos);
+    /* 選手ID → 守備位置。打順ではなく選手について回る */
+    const posOf = {};
+    team.lineup.forEach((sl) => { posOf[sl.pid] = sl.pos; });
 
     function batterIds() {
       const inLine = team.lineup.map((sl) => sl.pid);
@@ -406,27 +484,52 @@ const UI = (() => {
       return inLine.concat(bench);
     }
 
-    function batRow(pid, i) {
+    /** まだ誰も使っていない守備位置を1つ返す（控えが上がってきたとき用） */
+    function freePos(ids, self) {
+      const used = new Set(ids.slice(0, 9).filter((id) => id !== self).map((id) => posOf[id]));
+      const p = Team.find(team, self);
+      if (p && !used.has(p.pos)) return p.pos;
+      return DATASET_POSITIONS.find((k) => !used.has(k)) || 'DH';
+    }
+
+    /** 守備位置の重複を調べる */
+    function conflicts(ids) {
+      const seen = {}, dup = [];
+      ids.slice(0, 9).forEach((id) => {
+        const k = posOf[id];
+        if (seen[k]) { if (dup.indexOf(k) < 0) dup.push(k); } else seen[k] = true;
+      });
+      return dup;
+    }
+
+    function aptRow(p) {
+      return FIELD_POSITIONS.map((k) =>
+        '<span class="luapt"><i>' + posShort(k) + '</i>' + aptSpan(p.apt[k]) + '</span>').join('');
+    }
+
+    function batRow(pid, i, ids) {
       const p = Team.find(team, pid);
       if (!p) return '';
       const bench = i >= 9;
-      const pos = bench ? null : posOrder[i];
+      const pos = bench ? null : posOf[pid];
       const options = DATASET_POSITIONS.map((k) =>
         '<option value="' + k + '"' + (k === pos ? ' selected' : '') + '>' + posShort(k) + '</option>').join('');
-      return '<li class="lurow' + (bench ? ' is-bench' : '') + '" data-pid="' + p.id + '">' +
+      const bad = !bench && conflicts(ids).indexOf(pos) >= 0;
+      return '<li class="lurow' + (bench ? ' is-bench' : '') + (bad ? ' is-bad' : '') + '" data-pid="' + p.id + '">' +
         '<span class="lugrip" aria-hidden="true"><i></i><i></i><i></i></span>' +
         '<span class="luno">' + (bench ? '控' : (i + 1)) + '</span>' +
         '<span class="lupos">' +
-          (bench ? '<span class="lupos__bench">' + posShort(p.pos) + '</span>'
-                 : '<select class="possel" data-i="' + i + '">' + options + '</select>') +
+          (bench ? '<span class="lupos__bench">―</span>'
+                 : '<select class="possel" data-pid="' + p.id + '">' + options + '</select>') +
         '</span>' +
         '<span class="lumain">' +
           '<button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
-          '<span class="tiny">' + p.grade + '年 ' + handMark(p) +
-            (bench || pos === 'DH' ? '' : '　適性' + p.apt[pos]) + '</span>' +
+          '<span class="tiny">' + p.grade + '年 ' + handMark(p) + ' 弾道' + p.traj + '</span>' +
         '</span>' +
         '<span class="lustats">ミ' + rankNum(p.meet) + '　パ' + rankNum(p.power) +
-          '　走' + rankNum(p.speed) + '　守' + rankNum(p.field) + '</span>' +
+          '　走' + rankNum(p.speed) + '　肩' + rankNum(p.arm) +
+          '　守' + rankNum(p.field) + '　捕' + rankNum(p.catch) + '</span>' +
+        '<span class="luapts">' + aptRow(p) + '</span>' +
         '<span class="luarrow">' +
           '<button type="button" class="btn btn--tiny up" data-i="' + i + '">▲</button>' +
           '<button type="button" class="btn btn--tiny down" data-i="' + i + '">▼</button>' +
@@ -437,14 +540,20 @@ const UI = (() => {
     function pitRow(pid, i) {
       const p = Team.find(team, pid);
       if (!p) return '';
+      const f = p.fatigue || 0;
       return '<li class="lurow" data-pid="' + p.id + '">' +
         '<span class="lugrip" aria-hidden="true"><i></i><i></i><i></i></span>' +
         '<span class="luno luno--wide">' + (i === 0 ? '先発' : (i + 1) + '番手') + '</span>' +
         '<span class="lumain">' +
           '<button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
-          '<span class="tiny">' + p.grade + '年 ' + p.velo + 'km/h ' + handMark(p) + '</span>' +
+          '<span class="tiny">' + p.grade + '年 ' + handMark(p) + '</span>' +
         '</span>' +
-        '<span class="lustats">制' + rankNum(p.control) + '　ス' + rankNum(p.stamina) + '</span>' +
+        '<span class="lustats">最速<b class="rankval">' + p.velo + '</b>　制' + rankNum(p.control) +
+          '　ス' + rankNum(p.stamina) +
+          '　<span class="lufat lufat--' + (f >= 70 ? 'hi' : (f >= 40 ? 'mid' : 'lo')) + '">' +
+          esc(Team.fatigueLabel(p)) + '</span></span>' +
+        '<span class="luapts lupitch">' + p.pitches.map((q) =>
+          '<span class="luball">' + esc(q.name) + '<b>' + q.level + '</b></span>').join('') + '</span>' +
         '<span class="luarrow">' +
           '<button type="button" class="btn btn--tiny pup" data-i="' + i + '">▲</button>' +
           '<button type="button" class="btn btn--tiny pdown" data-i="' + i + '">▼</button>' +
@@ -453,20 +562,28 @@ const UI = (() => {
     }
 
     function render() {
+      const ids = batterIds();
+      const dup = conflicts(ids);
+      const warn = dup.length
+        ? '<p class="luwarn">守備位置が重なっています（' +
+            dup.map((k) => posName(k)).join('・') + '）。直すまで決定できません。</p>'
+        : '';
       return '<div class="lineup-edit">' +
-        '<h3 class="modal__title">オーダー編集</h3>' +
+        '<h3 class="modal__title">オーダー変更</h3>' +
         '<p class="note lineup-hint">左はしの取っ手をつまんで上下に動かすと、並べ替えられます。' +
-          '<b>上の9人がスタメン</b>、残りが控えです。控えの選手を上に持ち上げれば、そのまま出場します。</p>' +
-        '<ul class="lulist" id="lu-bat">' + batterIds().map(batRow).join('') + '</ul>' +
+          '<b>上の9人がスタメン</b>、残りが控えです。守備位置は選手について回るので、' +
+          '1人だけ変えても他の選手は動きません。</p>' +
+        warn +
+        '<ul class="lulist" id="lu-bat">' + ids.map((pid, i) => batRow(pid, i, ids)).join('') + '</ul>' +
         '<h4 class="sub">投手の起用順<span class="sub__note">上から先発</span></h4>' +
         '<ul class="lulist" id="lu-pit">' + team.rotation.map(pitRow).join('') + '</ul>' +
         '<div class="actions actions--modal">' +
         '<button type="button" class="btn" id="lu-auto">おまかせ</button>' +
-        '<button type="button" class="btn btn--primary" id="lu-done">決定</button>' +
+        '<button type="button" class="btn btn--primary" id="lu-done"' + (dup.length ? ' disabled' : '') + '>決定</button>' +
         '</div></div>';
     }
 
-    /* 動かしているあいだ、番号と守備位置の表示だけ付け替える */
+    /* 動かしているあいだ、番号と「控え」の表示だけ付け替える */
     function relabel(list) {
       Array.from(list.children).forEach((li, i) => {
         const no = li.querySelector('.luno');
@@ -475,14 +592,15 @@ const UI = (() => {
         const bench = i >= 9;
         li.classList.toggle('is-bench', bench);
         no.textContent = bench ? '控' : (i + 1);
-        const sel = li.querySelector('.possel');
-        if (sel && !bench) sel.value = posOrder[i];
       });
     }
 
     function applyBatters(order) {
-      team.lineup = order.slice(0, 9).map((pid, k) => ({ pid, pos: posOrder[k] }));
-      /* 控えも並べた順に持っておく（次に開いたときも同じ並びで出す） */
+      /* 控えから上がってきた選手には、空いている守備位置をあてがう */
+      order.slice(0, 9).forEach((pid) => {
+        if (!posOf[pid]) posOf[pid] = freePos(order, pid);
+      });
+      team.lineup = order.slice(0, 9).map((pid) => ({ pid, pos: posOf[pid] }));
       const byId = {};
       team.batters.forEach((p) => { byId[p.id] = p; });
       team.batters = order.map((pid) => byId[pid]).filter(Boolean)
@@ -491,8 +609,21 @@ const UI = (() => {
     }
 
     function refresh() {
+      closeModal.back = null;
       html('modal-body', render());
       wire(el('modal-body'));
+    }
+
+    /** 選手の詳細は、このふきだしの中で見せる（閉じてもオーダーに戻る） */
+    function openDetail(pid) {
+      const p = Team.find(team, pid);
+      if (!p) return;
+      html('modal-body', playerDetail(p, {}) +
+        '<div class="actions actions--modal"><button type="button" class="btn" id="pd-back">オーダーに戻る</button></div>');
+      const body = el('modal-body');
+      wireRename(body, p, () => {});
+      body.querySelector('#pd-back').addEventListener('click', refresh);
+      closeModal.back = refresh;
     }
 
     function wire(body) {
@@ -528,33 +659,28 @@ const UI = (() => {
         if (next) { team.rotation = next; refresh(); }
       }));
 
+      /* 守備位置を変えるのは、その選手だけ。重なったら決定を止める */
       body.querySelectorAll('.possel').forEach((sel) => sel.addEventListener('change', () => {
-        const i = +sel.dataset.i;
-        const next = sel.value;
-        /* 同じ守備位置が2人にならないよう、持っていた打順と入れ替える */
-        const other = posOrder.findIndex((v, k) => k !== i && v === next);
-        if (other >= 0) posOrder[other] = posOrder[i];
-        posOrder[i] = next;
-        team.lineup = team.lineup.map((sl, k) => ({ pid: sl.pid, pos: posOrder[k] }));
+        posOf[sel.dataset.pid] = sel.value;
+        team.lineup = team.lineup.map((sl) => ({ pid: sl.pid, pos: posOf[sl.pid] }));
         refresh();
       }));
 
-      body.querySelectorAll('.pname').forEach((b) => b.addEventListener('click', () => {
-        const p = Team.find(team, b.dataset.pid);
-        if (!p) return;
-        openPlayer(p);
-        closeModal.after = () => refresh();
-      }));
+      body.querySelectorAll('.pname').forEach((b) =>
+        b.addEventListener('click', () => openDetail(b.dataset.pid)));
 
       const auto = body.querySelector('#lu-auto');
       if (auto) auto.addEventListener('click', () => {
         Team.autoLineup(team);
-        posOrder = team.lineup.map((sl) => sl.pos);
+        Object.keys(posOf).forEach((k) => { delete posOf[k]; });
+        team.lineup.forEach((sl) => { posOf[sl.pid] = sl.pos; });
         refresh();
       });
       const done = body.querySelector('#lu-done');
       if (done) done.addEventListener('click', () => {
-        closeModal.after = null; closeModal(); if (onDone) onDone();
+        if (conflicts(batterIds()).length) return;
+        closeModal.back = null; closeModal.after = null; closeModal();
+        if (onDone) onDone();
       });
     }
 
@@ -574,7 +700,8 @@ const UI = (() => {
   return {
     el, esc, html, show, currentScreen, curtain, modal, closeModal,
     avg, era, ipText, stat, rankSpan, rankNum, aptSpan, pullText, handMark,
-    playerRow, rosterTable, playerDetail, openPlayer, lineupEditor, roleText, makeSortable,
+    playerRow, rosterTable, rosterPanel, sortPlayers, playerDetail, openPlayer,
+    lineupEditor, roleText, makeSortable, wireRename,
     careerBatLine, careerPitLine, init,
   };
 })();

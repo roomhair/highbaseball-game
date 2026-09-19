@@ -52,6 +52,13 @@ const Tournament = (() => {
       out.push(from + (to - from) * curve);
     }
 
+    /* 1回戦と2回戦だけは持ち上げる。曲線どおりだと弱すぎて練習試合になってしまう。
+       3回戦より下にはなるよう、3回戦の値からの割合で決めている */
+    if (n >= 3) {
+      out[0] = Math.max(out[0], out[2] * 0.80);
+      out[1] = Math.max(out[1], out[2] * 0.90);
+    }
+
     /* ゆらぎを足す。ここで「妙に強い2回戦」や「楽な3回戦」が生まれる */
     for (let i = 0; i < n; i++) {
       const mustRise = rounds[i] === '準々決勝' || rounds[i] === '準決勝' || rounds[i] === '決勝';

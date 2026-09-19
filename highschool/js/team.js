@@ -30,6 +30,8 @@ const Team = (() => {
   /** ある選手がその守備位置をどれだけ守れるか（0〜100） */
   function defScore(p, posKey) {
     if (posKey === 'DH') return 50;
+    /* 左投げの選手は、捕手・二塁・三塁・遊撃には置かない */
+    if (p.throws === 'L' && Player.RIGHT_ONLY.indexOf(posKey) >= 0) return 1;
     /* 投手が自分のところの打球を処理するときは、適性の減点をしない */
     if (posKey === 'P') return Math.max(1, p.field * 0.7 + p.catch * 0.2 + p.arm * 0.1);
     const pen = Player.aptPenalty(p.apt ? p.apt[posKey] : 'G');
@@ -146,6 +148,33 @@ const Team = (() => {
     return Math.round(avg(bat) * 0.58 + pit * 0.42);
   }
 
+  /**
+   * 試合が終わったあとの投手の疲れ。
+   * たくさん投げた日は溜まり、少しだけの日はほぼ変わらず、
+   * まったく投げなかった日はしっかり抜ける。
+   */
+  function restPitchers(team) {
+    team.pitchers.forEach((p) => {
+      const outs = (p.game && p.game.outs) || 0;
+      const rest = outs === 0 ? 34 : 6;
+      p.fatigue = Math.max(0, Math.min(100, Math.round((p.fatigue || 0) + outs * 1.4 - rest)));
+    });
+  }
+
+  /** 大会と大会のあいだ、オフシーズンでは抜けきる */
+  function healPitchers(team) {
+    team.pitchers.forEach((p) => { p.fatigue = 0; });
+  }
+
+  /** 疲れの見せ方 */
+  function fatigueLabel(p) {
+    const f = p.fatigue || 0;
+    if (f >= 70) return '疲労大';
+    if (f >= 40) return 'やや疲労';
+    if (f >= 18) return '軽い疲れ';
+    return '万全';
+  }
+
   /** いちばん良い選手（負けたときに引き抜かれる1人） */
   function bestPlayer(team) {
     return all(team).slice().sort((a, b) => Player.rating(b) - Player.rating(a))[0] || null;
@@ -166,5 +195,6 @@ const Team = (() => {
   return {
     create, all, find, defScore, autoLineup, autoRotation, orderBatters,
     bench, defenders, strength, bestPlayer, repair, FILL_ORDER,
+    restPitchers, healPitchers, fatigueLabel,
   };
 })();

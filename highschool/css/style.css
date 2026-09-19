@@ -40,14 +40,17 @@
   --maxw:      860px;
   --maxw-wide: 1080px;
 
-  --r-s: #9a6b00;
-  --r-a: #a23127;
-  --r-b: #b3601a;
-  --r-c: #2c6a45;
-  --r-d: #17466e;
-  --r-e: #5b6470;
-  --r-f: #8a8f96;
-  --r-g: #a9adb3;
+  /* 能力の評価の色。パワプロの並びに合わせてある。
+     紙色の地の上でも読めるように、黄色と水色だけ少し濃くしてある */
+  --r-s: #ff6fae;   /* 薄ピンク（Sだけ塗りつぶし） */
+  --r-a: #d6188e;   /* ピンク */
+  --r-b: #dc2222;   /* 赤 */
+  --r-c: #e07b10;   /* オレンジ */
+  --r-d: #c29400;   /* 黄 */
+  --r-e: #2f9e4a;   /* 緑 */
+  --r-f: #3fa3d0;   /* 薄い水色 */
+  --r-g: #9aa0a6;   /* 灰 */
+  --r-s-ink: #ffffff;
 }
 :root[data-theme="dark"] {
   --bg:        #121316;
@@ -65,14 +68,15 @@
   --ng:        #e07a6d;
   --shadow:    0 12px 32px rgba(0, 0, 0, .5);
 
-  --r-s: #e2b95c;
-  --r-a: #e07a6d;
-  --r-b: #dda05c;
-  --r-c: #7cc79a;
-  --r-d: #7fb0da;
-  --r-e: #9aa3ad;
-  --r-f: #7e848b;
-  --r-g: #62676d;
+  --r-s: #ff8ec0;
+  --r-a: #f45bb5;
+  --r-b: #f2564e;
+  --r-c: #f5a33a;
+  --r-d: #efd749;
+  --r-e: #5fcb6e;
+  --r-f: #7fd0ee;
+  --r-g: #8b9197;
+  --r-s-ink: #2a0e1c;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -90,14 +94,15 @@
     --ok:        #7cc79a;
     --ng:        #e07a6d;
     --shadow:    0 12px 32px rgba(0, 0, 0, .5);
-    --r-s: #e2b95c;
-    --r-a: #e07a6d;
-    --r-b: #dda05c;
-    --r-c: #7cc79a;
-    --r-d: #7fb0da;
-    --r-e: #9aa3ad;
-    --r-f: #7e848b;
-    --r-g: #62676d;
+    --r-s: #ff8ec0;
+    --r-a: #f45bb5;
+    --r-b: #f2564e;
+    --r-c: #f5a33a;
+    --r-d: #efd749;
+    --r-e: #5fcb6e;
+    --r-f: #7fd0ee;
+    --r-g: #8b9197;
+    --r-s-ink: #2a0e1c;
   }
 }
 
@@ -225,19 +230,32 @@ td.hl { font-weight: 700; }
 .roster tbody tr:hover, .box tbody tr:hover, .lineup tbody tr:hover { background: var(--bg-2); }
 .ord { color: var(--ink-faint); font-size: 11px; }
 .hand { font-size: 10.5px; color: var(--ink-mute); }
+/* 変化球の欄。行の高さが揃うように1行に収め、はみ出すぶんは
+   表ごと横にスクロールさせる（球種の数で行の高さが変わらない） */
 .t-break { font-size: 11px; white-space: nowrap; }
-.t-break i { font-style: normal; color: var(--ink-faint); font-size: 10px; margin-left: 1px; }
+.t-break .luball { display: inline-block; margin: 0 2px 0 0; vertical-align: middle; }
+.luball--more { color: var(--ink-faint); border-style: dashed; }
+.roster td, .roster th { vertical-align: middle; }
+/* 狭い画面では少しでも多く収まるように詰める */
+@media (max-width: 540px) {
+  .roster th, .roster td { padding: 5px 4px; }
+  .roster .hand { font-size: 10px; }
+  .roster .luball { font-size: 10px; padding: 0 2px; }
+}
 .g1 { color: var(--ink-faint); }
 .g3 { font-weight: 700; }
 .awake-dot { font-style: normal; color: var(--crimson); font-size: 9px; margin-left: 3px; vertical-align: 2px; }
 
-/* 能力の評価（S〜G） */
+/* 能力の評価（S〜G）。いちばん上のSだけは塗りつぶして目立たせる */
 .rank, .stat__rank {
   display: inline-block; min-width: 1.15em; text-align: center;
   font-weight: 800; font-size: 12.5px; letter-spacing: 0;
 }
+.rank-S, .stat__rank.rank-S {
+  background: var(--r-s); color: var(--r-s-ink);
+  border-radius: 3px; padding: 0 3px; min-width: 1.3em;
+}
 .rank + .rank { margin-left: 3px; }
-.rank-S, .stat__rank.rank-S { color: var(--r-s); }
 .rank-A, .stat__rank.rank-A { color: var(--r-a); }
 .rank-B, .stat__rank.rank-B { color: var(--r-b); }
 .rank-C, .stat__rank.rank-C { color: var(--r-c); }
@@ -392,20 +410,35 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 @keyframes flash { 50% { opacity: .45; } }
 .stage__runs { display: inline-block; margin-left: 10px; font-size: 16px; color: var(--crimson); }
 
-.diamond { text-align: center; }
-.diamond svg { width: 74px; height: 68px; }
-.diamond .field { fill: none; stroke: var(--line); stroke-width: 1.5; }
-.diamond .base { fill: var(--bg); stroke: var(--line); stroke-width: 1.5; }
-.diamond .base.is-on { fill: var(--accent); stroke: var(--accent); }
-.diamond .base.home { fill: var(--line-soft); stroke: var(--line); }
+/* グラウンドの絵。打球が飛んでいくのが見える */
+.fieldview { text-align: center; }
+.fieldview svg { width: 132px; height: 114px; overflow: visible; }
+@media (min-width: 720px) { .fieldview svg { width: 168px; height: 145px; } }
+.fv-grass { fill: color-mix(in srgb, var(--accent) 10%, transparent); stroke: none; }
+.fv-fence { fill: none; stroke: var(--line); stroke-width: 2; }
+.fv-inf { fill: color-mix(in srgb, var(--accent) 16%, transparent); stroke: var(--line); stroke-width: 1.4; }
+.fv-base { fill: var(--bg); stroke: var(--line); stroke-width: 1.6; }
+.fv-base.is-on { fill: var(--accent); stroke: var(--accent); }
+.fv-home { fill: var(--ink-faint); }
+/* 打球。本塁から落ちどころまで飛ぶ */
+.ball {
+  fill: var(--ink); stroke: var(--bg); stroke-width: 1.4;
+  animation: fly .62s cubic-bezier(.25,.75,.4,1) both;
+}
+.ball.is-hr { fill: var(--crimson); animation-duration: .8s; }
+@keyframes fly {
+  from { transform: translate(0, 0) scale(.5); opacity: .4; }
+  40%  { opacity: 1; }
+  to   { transform: translate(calc(var(--dx) * 1px), calc(var(--dy) * 1px)) scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ball { animation: none; transform: translate(calc(var(--dx) * 1px), calc(var(--dy) * 1px)); }
+}
 .outs { display: flex; gap: 4px; align-items: center; justify-content: center; margin-top: 2px; }
 .outs .out { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--line); display: inline-block; }
 .outs .out.is-on { background: var(--ng); border-color: var(--ng); }
 .outs span { font-size: 9px; letter-spacing: .12em; color: var(--ink-faint); margin-left: 3px; }
 
-/* 両チームのオーダーは、狭い画面でも必ず横に2つ並べる。
-   縦に積むと下のチームが画面の外に出てしまい、
-   いまどちらの攻撃なのかが見えなくなる */
 .livelineups { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 @media (min-width: 720px) { .livelineups { gap: 12px; } }
 .ll { border: 1px solid var(--line-soft); border-radius: 4px; padding: 6px 6px; min-width: 0; }
@@ -476,12 +509,40 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .lulist { list-style: none; margin: 0 0 4px; padding: 0; }
 .lurow {
   display: grid;
-  grid-template-columns: 38px 2.4em 3.2em 1fr auto;
-  grid-template-areas: "grip no pos main arrow" ". . . stats stats";
-  align-items: center; gap: 0 6px;
-  padding: 4px 4px 4px 0; border-bottom: 1px solid var(--line-soft);
+  grid-template-columns: 38px 2.4em 3.4em minmax(6em, 1fr) auto;
+  grid-template-areas:
+    "grip no pos main arrow"
+    "grip stats stats stats stats"
+    "grip apts apts apts apts";
+  align-items: center; gap: 1px 6px;
+  padding: 5px 4px 5px 0; border-bottom: 1px solid var(--line-soft);
   background: var(--bg);
 }
+@media (min-width: 760px) {
+  .lurow {
+    grid-template-columns: 38px 2.4em 3.4em minmax(8em, 1.1fr) minmax(12em, 1.2fr) auto;
+    grid-template-areas:
+      "grip no pos main stats arrow"
+      "grip apts apts apts apts apts";
+  }
+}
+.lurow.is-bad { background: color-mix(in srgb, var(--ng) 10%, transparent); }
+/* 守備適性の一覧。どこを守れるかがひと目で分かる */
+.luapts { grid-area: apts; display: flex; flex-wrap: wrap; gap: 1px 7px; padding-top: 1px; }
+.luapt { display: inline-flex; align-items: baseline; gap: 1px; font-size: 10.5px; }
+.luapt i { font-style: normal; color: var(--ink-faint); }
+.lupitch { gap: 2px 5px; }
+.luball { font-size: 10.5px; color: var(--ink-mute); border: 1px solid var(--line-soft); border-radius: 2px; padding: 0 3px; }
+.luball b { margin-left: 2px; color: var(--ink); }
+.luwarn {
+  margin: 0 0 10px; padding: 8px 11px; font-size: 12.5px; line-height: 1.6;
+  border: 1.5px solid var(--ng); border-radius: 4px; color: var(--ng);
+  background: color-mix(in srgb, var(--ng) 8%, transparent);
+}
+.lufat--lo { color: var(--ok); }
+.lufat--mid { color: var(--r-c); }
+.lufat--hi { color: var(--ng); font-weight: 700; }
+.pdetail__from { font-size: 11.5px; color: var(--accent); margin-top: 2px; }
 .lurow.is-bench { background: var(--bg-2); }
 .lurow.is-bench .luno { color: var(--ink-faint); font-size: 11px; }
 /* つまんでいる行。浮かせて、いま動かしているのが分かるようにする */
@@ -561,6 +622,30 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .nextup__vs { margin: 0; font-size: 15px; color: var(--ink-mute); }
 .nextup__vs b { color: var(--ink); font-size: 18px; }
 .taphint--static { animation: none; margin-top: 26px; }
+
+/* 打席の記録。1行にその試合ぶんを並べる */
+.palog td { vertical-align: top; }
+.pa-cells { white-space: normal; display: flex; flex-wrap: wrap; gap: 3px 4px; }
+.pa-cell {
+  font-size: 11px; border: 1px solid var(--line-soft); border-radius: 2px;
+  padding: 0 4px; white-space: nowrap; color: var(--ink);
+}
+.pa-cell i { font-style: normal; color: var(--ink-faint); margin-right: 3px; font-size: 10px; }
+.pa-cell b { color: var(--crimson); margin-left: 3px; }
+.pa-cell.is-run { border-color: var(--crimson); }
+.retire.is-draft { border-color: var(--crimson); border-width: 1.5px; }
+.retire__draft { font-style: normal; font-size: 12px; font-weight: 800; color: var(--crimson); letter-spacing: .1em; }
+.retire__from { margin: 2px 0 0; font-size: 11.5px; color: var(--accent); }
+
+/* 並び替えのボタン */
+.sortbar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin: 6px 0 2px; }
+.sortbar__label { font-size: 10.5px; letter-spacing: .12em; color: var(--ink-faint); margin-right: 3px; }
+.sortbtn {
+  border: 1px solid var(--line); border-radius: 999px; background: transparent;
+  color: var(--ink-mute); font: inherit; font-size: 11.5px; padding: 2px 10px; cursor: pointer;
+}
+.sortbtn:hover { color: var(--ink); border-color: var(--ink-mute); }
+.sortbtn.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
 
 /* ===== 引き抜き・オフシーズン ===== */
 tr.prow.is-picked { background: var(--accent); color: var(--accent-ink); }
@@ -645,11 +730,15 @@ tr.prow.is-picked .rank, tr.prow.is-picked .rankval, tr.prow.is-picked td { colo
 .modal__backdrop { position: absolute; inset: 0; background: rgba(12, 12, 10, .55); }
 .modal__panel {
   position: relative; width: min(100%, 720px); max-height: 88vh; overflow-y: auto;
+
   background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
   box-shadow: var(--shadow); padding: 20px 18px 22px;
   animation: modalin .2s cubic-bezier(.2,.9,.3,1) both;
 }
 @keyframes modalin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+/* オーダー変更は情報が多いので、画面いっぱいに広く取る */
+.modal[data-kind="lineup"] { padding: 8px; }
+.modal[data-kind="lineup"] .modal__panel { width: min(100%, 980px); max-height: 94vh; padding: 16px 14px 20px; }
 .modal__close {
   position: absolute; top: 6px; right: 8px; width: 32px; height: 32px;
   border: 0; background: none; color: var(--ink-mute); font-size: 22px; cursor: pointer; line-height: 1;

@@ -45,7 +45,11 @@ const Player = (() => {
 
   const APT_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
 
-  function aptitudeFor(mainPos) {
+  /* 左投げの選手は、捕手・二塁・三塁・遊撃をやらない（一塁と外野だけ）。
+     現実でも送球の向きの都合でまず置かない。 */
+  const RIGHT_ONLY = ['C', '2B', '3B', 'SS'];
+
+  function aptitudeFor(mainPos, throws) {
     const apt = {};
     /* 本職は A が基本。たまに B 止まり（守れてはいるが上手くはない） */
     const mainIdx = RNG.chance(0.72) ? 0 : 1;
@@ -58,6 +62,7 @@ const Player = (() => {
       if (key === 'C' && mainPos !== 'C') idx = Math.max(idx, RNG.chance(0.15) ? 4 : 5);
       apt[key] = APT_LETTERS[RNG.clamp(idx, 0, 6)];
     });
+    if (throws === 'L') RIGHT_ONLY.forEach((k) => { apt[k] = 'G'; });
     return apt;
   }
 
@@ -71,9 +76,9 @@ const Player = (() => {
      左投は右投の半分くらい（投手は8割くらい）の割合で出す。
      左投右打はめちゃくちゃ珍しいので、ほんの少しだけ混ぜる。 */
 
-  function hands(isPitcher) {
+  function hands(isPitcher, forceRight) {
     const leftRatio = isPitcher ? 0.80 : 0.50;
-    const throws = RNG.chance(leftRatio / (1 + leftRatio)) ? 'L' : 'R';
+    const throws = (!forceRight && RNG.chance(leftRatio / (1 + leftRatio))) ? 'L' : 'R';
     let bats;
     if (throws === 'L') {
       bats = RNG.chance(0.03) ? 'R' : 'L';     // 左投右打はごく稀
@@ -91,8 +96,8 @@ const Player = (() => {
        高校生なので、いくつも決め球を持っている投手はそう多くない */
     let n = 2;
     const r = Math.random() + talent * 0.09 + (grade - 1) * 0.09 + boost * 0.09;
-    if (r > 1.55) n = 5; else if (r > 1.15) n = 4; else if (r > 0.70) n = 3;
-    else if (r < 0.18) n = 1;
+    if (r > 1.70) n = 5; else if (r > 1.30) n = 4; else if (r > 0.82) n = 3;
+    else if (r < 0.26) n = 1;
 
     const pool = PITCH_TYPES.slice();
     const out = [];
@@ -100,7 +105,7 @@ const Player = (() => {
       const picked = RNG.weighted(pool);
       pool.splice(pool.indexOf(picked), 1);
       /* 切れ味は1〜7。才能が高いほど良い球を持ちやすい */
-      let lv = Math.round(RNG.clamp(RNG.norm(1.55 + talent * 0.70 + (grade - 1) * 0.28 + boost * 0.85, 0.9), 1, 7));
+      let lv = Math.round(RNG.clamp(RNG.norm(1.20 + talent * 0.58 + (grade - 1) * 0.22 + boost * 0.70, 0.85), 1, 7));
       out.push({ name: picked.name, level: lv });
     }
     /* 一番いい球を先頭に置く（詳細画面で決め球が上に来る） */
@@ -175,7 +180,7 @@ const Player = (() => {
     const pos = opt.pos || RNG.pick(FIELD_POSITIONS);
     const talent = opt.talent != null ? opt.talent : rollTalent();
     const base = baseOf(grade, opt.level);
-    const hd = hands(false);
+    const hd = hands(false, RIGHT_ONLY.indexOf(pos) >= 0);
 
     /* 守る場所によって、伸びる方向が少し違う。
        捕手は肩と捕球、遊撃は守備と走力、一塁と指名打者は打撃に寄る */
@@ -206,10 +211,11 @@ const Player = (() => {
       catch: makeStat(base, talent, bias.catch),
       /* 100に近いほど引っ張り、-100に近いほど流し打ち。0ならセンター返し */
       pull: Math.round(RNG.clamp(RNG.norm(20, 42), -100, 100)),
-      apt: aptitudeFor(pos === 'DH' ? RNG.pick(FIELD_POSITIONS) : pos),
+      apt: null,   // 利き腕が決まってから入れる
       awakened: false,
       hl: [],
     };
+    p.apt = aptitudeFor(pos === 'DH' ? RNG.pick(FIELD_POSITIONS) : pos, p.throws);
     const nm = NAMES.personName();
     p.last = nm.last; p.first = nm.first; p.name = nm.last + nm.first;
 
@@ -239,7 +245,7 @@ const Player = (() => {
       throws: hd.throws, bats: hd.bats,
       talent,
       velo: Math.round(RNG.clamp(
-        117 + (GRADE_VELO[grade] || 0) + talent * 5.4 + levelShift * 0.30 + RNG.norm(0, 4), 108, 162)),
+        119 + (GRADE_VELO[grade] || 0) + talent * 6.6 + levelShift * 0.45 + RNG.norm(0, 6), 105, 164)),
       control: makeStat(base, talent, 0),
       stamina: makeStat(base, talent, 0),
       pitches: rollPitches(talent, grade, levelShift / 12),
@@ -252,7 +258,8 @@ const Player = (() => {
       catch: makeStat(base, talent, -2),
       traj: RNG.clamp(Math.round(RNG.norm(1.4, 0.6)), 1, 4),
       pull: Math.round(RNG.clamp(RNG.norm(15, 40), -100, 100)),
-      apt: aptitudeFor(RNG.pick(FIELD_POSITIONS)),
+      apt: aptitudeFor(RNG.pick(FIELD_POSITIONS), hd.throws),
+      fatigue: 0,      // 投げるほど溜まる。休むと抜ける
       awakened: false,
       hl: [],
     };
@@ -262,13 +269,8 @@ const Player = (() => {
     p.career = emptyPit();
     p.tour = emptyPit();
     p.game = emptyPit();
-    p.batCareer = emptyBat();
-    p.batTour = emptyBat();
-    p.batGame = emptyBat();
     if (opt.practice !== false) {
-      const g = practiceGames(grade);
-      addStats(p.career, seedPracticePit(p, g, opt.level));
-      addStats(p.batCareer, seedPracticeBat(p, Math.round(g * 0.7), opt.level));
+      addStats(p.career, seedPracticePit(p, practiceGames(grade), opt.level));
     }
     return p;
   }
@@ -283,7 +285,7 @@ const Player = (() => {
     let best = 0, sum = 0;
     p.pitches.forEach((q) => { best = Math.max(best, q.level); sum += q.level; });
     /* 決め球1つと、球種の多さの両方を見る */
-    return RNG.clamp(best / 7 * 0.62 + Math.min(sum, 18) / 18 * 0.24, 0, 1);
+    return RNG.clamp(best / 7 * 0.52 + Math.min(sum, 18) / 18 * 0.20, 0, 1);
   }
 
   /** 総合力（0〜100）。引き抜きや「一番いい選手」の判定に使う */
@@ -311,7 +313,7 @@ const Player = (() => {
   function gradeLabel(g) { return g + '年'; }
 
   return {
-    newBatter, newPitcher, rating, breakScore, aptPenalty, handLabel, gradeLabel,
+    newBatter, newPitcher, rating, breakScore, aptPenalty, handLabel, gradeLabel, RIGHT_ONLY,
     emptyBat, emptyPit, addStats, seedPracticeBat, seedPracticePit, practiceGames,
     rollTalent, nextId, currentSeq, setSeq,
   };

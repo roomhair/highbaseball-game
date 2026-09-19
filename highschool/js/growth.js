@@ -103,7 +103,7 @@ const Growth = (() => {
               ups.push({ key: 'pitch', label: p.pitches[0].name, amount: p.pitches[0].level - lb,
                          before: lb, after: p.pitches[0].level, awake: true });
             }
-          } else if (p.traj < 4 && RNG.chance(0.45)) {
+          } else if (p.traj < 4 && RNG.chance(0.18)) {
             const tb = p.traj;
             p.traj++;
             ups.push({ key: 'traj', label: '弾道', amount: 1, before: tb, after: p.traj, awake: true });

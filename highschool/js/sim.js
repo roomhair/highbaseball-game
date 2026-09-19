@@ -21,7 +21,7 @@ const Sim = (() => {
 
   /** 投手の球威（球速と変化球）。
      変化球だけで押し切れると高校野球らしくないので、球速のほうを重く見る */
-  function stuffOf(p) { return C(veloScore(p) * 0.60 + Player.breakScore(p) * 0.40, 0, 1); }
+  function stuffOf(p) { return C(veloScore(p) * 0.68 + Player.breakScore(p) * 0.32, 0, 1); }
 
   /** 守備陣のまとまり（0〜1）。安打になりにくさに効く */
   function defenseOf(team, pitcherId) {
@@ -222,7 +222,6 @@ const Sim = (() => {
   function resetGameStats(team) {
     Team.all(team).forEach((p) => {
       p.game = p.kind === 'pitcher' ? Player.emptyPit() : Player.emptyBat();
-      if (p.kind === 'pitcher') p.batGame = Player.emptyBat();
       p.gameHl = [];
     });
   }
@@ -234,7 +233,8 @@ const Sim = (() => {
    * @param {object} away 先攻チーム
    * @param {object} home 後攻チーム
    */
-  function play(away, home) {
+  function play(away, home, opt) {
+    const noCold = !!(opt && opt.noCold);
     resetGameStats(away); resetGameStats(home);
 
     const A = sideState(away, false);
@@ -258,15 +258,20 @@ const Sim = (() => {
         }
 
         const tie = inning >= CONFIG.GAME.TIEBREAK_FROM;
-        log.push({ k: 'half', inning, half, tie, score: [A.runs, H.runs] });
+        /* 次に誰の打席から始まるかも入れておく。
+           これが無いと、回のはじめに打順の表示が前の回のまま残る */
+        log.push({
+          k: 'half', inning, half, tie, score: [A.runs, H.runs],
+          nextOrder: (off.order % 9) + 1,
+        });
         const got = playHalf(off, def, log, inning, half, tie, A, H);
         off.byInning[inning - 1] = got;
 
         if (half === 'bottom' && inning >= CONFIG.GAME.INNINGS && H.runs > A.runs) {
           walkoff = true; over = true; break;
         }
-        /* コールドゲーム */
-        if (half === 'bottom' || (half === 'top' && H.runs > A.runs)) {
+        /* コールドゲーム（決勝では行わない） */
+        if (!noCold && (half === 'bottom' || (half === 'top' && H.runs > A.runs))) {
           const diff = Math.abs(A.runs - H.runs);
           for (const rule of CONFIG.GAME.COLD) {
             if (inning >= rule.inning && diff >= rule.diff) { cold = true; over = true; break; }
@@ -369,7 +374,9 @@ const Sim = (() => {
         }
       }
 
-      const fatigue = Math.max(0, (def.bf - capacityOf(pit)) / 18);
+      /* この試合の球数ぶんの疲れに、前の試合から残っている疲労を足す */
+      const carried = (pit.fatigue || 0) / 100;
+      const fatigue = Math.max(0, (def.bf - capacityOf(pit)) / 18) + carried * 0.85;
       const defenders = Team.defenders(defTeam, def.pitcherId);
       const defRating = defenseOf(defTeam, def.pitcherId);
       const res = resolvePA(bat, pit, defTeam, defRating, fatigue, defenders, off.form, def.form);
@@ -397,6 +404,8 @@ const Sim = (() => {
 
       log.push(snap('pa', {
         text: res.text, code: res.code, rbi: out.rbi, runs: out.runs,
+        /* 打球がどこへ飛んだか。試合中の画面で打球の絵に使う */
+        spot: res.spot || null,
         desc: out.desc || '',
       }, off, def, inning, half, outs, bases, A, H, bat, pit, before, slotIndex));
 
@@ -610,15 +619,15 @@ const Sim = (() => {
   /* level ごとの、相手の先発投手の球威・制球と、守備のまとまり。
      実際に Tournament.makeTeam で作ったチームから測った値を並べてある */
   const PEER = [
-    [15, 0.295, 0.323, 0.219],
-    [25, 0.323, 0.407, 0.318],
-    [35, 0.385, 0.513, 0.430],
-    [45, 0.470, 0.624, 0.549],
-    [55, 0.531, 0.717, 0.648],
-    [65, 0.629, 0.829, 0.764],
-    [75, 0.703, 0.907, 0.853],
-    [85, 0.752, 0.970, 0.952],
-    [95, 0.806, 0.993, 0.997],
+    [15, 0.245, 0.337, 0.227],
+    [25, 0.313, 0.402, 0.318],
+    [35, 0.431, 0.522, 0.443],
+    [45, 0.504, 0.639, 0.553],
+    [55, 0.561, 0.711, 0.642],
+    [65, 0.688, 0.852, 0.756],
+    [75, 0.738, 0.926, 0.867],
+    [85, 0.807, 0.967, 0.950],
+    [95, 0.867, 0.994, 0.999],
   ];
 
   function peerProfile(level) {

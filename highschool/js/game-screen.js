@@ -58,17 +58,46 @@ const GameScreen = (() => {
       '</tbody></table></div>';
   }
 
-  /* ---------- 走者の図 ---------- */
+  /* ---------- グラウンドの絵 ----------
+     打球がどこへ飛んだかを見せる。中安ならセンター前、
+     右二なら右中間、というふうに落ちどころを変えている。 */
 
-  function diamond(bases, outs) {
+  /* 守備位置のだいたいの立ち位置（本塁は 100,152） */
+  const SPOT = {
+    P:  [100, 112], C: [100, 160],
+    '1B': [134, 118], '2B': [122, 88], '3B': [66, 118], SS: [78, 88],
+    LF: [44, 52], CF: [100, 34], RF: [156, 52],
+  };
+  /* 長打の落ちどころ。左中間・右中間を使い分ける */
+  const GAP = { LF: [58, 34], CF: [100, 22], RF: [142, 34] };
+  const DEEP = { LF: [32, 26], CF: [100, 12], RF: [168, 26] };
+
+  /** 打席の結果から、打球の落ちどころを決める */
+  function ballTarget(e) {
+    if (!e || !e.spot) return null;
+    if (e.code === 'HR') return DEEP[e.spot] || [100, 12];
+    if (e.code === '3B') return DEEP[e.spot] || GAP[e.spot] || SPOT[e.spot];
+    if (e.code === '2B') return GAP[e.spot] || SPOT[e.spot];
+    return SPOT[e.spot] || null;
+  }
+
+  function fieldView(bases, outs, e) {
+    const t = ballTarget(e);
     const b = (i) => (bases && bases[i] ? ' is-on' : '');
-    return '<div class="diamond">' +
-      '<svg viewBox="0 0 100 92" aria-hidden="true">' +
-        '<polygon class="field" points="50,8 92,50 50,92 8,50"/>' +
-        '<rect class="base' + b(1) + '" x="44" y="2" width="12" height="12" transform="rotate(45 50 8)"/>' +
-        '<rect class="base' + b(0) + '" x="86" y="44" width="12" height="12" transform="rotate(45 92 50)"/>' +
-        '<rect class="base' + b(2) + '" x="2" y="44" width="12" height="12" transform="rotate(45 8 50)"/>' +
-        '<rect class="base home" x="44" y="86" width="12" height="12" transform="rotate(45 50 92)"/>' +
+    const ball = t
+      ? '<circle class="ball' + (e.code === 'HR' ? ' is-hr' : '') + '" cx="100" cy="152" r="4.4" ' +
+        'style="--dx:' + (t[0] - 100) + ';--dy:' + (t[1] - 152) + '"></circle>'
+      : '';
+    return '<div class="fieldview">' +
+      '<svg viewBox="0 0 200 172" aria-hidden="true">' +
+        '<path class="fv-grass" d="M100 152 L14 66 A122 122 0 0 1 186 66 Z"/>' +
+        '<path class="fv-fence" d="M14 66 A122 122 0 0 1 186 66"/>' +
+        '<polygon class="fv-inf" points="100,152 141,111 100,70 59,111"/>' +
+        '<rect class="fv-base' + b(0) + '" x="136" y="107" width="9" height="9" transform="rotate(45 140.5 111.5)"/>' +
+        '<rect class="fv-base' + b(1) + '" x="95.5" y="66" width="9" height="9" transform="rotate(45 100 70.5)"/>' +
+        '<rect class="fv-base' + b(2) + '" x="54.5" y="107" width="9" height="9" transform="rotate(45 59 111.5)"/>' +
+        '<polygon class="fv-home" points="100,147 105,152 100,157 95,152"/>' +
+        ball +
       '</svg>' +
       '<div class="outs">' + [0, 1, 2].map((i) =>
         '<i class="out' + (i < outs ? ' is-on' : '') + '"></i>').join('') + '<span>OUT</span></div>' +
@@ -190,28 +219,41 @@ const GameScreen = (() => {
 
   function halfLabel(e) { return e.inning + '回' + (e.half === 'top' ? '表' : '裏'); }
 
+  /** 攻撃中だった回を締める。無得点ならここで 0 を入れる */
+  function closeHalf(st) {
+    if (!st.openHalf) return;
+    const prev = st.openHalf;
+    const arr = prev.side === 'away' ? st.awayInn : st.homeInn;
+    if (arr[prev.inning - 1] == null) arr[prev.inning - 1] = 0;
+    st.openHalf = null;
+  }
+
   function apply(e) {
     const st = ctx.state, cur = ctx.cur;
     if (e.k === 'half') {
       st.inning = e.inning; st.half = e.half;
       st.maxInning = Math.max(st.maxInning, e.inning);
       cur.side = e.half === 'top' ? 'away' : 'home';
-      const arr = cur.side === 'away' ? st.awayInn : st.homeInn;
-      if (arr[e.inning - 1] == null) arr[e.inning - 1] = 0;
+      /* 回のはじめに、次の打者へ表示を合わせる */
+      if (e.nextOrder) cur.order = e.nextOrder;
+      /* 前の半分の回を締める。攻撃中は空欄のままで、
+         回が終わってはじめて 0 を入れる */
+      closeHalf(st);
+      st.openHalf = { side: cur.side, inning: e.inning };
       return '<div class="stage__half">' + halfLabel(e) + (e.tie ? '　タイブレーク' : '') + '</div>' +
-        diamond([e.tie, e.tie, false], 0);
+        fieldView([e.tie, e.tie, false], 0, null);
     }
 
     if (e.k === 'sub') {
       if (e.side === 'home') cur.homePitcher = e.pitcher; else cur.awayPitcher = e.pitcher;
-      return '<div class="stage__sub">' + esc(e.text) + '</div>' + diamond([false, false, false], 0);
+      return '<div class="stage__sub">' + esc(e.text) + '</div>' + fieldView([false, false, false], 0, null);
     }
 
     if (e.k === 'steal') {
       return '<div class="stage__play' + (e.ok ? ' is-good' : ' is-bad') + '">' +
         '<span class="stage__meta">' + halfLabel(e) + '</span>' +
         '<span class="stage__text">' + esc(e.text) + '</span></div>' +
-        diamond(e.bases.map(Boolean), e.outs);
+        fieldView(e.bases.map(Boolean), e.outs, null);
     }
 
     if (e.k === 'pa') {
@@ -219,7 +261,8 @@ const GameScreen = (() => {
       cur.side = off; cur.order = e.order;
       (cur.results[e.batter] = cur.results[e.batter] || []).push(e.text);
       const arr = off === 'away' ? st.awayInn : st.homeInn;
-      arr[e.inning - 1] = (arr[e.inning - 1] || 0) + (e.runs || 0);
+      /* 点が入ったときだけ数字を置く。入らないうちは空欄のまま */
+      if (e.runs) arr[e.inning - 1] = (arr[e.inning - 1] || 0) + e.runs;
       st.awayR = e.score[0]; st.homeR = e.score[1];
       if (['1B', '2B', '3B', 'HR'].indexOf(e.code) >= 0) {
         if (off === 'away') st.awayH++; else st.homeH++;
@@ -231,10 +274,11 @@ const GameScreen = (() => {
         '<span class="stage__meta">' + halfLabel(e) + '　' + e.order + '番 ' + esc(e.batterName) + '</span>' +
         '<span class="stage__text">' + esc(e.text) +
           (e.runs ? '<b class="stage__runs">+' + e.runs + '点</b>' : '') + '</span>' +
-        '</div>' + diamond(e.bases.map(Boolean), e.outs);
+        '</div>' + fieldView(e.bases.map(Boolean), e.outs, e);
     }
 
     if (e.k === 'end') {
+      closeHalf(st);
       st.awayR = e.score[0]; st.homeR = e.score[1];
       return '<div class="stage__end">試合終了' + (e.cold ? '（コールド）' : '') + '</div>';
     }
@@ -311,6 +355,32 @@ const GameScreen = (() => {
       '<th>三振</th><th>四球</th><th>失点</th><th>本</th><th>通算防御率</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
+  /* ---------- 打席の記録 ----------
+     その試合で誰が何回に何を打ったかを、まとめて見られるようにする */
+
+  function paLog(res, team, label) {
+    const byPid = {};
+    res.log.forEach((e) => {
+      if (e.k !== 'pa' || !e.batter) return;
+      (byPid[e.batter] = byPid[e.batter] || []).push(e);
+    });
+    const order = team.lineup.map((sl) => Team.find(team, sl.pid)).filter(Boolean);
+    const extra = team.batters.filter((p) => byPid[p.id] && order.indexOf(p) < 0);
+    const rows = order.concat(extra).map((p, i) => {
+      const list = byPid[p.id] || [];
+      if (!list.length) return '';
+      return '<tr data-pid="' + p.id + '" class="prow">' +
+        '<td class="c ord">' + (i < 9 ? i + 1 : '') + '</td>' +
+        '<td class="nm">' + esc(p.name) + '</td>' +
+        '<td class="pa-cells">' + list.map((e) =>
+          '<span class="pa-cell' + (e.runs ? ' is-run' : '') + '">' +
+            '<i>' + e.inning + '回</i>' + esc(e.text) +
+            (e.runs ? '<b>+' + e.runs + '</b>' : '') + '</span>').join('') + '</td></tr>';
+    }).join('');
+    return '<h4 class="sub">' + esc(label) + '　打席の記録</h4>' +
+      '<div class="tablewrap"><table class="box palog"><tbody>' + rows + '</tbody></table></div>';
+  }
+
   function growthList(report) {
     const awake = report.filter((r) => r.awakened);
     const grew = report.filter((r) => !r.awakened && r.ups.length);
@@ -347,10 +417,14 @@ const GameScreen = (() => {
       scoreboard(res, res.away.team.name, res.home.team.name) +
       growthList(meta.report) +
       '<div class="boxes">' +
+        paLog(res, state.team, state.team.name) +
         batBox(state.team, state.team.name) +
         pitBox(state.team, state.team.name) +
-        batBox(state.opponent, state.opponent.name) +
-        pitBox(state.opponent, state.opponent.name) +
+        '<details class="rosterbox"><summary>' + esc(state.opponent.name) + 'の成績</summary>' +
+          paLog(res, state.opponent, state.opponent.name) +
+          batBox(state.opponent, state.opponent.name) +
+          pitBox(state.opponent, state.opponent.name) +
+        '</details>' +
       '</div>' +
       '<div class="tourstat"><h4 class="sub">' + esc(meta.tourLabel) + 'の成績</h4>' +
         '<p>' + state.tour.games + '試合　1試合平均 <b>' + pg.rf.toFixed(1) + '</b>得点／' +
