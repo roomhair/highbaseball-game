@@ -1,0 +1,12 @@
+{
+  // 本番に入れる前に、このリポジトリ単体で試遊できるようにするための設定。
+  // Cloudflare Workers に静的サイトとして配らせる。
+  // 本番（baseball-statsquiz）に highschool/ を移したあとは、
+  // このファイルごと捨ててかまわない。
+  "name": "highbaseball-game",
+  "compatibility_date": "2026-09-19",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./"
+  }
+}

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>高校野球｜部屋</title>
+  <meta name="description" content="部員を集め、特訓し、地方大会から全国大会までを勝ち上がる高校野球の育成シミュレーション。登録なし・無料で遊べます。">
+  <link rel="canonical" href="https://baseball.roomhaird.com/highschool/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="高校野球">
+  <meta property="og:description" content="部員を集め、特訓し、地方大会から全国大会までを勝ち上がる。">
+  <meta property="og:url" content="https://baseball.roomhaird.com/highschool/">
+  <meta name="twitter:card" content="summary">
+
+  <!-- 配色を、描かれる前に当てておく（一瞬だけ違う色になるのを防ぐ） -->
+  <script>
+  (function () {
+    try {
+      var k = localStorage.getItem('npbquiz.theme');
+      document.documentElement.dataset.theme =
+        k || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    } catch (e) {}
+  })();
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>⚾</text></svg>">
+</head>
+<body>
+
+<header class="appbar">
+  <a class="appbar__home" href="../">← 部屋</a>
+  <button type="button" class="appbar__title" id="btn-home">高校野球</button>
+  <button type="button" class="appbar__icon" id="btn-settings" aria-label="設定">⚙</button>
+  <button type="button" class="appbar__icon" id="theme-toggle" aria-label="配色を切り替える">◐</button>
+</header>
+
+<aside id="ad-top" class="ad-slot" hidden><span class="ad-label">広告</span><div class="ad-body"></div></aside>
+
+<main id="app">
+
+  <!-- ============ トップ ============ -->
+  <section class="screen is-active" id="screen-top">
+    <div class="container">
+      <header class="hero">
+        <p class="hero__eyebrow">HIGH SCHOOL BASEBALL</p>
+        <h1 class="hero__title">高校野球</h1>
+        <p class="hero__lead">部員を集め、特訓し、<br>地方大会からその先へ。</p>
+      </header>
+
+      <div class="rules">
+        <h2 class="rules__heading">流れ</h2>
+        <ol class="flow">
+          <li><b>チーム作り</b><span>5つのデータセットから、野手13人と投手7人を選ぶ</span></li>
+          <li><b>特訓</b><span>練習カードを5回選ぶ。見送れるのは3回まで</span></li>
+          <li><b>地方大会</b><span>勝ち上がれば全国へ。負ければオフシーズン</span></li>
+          <li><b id="flow-national">全国大会</b><span>頂点を目指す</span></li>
+          <li><b>オフシーズン</b><span>3年生が引退し、新入生が入る。そしてまた特訓へ</span></li>
+        </ol>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn--primary btn--wide" id="btn-start">はじめる</button>
+        <button type="button" class="btn btn--wide" id="btn-continue" hidden>続きから</button>
+      </div>
+      <p class="note" id="top-note"></p>
+    </div>
+  </section>
+
+  <!-- ============ データセット選択（チーム作り・新入生） ============ -->
+  <section class="screen" id="screen-pick">
+    <div class="container">
+      <h2 class="section-title" id="pick-title">野手を選ぶ</h2>
+      <p class="section-lead" id="pick-lead"></p>
+      <div id="pick-list" class="setlist"></div>
+    </div>
+  </section>
+
+  <!-- ============ チーム完成 ============ -->
+  <section class="screen" id="screen-ready">
+    <div class="container">
+      <h2 class="section-title">チーム完成</h2>
+      <div id="ready-body"></div>
+      <div class="actions">
+        <button type="button" class="btn" id="btn-ready-lineup">オーダー変更</button>
+        <button type="button" class="btn btn--primary" id="btn-ready-next">特訓へ</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 特訓 ============ -->
+  <section class="screen" id="screen-training">
+    <div class="container">
+      <h2 class="section-title">特訓</h2>
+      <div class="train-meta">
+        <span>選択 <b id="train-picks">0</b> / <b id="train-picks-max">5</b></span>
+        <span>見送り <b id="train-passes">0</b> / <b id="train-passes-max">3</b></span>
+      </div>
+      <div id="train-card" class="card-slot"></div>
+      <div class="actions">
+        <button type="button" class="btn btn--primary" id="btn-train-take">選択</button>
+        <button type="button" class="btn" id="btn-train-pass">見送る</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-training-result">
+    <div class="container">
+      <h2 class="section-title">特訓の成果</h2>
+      <div id="train-result"></div>
+      <div class="actions">
+        <button type="button" class="btn btn--primary btn--wide" id="btn-train-done">地方大会へ</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 大会開幕 ============ -->
+  <section class="screen" id="screen-opening">
+    <div class="container">
+      <div class="opening">
+        <p class="opening__eyebrow" id="opening-year"></p>
+        <h2 class="opening__title" id="opening-title"></h2>
+        <p class="opening__lead" id="opening-lead"></p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn--primary btn--wide" id="btn-open-start">開幕</button>
+        <button type="button" class="btn btn--wide" id="btn-open-lineup">オーダー変更</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 試合開始前 ============ -->
+  <section class="screen" id="screen-pregame">
+    <div class="container">
+      <h2 class="section-title" id="pregame-title"></h2>
+      <div id="pregame-body"></div>
+      <div class="actions">
+        <button type="button" class="btn btn--primary" id="btn-play">試合開始</button>
+        <button type="button" class="btn" id="btn-pregame-lineup">オーダー編集</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 試合中 ============ -->
+  <section class="screen" id="screen-game">
+    <div class="container container--wide">
+      <div id="game-scoreboard" class="scoreboard-wrap"></div>
+      <div id="game-stage" class="stage"></div>
+      <div id="game-lineups" class="livelineups"></div>
+      <button type="button" class="skip" id="btn-skip">スキップ ▶▶</button>
+    </div>
+  </section>
+
+  <!-- ============ 試合結果 ============ -->
+  <section class="screen" id="screen-result">
+    <div class="container container--wide">
+      <h2 class="section-title" id="result-title"></h2>
+      <div id="result-body"></div>
+      <aside id="ad-result" class="ad-slot" hidden><span class="ad-label">広告</span><div class="ad-body"></div></aside>
+      <div class="actions">
+        <button type="button" class="btn btn--primary btn--wide" id="btn-result-next"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 引き抜き ============ -->
+  <section class="screen" id="screen-poach">
+    <div class="container">
+      <h2 class="section-title" id="poach-title">引き抜き</h2>
+      <p class="section-lead" id="poach-lead"></p>
+      <div id="poach-body"></div>
+      <div class="actions">
+        <button type="button" class="btn btn--wide" id="btn-poach-skip">引き抜かない</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 全国優勝 ============ -->
+  <section class="screen" id="screen-champion">
+    <div class="container">
+      <div id="champion-body"></div>
+      <div class="actions">
+        <button type="button" class="btn btn--primary btn--wide" id="btn-champion-next">オフシーズンへ</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ オフシーズン ============ -->
+  <section class="screen" id="screen-offseason">
+    <div class="container">
+      <h2 class="section-title" id="off-title">オフシーズン</h2>
+      <div id="off-body"></div>
+      <div class="actions">
+        <button type="button" class="btn btn--primary btn--wide" id="btn-off-next">新入生を迎える</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 設定 ============ -->
+  <section class="screen" id="screen-settings">
+    <div class="container">
+      <h2 class="section-title">設定</h2>
+      <div class="form">
+        <label class="field">
+          <span class="field__label">全国大会の名前</span>
+          <input type="text" id="set-national" class="field__input" maxlength="12">
+          <span class="field__help">大会名の表示がすべてこの名前に変わります。</span>
+        </label>
+        <label class="field">
+          <span class="field__label">自校名</span>
+          <input type="text" id="set-school" class="field__input" maxlength="14">
+        </label>
+        <label class="field field--check">
+          <input type="checkbox" id="set-poach">
+          <span>敗戦時、相手チームに選手を引き抜かれる</span>
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn--primary" id="btn-settings-save">保存して戻る</button>
+        <button type="button" class="btn btn--danger" id="btn-settings-reset">最初からやり直す</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<aside id="ad-footer" class="ad-slot" hidden><span class="ad-label">広告</span><div class="ad-body"></div></aside>
+<p id="ad-disclosure" class="ad-disclosure" hidden>当サイトはアフィリエイト広告（Amazonアソシエイト・楽天アフィリエイト等）を利用しています。</p>
+
+<footer class="site-footer">
+  <nav class="footer-nav">
+    <a href="../">部屋トップ</a>
+    <a href="../privacy.html">プライバシーポリシー</a>
+    <a href="../privacy.html#contact">お問い合わせ</a>
+  </nav>
+  <p class="footer-note">実在の大会・学校・選手とは関係のない架空のシミュレーションです。</p>
+</footer>
+
+<!-- 選手の詳細やオーダー編集を出す場所 -->
+<div class="modal" id="modal" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true">
+    <button type="button" class="modal__close" data-close aria-label="閉じる">×</button>
+    <div class="modal__body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- 開幕前に一瞬挟む幕 -->
+<div class="curtain" id="curtain" hidden><div class="curtain__inner"><span id="curtain-text"></span></div></div>
+
+<script src="../js/theme.js"></script>
+<script src="../js/ads.js"></script>
+<script src="js/config.js"></script>
+<script src="js/rng.js"></script>
+<script src="js/names.js"></script>
+<script src="js/player.js"></script>
+<script src="js/team.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/tournament.js"></script>
+<script src="js/dataset.js"></script>
+<script src="js/training.js"></script>
+<script src="js/growth.js"></script>
+<script src="js/offseason.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/screens.js"></script>
+<script src="js/game-screen.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

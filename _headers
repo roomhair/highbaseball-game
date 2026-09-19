@@ -1,0 +1,16 @@
+# Cloudflare Pages / Netlify が読むヘッダー設定
+
+# ファイル名にバージョンを付けていないので、長くキャッシュさせると
+# 直したはずの画面が古いまま表示されてしまう。どれも小さいファイルなので、
+# 毎回確認させても重くならない（変わっていなければ 304 が返るだけ）。
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: SAMEORIGIN
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Cache-Control: public, max-age=60, must-revalidate
+
+# 書体はファイル名を変えないかぎり中身が変わらないので、長くキャッシュさせる。
+# 差し替えるときはファイル名も変えること。
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable

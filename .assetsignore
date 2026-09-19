@@ -1,0 +1,7 @@
+# 配信しないもの
+/.github
+/.git
+/README.md
+/wrangler.jsonc
+/.assetsignore
+/.gitignore
