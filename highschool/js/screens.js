@@ -128,8 +128,11 @@ const Screens = (() => {
           (p && !many ? '<span class="cardline__abil">' + abilityLine(p) + '</span>' : '') + '</li>';
       }).join('');
       UI.html('train-card',
-        '<div class="traincard traincard--' + card.kind + '">' +
-          '<p class="traincard__kind">' + esc(card.title) + '</p>' +
+        '<div class="traincard traincard--' + card.tier + '">' +
+          '<p class="traincard__kind">' + esc(card.title) +
+            '<span class="traincard__n">' + card.targets.length + '人</span>' +
+            (card.tierLabel ? '<span class="traincard__tier">' + esc(card.tierLabel) + '</span>' : '') +
+          '</p>' +
           '<ul class="traincard__list">' + lines + '</ul>' +
         '</div>');
     } else {

@@ -24,98 +24,111 @@ const Training = (() => {
   function batters(team) { return team.batters; }
   function pitchers(team) { return team.pitchers; }
 
+  /* ---------- 練習カードの引き方 ----------
+     「何の練習か」「何人に効くか」「どれだけ効くか」を、それぞれ別に引く。
+     人数と効き目が独立なので、全体練習の猛特訓のような当たりがまれに出る
+     （12% × 8% ＝ 1%ほど）。 */
+
+  /* 何人に効くか */
+  const COUNT_TIERS = [
+    { key: 'solo',  weight: 10, label: '個人練習',     pick: () => 1 },
+    { key: 'pair',  weight: 18, label: '少人数練習',   pick: () => 2 },
+    { key: 'few',   weight: 20, label: '少人数練習',   pick: () => 3 },
+    { key: 'group', weight: 22, label: 'グループ練習', pick: () => RNG.range(4, 5) },
+    { key: 'wide',  weight: 18, label: 'グループ練習', pick: () => RNG.range(6, 8) },
+    { key: 'all',   weight: 12, label: '全体練習',     pick: (n) => n },
+  ];
+
+  /* どれだけ効くか。ここが「猛特訓」を引けるかどうか */
+  const POWER_TIERS = [
+    { key: 's',  weight: 30, label: '',        stat: [1, 2],  velo: [1, 3],  pitch: 1, ball: [1, 2] },
+    { key: 'm',  weight: 40, label: '',        stat: [2, 4],  velo: [3, 5],  pitch: 1, ball: [2, 3] },
+    { key: 'l',  weight: 22, label: 'みっちり', stat: [4, 7],  velo: [5, 8],  pitch: 2, ball: [3, 4] },
+    { key: 'xl', weight: 8,  label: '猛特訓',   stat: [8, 13], velo: [9, 14], pitch: 3, ball: [5, 6] },
+  ];
+
+  /* 何の練習か */
+  const MENUS = [
+    { key: 'bat',     weight: 100, pool: (t) => t.batters },
+    { key: 'pit',     weight: 45,  pool: (t) => t.pitchers },
+    { key: 'velo',    weight: 18,  pool: (t) => t.pitchers },
+    { key: 'break',   weight: 18,  pool: (t) => t.pitchers.filter((p) => p.pitches.some((q) => q.level < 7)) },
+    { key: 'newball', weight: 7,   pool: (t) => t.pitchers.filter((p) => p.pitches.length < 6) },
+    { key: 'traj',    weight: 8,   pool: (t) => t.batters.filter((p) => p.traj < 4) },
+  ];
+
+  function range(pair) { return RNG.range(pair[0], pair[1]); }
+
   /** 練習カードを1枚引く */
-  function draw(team) {
-    /* 当たりはずれの幅はそのまま。大きく伸びるカードも、
-       ほとんど伸びないカードも、これまでどおりの割合で出る。
-       変えたのは「1枚で何人に効くか」と「どれだけ伸びるか」。 */
-    const kinds = [
-      { key: 'single', weight: 30 },
-      { key: 'big',    weight: 9 },
-      { key: 'group',  weight: 85 },
-      { key: 'all',    weight: 15 },
-      { key: 'traj',   weight: 5 },
-      { key: 'velo',   weight: 14 },
-      { key: 'break',  weight: 14 },
-      { key: 'newball', weight: 5 },
-    ];
-    const kind = RNG.weighted(kinds).key;
+  function draw(team, depth) {
+    const menu = RNG.weighted(MENUS);
+    const pool = menu.pool(team);
+    /* その練習を受けられる選手がいなければ引き直す */
+    if (!pool.length) return (depth || 0) < 8 ? draw(team, (depth || 0) + 1) : plainCard(team);
 
-    if (kind === 'traj') {
-      const cand = batters(team).filter((p) => p.traj < 4);
-      if (!cand.length) return draw(team);
-      const p = RNG.pick(cand);
-      return { kind, title: '打撃改造', targets: [{ pid: p.id, name: p.name, label: '弾道', amount: 1, key: 'traj' }] };
+    const power = RNG.weighted(POWER_TIERS);
+    const count = RNG.weighted(COUNT_TIERS);
+    const n = Math.max(1, Math.min(pool.length, count.pick(pool.length)));
+    const chosen = RNG.shuffle(pool.slice()).slice(0, n);
+
+    const base = { kind: menu.key, tier: power.key, tierLabel: power.label, count: n };
+
+    if (menu.key === 'velo') {
+      const amount = range(power.velo);
+      return Object.assign(base, {
+        title: n === 1 ? '走り込み' : '合同で走り込み',
+        targets: chosen.map((p) => ({ pid: p.id, name: p.name, label: '球速', amount, key: 'velo', unit: 'km/h' })),
+      });
     }
 
-    if (kind === 'velo') {
-      /* 何人かで走り込むこともある */
-      const pool = RNG.shuffle(pitchers(team).slice()).slice(0, RNG.range(1, 3));
-      const amount = RNG.range(2, 8);
-      return {
-        kind, title: pool.length > 1 ? '合同で走り込み' : '走り込み',
-        targets: pool.map((p) => ({ pid: p.id, name: p.name, label: '球速', amount, key: 'velo', unit: 'km/h' })),
-      };
-    }
-
-    if (kind === 'break') {
-      const cand = pitchers(team).filter((p) => p.pitches.some((q) => q.level < 7));
-      if (!cand.length) return draw(team);
-      const pool = RNG.shuffle(cand.slice()).slice(0, RNG.range(1, 2));
-      const amount = RNG.range(1, 2);
-      return {
-        kind, title: '変化球練習',
-        targets: pool.map((p) => {
+    if (menu.key === 'break') {
+      const amount = power.pitch;
+      return Object.assign(base, {
+        title: '変化球練習',
+        targets: chosen.map((p) => {
           const q = RNG.pick(p.pitches.filter((x) => x.level < 7));
           return { pid: p.id, name: p.name, label: q.name, amount, key: 'pitch', pitch: q.name };
         }),
-      };
+      });
     }
 
-    if (kind === 'newball') {
-      const cand = pitchers(team).filter((p) => p.pitches.length < 6);
-      if (!cand.length) return draw(team);
-      const p = RNG.pick(cand);
-      const have = new Set(p.pitches.map((q) => q.name));
-      const pool = PITCH_TYPES.filter((t) => !have.has(t.name));
-      if (!pool.length) return draw(team);
-      const t = RNG.weighted(pool);
-      return { kind, title: '新球習得', targets: [{ pid: p.id, name: p.name, label: t.name, amount: RNG.range(2, 4), key: 'newpitch', pitch: t.name }] };
+    if (menu.key === 'newball') {
+      const targets = [];
+      chosen.forEach((p) => {
+        const have = new Set(p.pitches.map((q) => q.name));
+        const rest = PITCH_TYPES.filter((t) => !have.has(t.name));
+        if (!rest.length) return;
+        const t = RNG.weighted(rest);
+        targets.push({ pid: p.id, name: p.name, label: t.name, amount: range(power.ball), key: 'newpitch', pitch: t.name });
+      });
+      if (!targets.length) return plainCard(team);
+      return Object.assign(base, { title: '新球習得', targets, count: targets.length });
     }
 
-    if (kind === 'group') {
-      const isPit = RNG.chance(0.3);
-      const src = (isPit ? pitchers(team) : batters(team)).slice();
-      const pool = RNG.shuffle(src).slice(0, isPit ? RNG.range(3, 5) : RNG.range(4, 7));
-      const stat = RNG.pick(isPit ? PITCHER_STATS : BATTER_STATS);
-      const amount = RNG.range(2, 5);
-      return {
-        kind, title: isPit ? '投手陣で合同練習' : 'グループ練習',
-        targets: pool.map((p) => ({ pid: p.id, name: p.name, label: stat.label, amount, key: stat.key })),
-      };
+    if (menu.key === 'traj') {
+      /* 弾道は1〜4しかないので、上がり幅は増やさず人数だけで効かせる */
+      return Object.assign(base, {
+        title: '打撃改造',
+        targets: chosen.map((p) => ({ pid: p.id, name: p.name, label: '弾道', amount: 1, key: 'traj' })),
+      });
     }
 
-    /* 部員全員に効くカード。1人あたりの伸びは小さいが、人数のぶん効く */
-    if (kind === 'all') {
-      const isPit = RNG.chance(0.3);
-      const src = isPit ? pitchers(team) : batters(team);
-      const stat = RNG.pick(isPit ? PITCHER_STATS : BATTER_STATS);
-      const amount = RNG.range(1, 3);
-      return {
-        kind, title: isPit ? '投手陣の全体練習' : '野手陣の全体練習',
-        targets: src.map((p) => ({ pid: p.id, name: p.name, label: stat.label, amount, key: stat.key })),
-      };
-    }
-
-    /* ふつうのカード／大当たりのカード */
-    const isPit = RNG.chance(0.35);
-    const p = RNG.pick(isPit ? pitchers(team) : batters(team));
+    const isPit = menu.key === 'pit';
     const stat = RNG.pick(isPit ? PITCHER_STATS : BATTER_STATS);
-    const amount = kind === 'big' ? RNG.range(10, 16) : RNG.range(2, 7);
+    const amount = range(power.stat);
+    return Object.assign(base, {
+      title: count.label + (isPit ? '（投手）' : ''),
+      targets: chosen.map((p) => ({ pid: p.id, name: p.name, label: stat.label, amount, key: stat.key })),
+    });
+  }
+
+  /** どうしても引けなかったときの、ごくふつうのカード */
+  function plainCard(team) {
+    const p = RNG.pick(team.batters);
+    const stat = RNG.pick(BATTER_STATS);
     return {
-      kind,
-      title: kind === 'big' ? '猛特訓' : '個人練習',
-      targets: [{ pid: p.id, name: p.name, label: stat.label, amount, key: stat.key }],
+      kind: 'bat', tier: 'm', tierLabel: '', count: 1, title: '個人練習',
+      targets: [{ pid: p.id, name: p.name, label: stat.label, amount: RNG.range(2, 4), key: stat.key }],
     };
   }
 

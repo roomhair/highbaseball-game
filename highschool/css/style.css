@@ -271,10 +271,21 @@ td.hl { font-weight: 700; }
   padding: 16px 16px 10px; animation: cardin .3s cubic-bezier(.2,.9,.3,1) both;
 }
 @keyframes cardin { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
-.traincard--big { border-color: var(--crimson); }
-.traincard--newball, .traincard--traj { border-color: var(--accent); }
-.traincard__kind { margin: 0 0 10px; font-size: 12px; letter-spacing: .18em; color: var(--ink-mute); }
-.traincard--big .traincard__kind { color: var(--crimson); }
+/* 効き目の段階で枠の色が変わる。猛特訓はひと目で分かるように */
+.traincard--l { border-color: var(--accent); }
+.traincard--xl { border-width: 2.5px; border-color: var(--crimson); box-shadow: 0 0 0 4px color-mix(in srgb, var(--crimson) 12%, transparent); }
+.traincard__kind {
+  margin: 0 0 10px; font-size: 12px; letter-spacing: .18em; color: var(--ink-mute);
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.traincard__n { font-size: 11px; letter-spacing: .06em; color: var(--ink-faint); }
+.traincard__tier {
+  font-size: 11px; font-weight: 800; letter-spacing: .12em;
+  border: 1px solid currentColor; border-radius: 999px; padding: 1px 8px;
+  color: var(--accent);
+}
+.traincard--xl .traincard__tier { color: var(--crimson); background: color-mix(in srgb, var(--crimson) 10%, transparent); }
+.traincard--xl .traincard__kind { color: var(--crimson); }
 .traincard__list { list-style: none; margin: 0; padding: 0; }
 .cardline {
   display: grid; grid-template-columns: 1fr auto auto; gap: 2px 10px;
