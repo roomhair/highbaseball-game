@@ -407,6 +407,7 @@ const Game = (() => {
   function resume(loaded) {
     state = loaded;
     if (!state.settings) state.settings = Storage.loadSettings();
+    applySettings();
     switch (state.phase) {
       case 'pick-bat': pickBatters(); break;
       case 'pick-pit': pickPitchers(); break;
@@ -456,9 +457,10 @@ const Game = (() => {
     if (back === 'screen-pregame' && state.opponent) Screens.pregame(state);
   }
 
+  /** 全国大会の名前を、画面に出ているところへまとめて反映する */
   function applySettings() {
-    const n = UI.el('flow-national');
-    if (n) n.textContent = (state && state.settings ? state.settings.nationalName : CONFIG.DEFAULTS.nationalName);
+    const name = (state && state.settings && state.settings.nationalName) || CONFIG.DEFAULTS.nationalName;
+    document.querySelectorAll('[data-national]').forEach((n) => { n.textContent = name; });
   }
 
   function resetAll() {
