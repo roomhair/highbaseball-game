@@ -530,7 +530,7 @@ const Game = (() => {
       }, begin);
     });
     on('btn-continue', () => { const s = Storage.load(); if (s) resume(s); });
-    on('btn-home', () => UI.show('screen-top'));
+    on('btn-home', () => { showTopButtons(); UI.show('screen-top'); });
     on('btn-settings', openSettings);
     on('btn-settings-save', saveSettings);
     on('btn-settings-reset', resetAll);

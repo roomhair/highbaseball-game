@@ -42,7 +42,7 @@
 
   /* 能力の評価の色。パワプロの並びに合わせてある。
      紙色の地の上でも読めるように、黄色と水色だけ少し濃くしてある */
-  --r-s: #ff6fae;   /* 薄ピンク（Sだけ塗りつぶし） */
+  --r-s: #c8901a;   /* 金（Sだけ塗りつぶし） */
   --r-a: #d6188e;   /* ピンク */
   --r-b: #dc2222;   /* 赤 */
   --r-c: #e07b10;   /* オレンジ */
@@ -50,7 +50,7 @@
   --r-e: #2f9e4a;   /* 緑 */
   --r-f: #3fa3d0;   /* 薄い水色 */
   --r-g: #9aa0a6;   /* 灰 */
-  --r-s-ink: #ffffff;
+  --r-s-ink: #fffbe8;
 }
 :root[data-theme="dark"] {
   --bg:        #121316;
@@ -68,7 +68,7 @@
   --ng:        #e07a6d;
   --shadow:    0 12px 32px rgba(0, 0, 0, .5);
 
-  --r-s: #ff8ec0;
+  --r-s: #e3b53f;
   --r-a: #f45bb5;
   --r-b: #f2564e;
   --r-c: #f5a33a;
@@ -76,7 +76,7 @@
   --r-e: #5fcb6e;
   --r-f: #7fd0ee;
   --r-g: #8b9197;
-  --r-s-ink: #2a0e1c;
+  --r-s-ink: #241a04;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -94,7 +94,7 @@
     --ok:        #7cc79a;
     --ng:        #e07a6d;
     --shadow:    0 12px 32px rgba(0, 0, 0, .5);
-    --r-s: #ff8ec0;
+    --r-s: #e3b53f;
     --r-a: #f45bb5;
     --r-b: #f2564e;
     --r-c: #f5a33a;
@@ -102,7 +102,7 @@
     --r-e: #5fcb6e;
     --r-f: #7fd0ee;
     --r-g: #8b9197;
-    --r-s-ink: #2a0e1c;
+    --r-s-ink: #241a04;
   }
 }
 
@@ -251,9 +251,19 @@ td.hl { font-weight: 700; }
   display: inline-block; min-width: 1.15em; text-align: center;
   font-weight: 800; font-size: 12.5px; letter-spacing: 0;
 }
+/* Sは金色の札にして、ひと目でそれと分かるようにする */
 .rank-S, .stat__rank.rank-S {
-  background: var(--r-s); color: var(--r-s-ink);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--r-s) 70%, #fff) 0%, var(--r-s) 45%,
+              color-mix(in srgb, var(--r-s) 82%, #000) 100%);
+  color: var(--r-s-ink);
   border-radius: 3px; padding: 0 3px; min-width: 1.3em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .25);
+}
+
+/* 守備適性の文字は色を付けない（能力の評価と見分けるため） */
+.apt-letter {
+  display: inline-block; min-width: 1.15em; text-align: center;
+  font-weight: 700; font-size: 12px; color: var(--ink);
 }
 .rank + .rank { margin-left: 3px; }
 .rank-A, .stat__rank.rank-A { color: var(--r-a); }
@@ -310,6 +320,27 @@ td.hl { font-weight: 700; }
   display: grid; grid-template-columns: 1fr auto auto; gap: 2px 10px;
   align-items: baseline; padding: 8px 0; border-top: 1px solid var(--line-soft);
 }
+/* 特訓カードの1人ぶん。能力をひと通り並べ、上がるものだけ目立たせる */
+.tcard { padding: 8px 0; border-top: 1px solid var(--line-soft); }
+.tcard:first-child { border-top: 0; }
+.tcard__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.tcard__head b { font-size: 14.5px; }
+.tcard__head span { font-size: 11px; color: var(--ink-faint); }
+.tcard__up {
+  margin-left: auto; font-style: normal; font-size: 14px; font-weight: 800; color: var(--accent);
+  white-space: nowrap;
+}
+.traincard--xl .tcard__up { color: var(--crimson); }
+.tcard__stats { display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 3px; }
+.ts { font-size: 11px; color: var(--ink-mute); white-space: nowrap; }
+.ts i { font-style: normal; margin-right: 2px; }
+.ts em { font-style: normal; color: var(--ink-faint); margin: 0 1px; }
+.ts.is-up {
+  color: var(--ink); font-weight: 700;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 3px; padding: 0 4px;
+}
+.traincard--xl .ts.is-up { background: color-mix(in srgb, var(--crimson) 14%, transparent); }
 .cardline:first-child { border-top: 0; }
 .cardline__name { font-size: 15px; font-weight: 700; }
 .cardline__name i { font-style: normal; font-size: 11px; color: var(--ink-faint); margin-left: 6px; }
@@ -506,6 +537,15 @@ td.role { font-size: 11px; color: var(--ink-mute); }
    取っ手だけ touch-action を切ってあるので、ほかの場所では今までどおり
    画面をスクロールできる。 */
 .lineup-hint { margin: 0 0 10px; font-size: 12px; line-height: 1.7; }
+/* 打線と投手はタブで切り替える（1画面に両方は出さない） */
+.lutabs { display: flex; gap: 6px; margin: 4px 0 10px; }
+.lutab {
+  flex: 1; border: 1.5px solid var(--line); border-radius: 4px; background: transparent;
+  color: var(--ink-mute); font: inherit; font-size: 14px; font-weight: 700; letter-spacing: .1em;
+  padding: 8px 0; cursor: pointer;
+}
+.lutab:hover { color: var(--ink); border-color: var(--ink-mute); }
+.lutab.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .lulist { list-style: none; margin: 0 0 4px; padding: 0; }
 .lurow {
   display: grid;
@@ -627,15 +667,20 @@ td.num, .num { font-size: 11px; color: var(--ink-mute); font-variant-numeric: ta
 .nextup__vs b { color: var(--ink); font-size: 18px; }
 .taphint--static { animation: none; margin-top: 26px; }
 
-/* 打席の記録。1行にその試合ぶんを並べる */
-.palog td { vertical-align: top; }
-.pa-cells { white-space: normal; display: flex; flex-wrap: wrap; gap: 3px 4px; }
+/* 打席結果。左に選手名を固定して、右に回ごとの表を横スクロールさせる */
+.palogwrap { display: flex; align-items: flex-start; gap: 0; margin: 8px 0 4px; }
+.palognames { width: auto; flex: none; border-right: 1.5px solid var(--line); }
+.palognames th, .palognames td { white-space: nowrap; padding: 5px 8px 5px 2px; }
+.palogwrap .tablewrap { flex: 1 1 auto; min-width: 0; margin: 0; }
+.palog { width: auto; min-width: 100%; }
+.palog th, .palog td { padding: 5px 3px; }
+.pa-td { min-width: 3.4em; }
 .pa-cell {
-  font-size: 11px; border: 1px solid var(--line-soft); border-radius: 2px;
-  padding: 0 4px; white-space: nowrap; color: var(--ink);
+  display: inline-block; font-size: 10.5px; border: 1px solid var(--line-soft); border-radius: 2px;
+  padding: 0 3px; white-space: nowrap; color: var(--ink);
 }
-.pa-cell i { font-style: normal; color: var(--ink-faint); margin-right: 3px; font-size: 10px; }
-.pa-cell b { color: var(--crimson); margin-left: 3px; }
+.pa-cell + .pa-cell { margin-left: 2px; }
+.pa-cell b { color: var(--crimson); margin-left: 2px; }
 .pa-cell.is-run { border-color: var(--crimson); }
 .retire.is-draft { border-color: var(--crimson); border-width: 1.5px; }
 .retire__draft { font-style: normal; font-size: 12px; font-weight: 800; color: var(--crimson); letter-spacing: .1em; }

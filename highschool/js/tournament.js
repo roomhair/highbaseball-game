@@ -48,7 +48,7 @@ const Tournament = (() => {
     for (let i = 0; i < n; i++) {
       const t = n === 1 ? 1 : i / (n - 1);
       /* 後半ほど急に強くなる（序盤は勝てて、終盤で歯が立たなくなる） */
-      const curve = Math.pow(t, 1.35);
+      const curve = Math.pow(t, 1.10);
       out.push(from + (to - from) * curve);
     }
 
@@ -62,9 +62,9 @@ const Tournament = (() => {
     /* ゆらぎを足す。ここで「妙に強い2回戦」や「楽な3回戦」が生まれる */
     for (let i = 0; i < n; i++) {
       const mustRise = rounds[i] === '準々決勝' || rounds[i] === '準決勝' || rounds[i] === '決勝';
-      const jitter = mustRise ? 0.05 : 0.11;
+      const jitter = mustRise ? 0.07 : 0.16;
       out[i] *= 1 + (Math.random() * 2 - 1) * jitter;
-      if (!mustRise && i > 0 && RNG.chance(0.16)) out[i] = Math.min(out[i], out[i - 1] * 0.94);
+      if (!mustRise && i > 0 && RNG.chance(0.14)) out[i] = Math.min(out[i], out[i - 1] * 0.92);
     }
 
     /* 準々決勝から先は必ず強くなる */

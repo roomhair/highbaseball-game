@@ -32,7 +32,7 @@ const CONFIG = {
      チームが強くなればそのぶん素直に勝てるようになる。
      from が1回戦、to が決勝のめやす。全国大会は地方の決勝から始まる。 */
   FIELD: {
-    local:    { from: 12, to: 48 },
+    local:    { from: 17, to: 48 },
     national: { to: 60 },
     /* 年ごとのゆらぎ。強い年もあれば、そうでもない年もある */
     yearJitter: 0.10,

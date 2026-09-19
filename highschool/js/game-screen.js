@@ -359,26 +359,45 @@ const GameScreen = (() => {
      その試合で誰が何回に何を打ったかを、まとめて見られるようにする */
 
   function paLog(res, team, label) {
+    /* 打者ID → 回ごとの打席結果 */
     const byPid = {};
     res.log.forEach((e) => {
       if (e.k !== 'pa' || !e.batter) return;
-      (byPid[e.batter] = byPid[e.batter] || []).push(e);
+      const m = (byPid[e.batter] = byPid[e.batter] || {});
+      (m[e.inning] = m[e.inning] || []).push(e);
     });
-    const order = team.lineup.map((sl) => Team.find(team, sl.pid)).filter(Boolean);
-    const extra = team.batters.filter((p) => byPid[p.id] && order.indexOf(p) < 0);
-    const rows = order.concat(extra).map((p, i) => {
-      const list = byPid[p.id] || [];
-      if (!list.length) return '';
-      return '<tr data-pid="' + p.id + '" class="prow">' +
-        '<td class="c ord">' + (i < 9 ? i + 1 : '') + '</td>' +
-        '<td class="nm">' + esc(p.name) + '</td>' +
-        '<td class="pa-cells">' + list.map((e) =>
-          '<span class="pa-cell' + (e.runs ? ' is-run' : '') + '">' +
-            '<i>' + e.inning + '回</i>' + esc(e.text) +
-            (e.runs ? '<b>+' + e.runs + '</b>' : '') + '</span>').join('') + '</td></tr>';
+    const innings = Math.max(9, res.innings || 9);
+    const order = team.lineup.map((sl) => ({ p: Team.find(team, sl.pid), pos: sl.pos }))
+      .filter((x) => x.p);
+    const extra = team.batters
+      .filter((p) => byPid[p.id] && !order.some((x) => x.p.id === p.id))
+      .map((p) => ({ p, pos: p.pos }));
+
+    let head = '<th class="c">打順</th><th class="c">守</th>';
+    for (let i = 1; i <= innings; i++) head += '<th class="c">' + i + '</th>';
+
+    const rows = order.concat(extra).map((x, i) => {
+      let tds = '<td class="c ord">' + (i < 9 ? i + 1 : '―') + '</td>' +
+        '<td class="c">' + posShort(x.pos) + '</td>';
+      for (let n = 1; n <= innings; n++) {
+        const list = (byPid[x.p.id] || {})[n] || [];
+        tds += '<td class="c pa-td">' + list.map((e) =>
+          '<span class="pa-cell' + (e.runs ? ' is-run' : '') + '">' + esc(e.text) +
+          (e.runs ? '<b>+' + e.runs + '</b>' : '') + '</span>').join('') + '</td>';
+      }
+      return '<tr data-pid="' + x.p.id + '" class="prow">' + tds + '</tr>';
     }).join('');
-    return '<h4 class="sub">' + esc(label) + '　打席の記録</h4>' +
-      '<div class="tablewrap"><table class="box palog"><tbody>' + rows + '</tbody></table></div>';
+
+    /* 選手名は1列目の左に別表で出す（回の列が多いので分けたほうが読める） */
+    const names = order.concat(extra).map((x) =>
+      '<tr data-pid="' + x.p.id + '" class="prow"><td class="nm">' + esc(x.p.name) + '</td></tr>').join('');
+
+    return '<h4 class="sub">' + esc(label) + '　打席結果</h4>' +
+      '<div class="palogwrap">' +
+        '<table class="box palognames"><thead><tr><th class="nm">選手</th></tr></thead><tbody>' + names + '</tbody></table>' +
+        '<div class="tablewrap"><table class="box palog"><thead><tr>' + head + '</tr></thead>' +
+        '<tbody>' + rows + '</tbody></table></div>' +
+      '</div>';
   }
 
   function growthList(report) {

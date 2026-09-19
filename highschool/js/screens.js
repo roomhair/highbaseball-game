@@ -130,21 +130,20 @@ const Screens = (() => {
 
     const card = st.card;
     if (card) {
-      /* 人数の多いカードは1人ぶんを1行に詰める（縦に伸びすぎないように） */
-      const many = card.targets.length > 3;
       /* 並びはオーダー順。カードの中で誰が主力なのか分かりやすくする */
       const order = orderIndex(state.team);
       const shown = card.targets.slice().sort((a, b) =>
         (order[a.pid] == null ? 99 : order[a.pid]) - (order[b.pid] == null ? 99 : order[b.pid]));
       const lines = shown.map((t) => {
         const p = Team.find(state.team, t.pid);
-        const cur = p ? currentValue(p, t) : '';
-        return '<li class="cardline' + (many ? ' cardline--tight' : '') + '"><span class="cardline__name">' + esc(t.name) +
-          '<i>' + (p ? p.grade + '年・' + UI.roleText(state.team, p) : '') + '</i></span>' +
-          '<span class="cardline__stat">' + esc(t.label) + '</span>' +
-          '<span class="cardline__up">+' + t.amount + (t.unit ? esc(t.unit) : '') + '</span>' +
-          '<span class="cardline__now">' + cur + '</span>' +
-          (p && !many ? '<span class="cardline__abil">' + abilityLine(p) + '</span>' : '') + '</li>';
+        if (!p) return '';
+        return '<li class="tcard">' +
+          '<div class="tcard__head"><b>' + esc(p.name) + '</b>' +
+            '<span>' + p.grade + '年・' + UI.roleText(state.team, p) + '</span>' +
+            '<em class="tcard__up">' + esc(t.label) + ' +' + t.amount + (t.unit ? esc(t.unit) : '') + '</em>' +
+          '</div>' +
+          '<div class="tcard__stats">' + statChips(p, t) + '</div>' +
+        '</li>';
       }).join('');
       UI.html('train-card',
         '<div class="traincard traincard--' + card.tier + '">' +
@@ -159,7 +158,9 @@ const Screens = (() => {
     }
 
     const passBtn = UI.el('btn-train-pass');
+    const left = CONFIG.TRAINING.PASSES - st.passes;
     passBtn.disabled = !Training.canPass(st);
+    passBtn.textContent = left > 0 ? '見送る（あと' + left + '回）' : '見送れません';
     UI.show('screen-training');
   }
 
@@ -170,6 +171,49 @@ const Screens = (() => {
     (team.rotation || []).forEach((id, i) => { if (map[id] == null) map[id] = 20 + i; });
     team.batters.forEach((p) => { if (map[p.id] == null) map[p.id] = 10; });
     return map;
+  }
+
+  /**
+   * 能力をひと通り並べる。上がるものだけ「いま → 上がったあと」で出し、
+   * 残りはいまの値をそのまま添える。能力の評価には色を付ける。
+   */
+  function statChips(p, t) {
+    const chip = (label, key, now, after, unit) => {
+      const up = after != null && after !== now;
+      const body = up
+        ? UI.rankNum(now) + '<em>→</em>' + UI.rankNum(after)
+        : UI.rankNum(now);
+      return '<span class="ts' + (up ? ' is-up' : '') + '"><i>' + esc(label) + '</i>' + body + '</span>';
+    };
+    const plain = (label, now, after, unit) => {
+      const up = after != null && after !== now;
+      return '<span class="ts' + (up ? ' is-up' : '') + '"><i>' + esc(label) + '</i>' +
+        '<b class="rankval">' + now + '</b>' + (up ? '<em>→</em><b class="rankval">' + after + '</b>' : '') +
+        (unit ? esc(unit) : '') + '</span>';
+    };
+
+    if (p.kind === 'pitcher') {
+      const velo = t.key === 'velo' ? Math.min(168, p.velo + t.amount) : null;
+      const out = [
+        plain('最速', p.velo, velo, 'km/h'),
+        chip('制球', 'control', p.control, t.key === 'control' ? RNG.stat(p.control + t.amount) : null),
+        chip('スタミナ', 'stamina', p.stamina, t.key === 'stamina' ? RNG.stat(p.stamina + t.amount) : null),
+      ];
+      p.pitches.forEach((q) => {
+        const after = (t.key === 'pitch' && t.pitch === q.name) ? Math.min(7, q.level + t.amount) : null;
+        out.push(plain(q.name, q.level, after));
+      });
+      if (t.key === 'newpitch') out.push('<span class="ts is-up"><i>' + esc(t.pitch) + '</i><b class="rankval">新</b><em>→</em><b class="rankval">' + t.amount + '</b></span>');
+      return out.join('');
+    }
+
+    const stat = (label, key) =>
+      chip(label, key, p[key], t.key === key ? RNG.stat(p[key] + t.amount) : null);
+    return [
+      stat('ミート', 'meet'), stat('パワー', 'power'), stat('走力', 'speed'),
+      stat('肩力', 'arm'), stat('守備', 'field'), stat('捕球', 'catch'),
+      plain('弾道', p.traj, t.key === 'traj' ? Math.min(4, p.traj + t.amount) : null),
+    ].join('');
   }
 
   /** いまの能力をひと並びに。特訓で「誰を伸ばすか」を決める材料 */
@@ -440,7 +484,8 @@ const Screens = (() => {
               '<li><span class="hl__where">' + esc(h.where) + '</span><span class="hl__line">' + esc(h.line) + '</span></li>').join('') + '</ol>'
           : '<p class="note">目立った記録は残せませんでした。</p>';
         return '<article class="retire' + (f.draft ? ' is-draft' : '') + '">' +
-          '<header class="retire__head"><h3>' + esc(p.name) + '</h3>' +
+          '<header class="retire__head">' +
+            '<h3><button type="button" class="linkbtn retire__name" data-pid="' + p.id + '">' + esc(p.name) + '</button></h3>' +
             '<span>' + (isPit ? '投手' : posName(p.pos)) + '　' + UI.handMark(p) +
             (p.awakened ? '　<b class="awake">覚醒</b>' : '') + '</span>' +
             (f.draft ? '<em class="retire__draft">' + esc(f.draft.text) + '</em>' : '') + '</header>' +
@@ -469,7 +514,14 @@ const Screens = (() => {
       : '';
 
     UI.html('off-body',
-      taken + '<p class="section-lead">3年生が引退します。</p>' + cards);
+      taken + '<p class="section-lead">3年生が引退します。名前を押すと能力を見られます。</p>' + cards);
+    const all = retired.map((f) => f.player).concat(
+      state.poachedFrom && state.poachedFrom.player ? [state.poachedFrom.player] : []);
+    UI.el('off-body').querySelectorAll('.retire__name').forEach((b) =>
+      b.addEventListener('click', () => {
+        const q = all.find((x) => x.id === b.dataset.pid);
+        if (q) UI.openPlayer(q, { rename: false });
+      }));
     UI.show('screen-offseason');
   }
 

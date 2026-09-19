@@ -45,32 +45,71 @@ const Team = (() => {
     return Math.max(1, base + tilt * 0.5 - pen);
   }
 
-  /* 守らせる順番。埋めにくい場所から先に決める */
-  const FILL_ORDER = ['C', 'SS', 'CF', '2B', '3B', 'RF', 'LF', '1B'];
+  /* ---------- 守備の割り当て ----------
+     埋めにくい場所から順に「いちばん良い選手」を取っていく方法だと、
+     先に取られた場所のせいで、遊撃が得意な選手が左翼に回るようなことが起きる。
+     8つの守備位置と13人の組み合わせを、全体で見ていちばん良くなるように決める
+     （ハンガリー法）。 */
+
+  /** cost[i][j] の合計がいちばん小さくなる割り当て。i（行）→ j（列） */
+  function bestAssign(cost) {
+    const n = cost.length, m = cost[0].length;
+    const INF = Infinity;
+    const u = new Array(n + 1).fill(0), v = new Array(m + 1).fill(0);
+    const link = new Array(m + 1).fill(0), way = new Array(m + 1).fill(0);
+    for (let i = 1; i <= n; i++) {
+      link[0] = i;
+      let j0 = 0;
+      const minv = new Array(m + 1).fill(INF);
+      const used = new Array(m + 1).fill(false);
+      do {
+        used[j0] = true;
+        const i0 = link[j0];
+        let delta = INF, j1 = 0;
+        for (let j = 1; j <= m; j++) {
+          if (used[j]) continue;
+          const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+          if (cur < minv[j]) { minv[j] = cur; way[j] = j0; }
+          if (minv[j] < delta) { delta = minv[j]; j1 = j; }
+        }
+        for (let j = 0; j <= m; j++) {
+          if (used[j]) { u[link[j]] += delta; v[j] -= delta; }
+          else minv[j] -= delta;
+        }
+        j0 = j1;
+      } while (link[j0] !== 0);
+      do { const j1 = way[j0]; link[j0] = link[j1]; j0 = j1; } while (j0);
+    }
+    const out = new Array(n).fill(-1);
+    for (let j = 1; j <= m; j++) if (link[j]) out[link[j] - 1] = j - 1;
+    return out;
+  }
 
   /** 打順と守備位置をおまかせで組む */
   function autoLineup(team) {
     const pool = team.batters.slice();
-    const chosen = [];   // {p, pos}
-    const used = new Set();
+    if (pool.length < 9) { team.lineup = []; autoRotation(team); return team; }
 
-    FILL_ORDER.forEach((posKey) => {
-      let best = null, bestScore = -1e9;
-      pool.forEach((p) => {
-        if (used.has(p.id)) return;
-        /* 守備が第一だが、打てる選手を外に出したくないので打力も少し見る */
-        const s = defScore(p, posKey) * 1.0 + Player.rating(p) * 0.35;
-        if (s > bestScore) { bestScore = s; best = p; }
-      });
-      if (best) { used.add(best.id); chosen.push({ p: best, pos: posKey }); }
+    /* 守備を第一に見つつ、打てる選手を外に出さないよう打力も少し混ぜる */
+    const cost = FIELD_POSITIONS.map((posKey) =>
+      pool.map((p) => -(defScore(p, posKey) + Player.rating(p) * 0.25)));
+    const picked = bestAssign(cost);
+
+    const chosen = [];
+    const used = new Set();
+    FIELD_POSITIONS.forEach((posKey, i) => {
+      const p = pool[picked[i]];
+      if (!p) return;
+      used.add(p.id);
+      chosen.push({ p, pos: posKey });
     });
 
     /* 指名打者は、残っている中でいちばん打てる選手 */
     let dh = null, dhScore = -1e9;
     pool.forEach((p) => {
       if (used.has(p.id)) return;
-      const s = p.meet * 0.4 + p.power * 0.45 + p.speed * 0.15;
-      if (s > dhScore) { dhScore = s; dh = p; }
+      const sc = p.meet * 0.4 + p.power * 0.45 + p.speed * 0.15;
+      if (sc > dhScore) { dhScore = sc; dh = p; }
     });
     if (dh) { used.add(dh.id); chosen.push({ p: dh, pos: 'DH' }); }
 
@@ -213,7 +252,7 @@ const Team = (() => {
 
   return {
     create, all, find, defScore, autoLineup, autoRotation, orderBatters,
-    bench, defenders, strength, bestPlayer, repair, FILL_ORDER,
+    bench, defenders, strength, bestPlayer, repair,
     restPitchers, healPitchers, fatigueLabel, uniformNumber,
   };
 })();

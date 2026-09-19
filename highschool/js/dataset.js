@@ -32,10 +32,10 @@ const Dataset = (() => {
     const players = posList.map((pos, i) =>
       Player.newBatter({ grade: grades[i], pos }));
 
-    /* 見やすいように、守備位置の並び順で出す */
+    /* 学年の高い順に並べる。同じ学年の中は守備位置の順 */
     const rank = {};
     DATASET_POSITIONS.forEach((k, i) => { rank[k] = i; });
-    players.sort((a, b) => (rank[a.pos] - rank[b.pos]) || (b.grade - a.grade));
+    players.sort((a, b) => (b.grade - a.grade) || (rank[a.pos] - rank[b.pos]));
     return players;
   }
 
