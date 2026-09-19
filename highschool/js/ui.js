@@ -301,6 +301,7 @@ const UI = (() => {
       '<div class="pdetail__head">' +
         '<div class="pdetail__name" id="pd-name">' + esc(p.name) + '</div>' +
         (opts.rename === false ? '' : '<button type="button" class="linkbtn" id="pd-rename">名前を変える</button>') +
+        (opts.team ? '<div class="pdetail__num">背番号 <b>' + Team.uniformNumber(opts.team, p) + '</b></div>' : '') +
         '<div class="pdetail__meta">' + p.grade + '年　' + (isPit ? '投手' : posName(p.pos)) + '　' + handMark(p) +
         (p.awakened ? '　<b class="awake">覚醒</b>' : '') + '</div>' +
         (p.from ? '<div class="pdetail__from">' + p.from.year + '年目に ' + esc(p.from.school) + ' から加入</div>' : '') +

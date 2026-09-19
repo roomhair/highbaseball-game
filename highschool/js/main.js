@@ -188,8 +188,9 @@ const Game = (() => {
     const away = state.mySide === 'away' ? state.team : state.opponent;
     const home = state.mySide === 'away' ? state.opponent : state.team;
     const round = Tournament.currentRound(state.tour);
-    /* 決勝はコールドゲームにしない */
-    const res = Sim.play(away, home, { noCold: round && round.name === '決勝' });
+    /* 全国大会はコールドゲームなし。地方大会も決勝だけは行わない */
+    const noCold = state.tour.kind === 'national' || (round && round.name === '決勝');
+    const res = Sim.play(away, home, { noCold });
     state.phase = 'game';
     GameScreen.start({ away, home }, res, () => afterGame(res));
   }

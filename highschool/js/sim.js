@@ -17,7 +17,7 @@ const Sim = (() => {
 
   /* ---------- 能力を 0〜1 に直す ---------- */
 
-  function veloScore(p) { return C((p.velo - 112) / 48, 0, 1); }
+  function veloScore(p) { return C((p.velo - 116) / 48, 0, 1); }
 
   /** 投手の球威（球速と変化球）。
      変化球だけで押し切れると高校野球らしくないので、球速のほうを重く見る */
@@ -195,6 +195,62 @@ const Sim = (() => {
     return { code: 'OUT', text: posShort(spot) + mark, out: 1, spot, bbType: type, isOF };
   }
 
+  /* ---------- 作戦 ----------
+     高校野球は走者が出たらまず送る。ここが無いと、
+     犠打が1つも付かない不自然な成績になってしまう。 */
+
+  /* 打順ごとの、送りバントの出しやすさ。
+     2番が送るのは高校野球の基本形。下位打線もよく送る。
+     クリーンアップはまず打たせる。 */
+  const BUNT_BY_SLOT = [0.18, 0.64, 0.10, 0.05, 0.09, 0.28, 0.44, 0.48, 0.46];
+
+  /**
+   * この打席で作戦に出るか。
+   * 強い学校ほど送らない、ではなく、むしろきっちり送るのが高校野球なので、
+   * 打順と場面を主にして、打力はそこへの補正にとどめてある。
+   */
+  function chooseTactic(bat, slot, outs, bases, inning, lead) {
+    if (outs >= 2) return null;
+    const pw = bat.power / 100;
+    const close = Math.abs(lead) <= 3;
+
+    /* スクイズ。三塁に走者がいる competitive な場面 */
+    if (bases[2] && inning >= 5 && close && lead <= 2) {
+      let q = 0.10 + (0.50 - pw) * 0.16;
+      if (outs === 1) q *= 0.55;
+      if (bases[0] && bases[1]) q *= 0.5;      /* 満塁では出しにくい */
+      if (RNG.chance(C(q, 0, 0.26))) return 'squeeze';
+    }
+
+    /* 送りバント。一塁に走者がいるとき。
+       一二塁から送って一死二三塁にするのも、高校野球ではよくある */
+    if (!bases[0]) return null;
+    if (bases[1] && (outs > 0 || bases[2])) return null;
+    let p = BUNT_BY_SLOT[C(slot, 0, 8)];
+    if (bases[1]) p *= 0.55;
+    /* 長打のある打者は打たせる。ただし打順の決まりごとのほうが強い */
+    p *= 1 - C((pw - 0.55) * 0.8, 0, 0.45);
+    if (inning >= 7 && close) p += 0.14;
+    if (inning >= 9 && close) p += 0.10;
+    if (lead < -3) p *= 0.35;                  /* 大きく負けていれば送らない */
+    if (outs === 1) p *= 0.42;
+    return RNG.chance(C(p, 0, 0.78)) ? 'bunt' : null;
+  }
+
+  /** バントの成否。うまい打者ほど決まる */
+  function resolveTactic(kind, bat, pit, defRating) {
+    const skill = C(0.68 + (bat.meet / 100) * 0.22 - (stuffOf(pit) - 0.45) * 0.12, 0.48, 0.94);
+    if (kind === 'squeeze') {
+      /* スクイズは決まれば1点、外されれば三塁走者が憤死する */
+      return RNG.chance(skill * 0.86)
+        ? { code: 'SQ', text: 'スクイズ', out: 1 }
+        : { code: 'SQF', text: 'スクイズ失敗', out: 1 };
+    }
+    return RNG.chance(skill)
+      ? { code: 'SH', text: '犠打', out: 1 }
+      : { code: 'BF', text: RNG.chance(0.5) ? '投前失' : 'バント失敗', out: 1 };
+  }
+
   /* ---------- 試合を組み立てる ---------- */
 
   /** その試合のチームの調子。20回に1回ほど、大きく振れる日がある */
@@ -223,6 +279,9 @@ const Sim = (() => {
     Team.all(team).forEach((p) => {
       p.game = p.kind === 'pitcher' ? Player.emptyPit() : Player.emptyBat();
       p.gameHl = [];
+      /* その日の出来。ふだんは小さいが、10人に1人くらいは大きく振れる。
+         「今日は当たっている」「今日はまるで合っていない」を作る */
+      p.gameForm = RNG.chance(0.10) ? RNG.norm(0, 9) : RNG.norm(0, 3.2);
     });
   }
 
@@ -379,7 +438,13 @@ const Sim = (() => {
       const fatigue = Math.max(0, (def.bf - capacityOf(pit)) / 18) + carried * 0.85;
       const defenders = Team.defenders(defTeam, def.pitcherId);
       const defRating = defenseOf(defTeam, def.pitcherId);
-      const res = resolvePA(bat, pit, defTeam, defRating, fatigue, defenders, off.form, def.form);
+      /* まず作戦を考える。出さなければ、ふつうに打つ */
+      const lead = off.runs - (off === A ? H.runs : A.runs);
+      const tactic = chooseTactic(bat, slotIndex, outs, bases, inning, lead);
+      const res = tactic
+        ? resolveTactic(tactic, bat, pit, defRating)
+        : resolvePA(bat, pit, defTeam, defRating, fatigue, defenders,
+                    off.form + (bat.gameForm || 0), def.form + (pit.gameForm || 0) * 0.5);
       res.slotIndex = slotIndex;
 
       def.bf++;
@@ -511,6 +576,41 @@ const Sim = (() => {
         break;
       }
 
+      case 'SH': {          /* 送りバント成功 */
+        outs++;
+        if (outs < 3) {
+          if (bases[1] && !bases[2]) { bases[2] = bases[1]; bases[1] = null; }
+          if (bases[0] && !bases[1]) { bases[1] = bases[0]; bases[0] = null; }
+        }
+        break;
+      }
+
+      case 'SQ': {          /* スクイズ成功 */
+        outs++;
+        if (bases[2]) { score(bases[2]); rbi++; bases[2] = null; }
+        if (outs < 3) {
+          if (bases[1] && !bases[2]) { bases[2] = bases[1]; bases[1] = null; }
+          if (bases[0] && !bases[1]) { bases[1] = bases[0]; bases[0] = null; }
+        }
+        break;
+      }
+
+      case 'SQF': {         /* スクイズ失敗。三塁走者が本塁で憤死 */
+        outs++;
+        bases[2] = null;
+        if (outs < 3) {
+          if (bases[1] && !bases[2]) { bases[2] = bases[1]; bases[1] = null; }
+          if (bases[0] && !bases[1]) { bases[1] = bases[0]; bases[0] = null; }
+          bases[0] = bat;
+        }
+        break;
+      }
+
+      case 'BF': {          /* バント失敗。打者だけアウト */
+        outs++;
+        break;
+      }
+
       case 'OUT': {
         if (res.bbType === 'GB') {
           /* 併殺の目 */
@@ -567,6 +667,8 @@ const Sim = (() => {
       case '3B': s.ab++; s.h++; s.d3++; break;
       case 'HR': s.ab++; s.h++; s.hr++; break;
       case 'E': s.ab++; break;
+      case 'SH': case 'SQ': s.sh++; break;      /* 犠打は打数に入らない */
+      case 'SQF': case 'BF': s.ab++; break;
       default:
         if (res.sf) s.sf++; else s.ab++;
     }
@@ -619,15 +721,15 @@ const Sim = (() => {
   /* level ごとの、相手の先発投手の球威・制球と、守備のまとまり。
      実際に Tournament.makeTeam で作ったチームから測った値を並べてある */
   const PEER = [
-    [15, 0.245, 0.337, 0.227],
-    [25, 0.313, 0.402, 0.318],
-    [35, 0.431, 0.522, 0.443],
-    [45, 0.504, 0.639, 0.553],
-    [55, 0.561, 0.711, 0.642],
-    [65, 0.688, 0.852, 0.756],
-    [75, 0.738, 0.926, 0.867],
-    [85, 0.807, 0.967, 0.950],
-    [95, 0.867, 0.994, 0.999],
+    [15, 0.307, 0.337, 0.224],
+    [25, 0.366, 0.438, 0.326],
+    [35, 0.418, 0.525, 0.437],
+    [45, 0.496, 0.636, 0.547],
+    [55, 0.545, 0.733, 0.662],
+    [65, 0.612, 0.850, 0.760],
+    [75, 0.665, 0.914, 0.862],
+    [85, 0.743, 0.975, 0.961],
+    [95, 0.790, 0.995, 0.994],
   ];
 
   function peerProfile(level) {

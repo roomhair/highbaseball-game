@@ -30,9 +30,11 @@ const Player = (() => {
 
   /** 隠し才能。まれに「逸材」が出る */
   function rollTalent() {
-    let t = RNG.gauss();
-    if (RNG.chance(0.06)) t += 1.7;      // 逸材
-    if (RNG.chance(0.012)) t += 1.3;     // さらにその上（学年を問わず主役になる）
+    /* 同じ学校でも力の差は大きい。弱い学校に1人だけ飛び抜けた選手がいる、
+       という現実のかたちに近づけるため、ばらつきを広めに取ってある */
+    let t = RNG.gauss() * 1.12;
+    if (RNG.chance(0.07)) t += 1.8;      // 逸材
+    if (RNG.chance(0.015)) t += 1.5;     // さらにその上（学年を問わず主役になる）
     return t;
   }
 
@@ -244,8 +246,12 @@ const Player = (() => {
       grade, pos: 'P',
       throws: hd.throws, bats: hd.bats,
       talent,
+      /* 球速はひとつながりの分布から引く。「何割が150km/h」のような
+         決め打ちはしていない。中心は学年とチームの強さで動き、
+         そこに才能とその日ごとのばらつきが乗るだけ。
+         結果として148km/hも149km/hも、それぞれの確率で出てくる。 */
       velo: Math.round(RNG.clamp(
-        119 + (GRADE_VELO[grade] || 0) + talent * 6.6 + levelShift * 0.45 + RNG.norm(0, 6), 105, 164)),
+        123 + (GRADE_VELO[grade] || 0) + talent * 5.6 + levelShift * 0.26 + RNG.norm(0, 5), 100, 166)),
       control: makeStat(base, talent, 0),
       stamina: makeStat(base, talent, 0),
       pitches: rollPitches(talent, grade, levelShift / 12),
@@ -293,7 +299,7 @@ const Player = (() => {
     if (p.kind === 'pitcher') {
       /* 野手と並べて比べられるよう、球速の目盛りは rating 専用にしてある
          （試合の計算に使う Sim.veloScore とは別） */
-      const velo = RNG.clamp((p.velo - 104) / 52, 0, 1) * 100;
+      const velo = RNG.clamp((p.velo - 108) / 52, 0, 1) * 100;
       /* 球威（球速＋変化球）と制球でほぼ決まる。スタミナは終盤にしか効かない */
       return Math.round(velo * 0.31 + breakScore(p) * 100 * 0.22 + p.control * 0.35 + p.stamina * 0.12);
     }
