@@ -15,6 +15,9 @@ const GameScreen = (() => {
   const esc = UI.esc;
   let timer = null;
   let ctx = null;
+  /* 0 = 1打席ずつ（タップで進む）、1 = 通常、2 = 2倍、3 = 3倍。
+     毎試合「通常」から始める */
+  let speed = 1;
 
   /* ---------- スコアボード ---------- */
 
@@ -116,9 +119,58 @@ const GameScreen = (() => {
     ctx.cur.homePitcher = home.rotation[0];
 
     UI.el('btn-skip').hidden = false;
+    speed = 1;
+    applySpeedButtons();
     UI.show('screen-game');
     render('');
     step();
+  }
+
+  /* ---------- 速さの切り替え ---------- */
+
+  function applySpeedButtons() {
+    document.querySelectorAll('#game-speed .speedbtn').forEach((b) => {
+      b.classList.toggle('is-on', +b.dataset.sp === speed);
+    });
+  }
+
+  function setSpeed(v) {
+    const was = speed;
+    speed = v;
+    applySpeedButtons();
+    if (!ctx || ctx.done) return;
+    /* 「1打席ずつ」から戻したときは、止まっているので動かし直す */
+    if (was === 0 && v > 0 && ctx.awaitTap) {
+      ctx.awaitTap = false;
+      showTapHint(false);
+      step();
+    } else if (v === 0) {
+      clearTimeout(timer);
+      ctx.awaitTap = true;
+      showTapHint(true);
+    }
+  }
+
+  function showTapHint(on) {
+    const n = UI.el('game-taphint');
+    if (n) n.hidden = !on;
+    const st = UI.el('game-stage');
+    if (st) st.classList.toggle('is-tappable', !!on);
+  }
+
+  /** 画面の真ん中をタップされたとき。1打席ずつのときだけ進む */
+  function tap() {
+    if (!ctx || ctx.done || !ctx.awaitTap) return;
+    ctx.awaitTap = false;
+    showTapHint(false);
+    step();
+  }
+
+  /** 次の1つを出すまでの待ち時間を決める。0 なら止めてタップを待つ */
+  function schedule(ms) {
+    clearTimeout(timer);
+    if (speed === 0) { ctx.awaitTap = true; showTapHint(true); return; }
+    timer = setTimeout(step, Math.max(60, Math.round(ms / speed)));
   }
 
   function render(stageHtml) {
@@ -193,13 +245,14 @@ const GameScreen = (() => {
     const stage = apply(e);
     render(stage);
     const wait = e.k === 'half' ? 620 : (e.k === 'pa' ? (e.runs ? 1000 : 760) : 700);
-    timer = setTimeout(step, wait);
+    schedule(wait);
   }
 
   /** 残りをまとめて流して、結果画面へ */
   function skip() {
     if (!ctx || ctx.done) return;
     clearTimeout(timer);
+    ctx.awaitTap = false;
     while (ctx.i < ctx.res.log.length) apply(ctx.res.log[ctx.i++]);
     finish();
   }
@@ -208,6 +261,7 @@ const GameScreen = (() => {
     if (!ctx || ctx.done) return;
     ctx.done = true;
     clearTimeout(timer);
+    showTapHint(false);
     UI.el('btn-skip').hidden = true;
     const cb = ctx.onDone;
     ctx = null;
@@ -314,5 +368,16 @@ const GameScreen = (() => {
     UI.show('screen-result');
   }
 
-  return { start, skip, result, scoreboard };
+  /** 速さのボタンとタップの受け口を用意する（起動時に一度だけ） */
+  function init() {
+    document.querySelectorAll('#game-speed .speedbtn').forEach((b) =>
+      b.addEventListener('click', () => setSpeed(+b.dataset.sp)));
+    const st = UI.el('game-stage');
+    if (st) st.addEventListener('click', tap);
+    const hint = UI.el('game-taphint');
+    if (hint) hint.addEventListener('click', tap);
+    applySpeedButtons();
+  }
+
+  return { start, skip, result, scoreboard, setSpeed, init };
 })();

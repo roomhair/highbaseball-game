@@ -87,11 +87,12 @@ const Player = (() => {
 
   function rollPitches(talent, grade, levelShift) {
     const boost = (levelShift || 0);
-    /* 球種の数。才能と学年が上がるほど引き出しが増える */
+    /* 球種の数。才能と学年が上がるほど引き出しが増える。
+       高校生なので、いくつも決め球を持っている投手はそう多くない */
     let n = 2;
-    const r = Math.random() + talent * 0.10 + (grade - 1) * 0.10 + boost * 0.10;
-    if (r > 1.35) n = 5; else if (r > 0.98) n = 4; else if (r > 0.55) n = 3;
-    else if (r < 0.10) n = 1;
+    const r = Math.random() + talent * 0.09 + (grade - 1) * 0.09 + boost * 0.09;
+    if (r > 1.55) n = 5; else if (r > 1.15) n = 4; else if (r > 0.70) n = 3;
+    else if (r < 0.18) n = 1;
 
     const pool = PITCH_TYPES.slice();
     const out = [];
@@ -99,7 +100,7 @@ const Player = (() => {
       const picked = RNG.weighted(pool);
       pool.splice(pool.indexOf(picked), 1);
       /* 切れ味は1〜7。才能が高いほど良い球を持ちやすい */
-      let lv = Math.round(RNG.clamp(RNG.norm(2.2 + talent * 0.85 + (grade - 1) * 0.3 + boost, 1.0), 1, 7));
+      let lv = Math.round(RNG.clamp(RNG.norm(1.55 + talent * 0.70 + (grade - 1) * 0.28 + boost * 0.85, 0.9), 1, 7));
       out.push({ name: picked.name, level: lv });
     }
     /* 一番いい球を先頭に置く（詳細画面で決め球が上に来る） */
@@ -196,7 +197,7 @@ const Player = (() => {
       grade, pos,
       throws: hd.throws, bats: hd.bats,
       talent,
-      traj: RNG.clamp(Math.round(RNG.norm(2.1 + talent * 0.25, 0.75)), 1, 4),
+      traj: RNG.clamp(Math.round(RNG.norm(1.75 + talent * 0.20, 0.68)), 1, 4),
       meet:  makeStat(base, talent, bias.meet),
       power: makeStat(base, talent, bias.power),
       speed: makeStat(base, talent, bias.speed),
@@ -249,7 +250,7 @@ const Player = (() => {
       arm:   makeStat(base, talent, 6),
       field: makeStat(base, talent, 0),
       catch: makeStat(base, talent, -2),
-      traj: RNG.clamp(Math.round(RNG.norm(1.7, 0.7)), 1, 4),
+      traj: RNG.clamp(Math.round(RNG.norm(1.4, 0.6)), 1, 4),
       pull: Math.round(RNG.clamp(RNG.norm(15, 40), -100, 100)),
       apt: aptitudeFor(RNG.pick(FIELD_POSITIONS)),
       awakened: false,
@@ -274,13 +275,15 @@ const Player = (() => {
 
   /* ---------- 評価 ---------- */
 
-  /** 変化球の総合的な切れ味（0〜1） */
+  /** 変化球の総合的な切れ味（0〜1）。
+     高校野球では変化球だけで抑えきれるものではないので、
+     ここの数字が試合を支配しすぎないよう低めに出るようにしてある。 */
   function breakScore(p) {
-    if (!p.pitches || !p.pitches.length) return 0.1;
+    if (!p.pitches || !p.pitches.length) return 0.06;
     let best = 0, sum = 0;
     p.pitches.forEach((q) => { best = Math.max(best, q.level); sum += q.level; });
     /* 決め球1つと、球種の多さの両方を見る */
-    return RNG.clamp(best / 7 * 0.68 + Math.min(sum, 18) / 18 * 0.32, 0, 1);
+    return RNG.clamp(best / 7 * 0.62 + Math.min(sum, 18) / 18 * 0.24, 0, 1);
   }
 
   /** 総合力（0〜100）。引き抜きや「一番いい選手」の判定に使う */
@@ -290,7 +293,7 @@ const Player = (() => {
          （試合の計算に使う Sim.veloScore とは別） */
       const velo = RNG.clamp((p.velo - 104) / 52, 0, 1) * 100;
       /* 球威（球速＋変化球）と制球でほぼ決まる。スタミナは終盤にしか効かない */
-      return Math.round(velo * 0.26 + breakScore(p) * 100 * 0.28 + p.control * 0.34 + p.stamina * 0.12);
+      return Math.round(velo * 0.31 + breakScore(p) * 100 * 0.22 + p.control * 0.35 + p.stamina * 0.12);
     }
     /* 試合でどれだけ効くかに合わせた重み。打てるかどうかがほとんどで、
        守備・肩・走力はそれより小さい。ここが実際の効き目とずれていると

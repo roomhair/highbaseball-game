@@ -155,13 +155,14 @@ const Screens = (() => {
   /** いまの能力をひと並びに。特訓で「誰を伸ばすか」を決める材料 */
   function abilityLine(p) {
     if (p.kind === 'pitcher') {
-      return p.velo + 'km/h　制球' + UI.rankSpan(p.control) + '　スタミナ' + UI.rankSpan(p.stamina) +
+      return '最速<b class="rankval">' + p.velo + '</b>km/h　制球' + UI.rankNum(p.control) +
+        '　スタミナ' + UI.rankNum(p.stamina) +
         '　' + esc(p.pitches.map((q) => q.name + q.level).join('・'));
     }
-    return 'ミート' + UI.rankSpan(p.meet) + '　パワー' + UI.rankSpan(p.power) +
-      '　走力' + UI.rankSpan(p.speed) + '　肩' + UI.rankSpan(p.arm) +
-      '　守備' + UI.rankSpan(p.field) + '　捕球' + UI.rankSpan(p.catch) +
-      '　弾道' + p.traj;
+    return 'ミート' + UI.rankNum(p.meet) + '　パワー' + UI.rankNum(p.power) +
+      '　走力' + UI.rankNum(p.speed) + '　肩' + UI.rankNum(p.arm) +
+      '　守備' + UI.rankNum(p.field) + '　捕球' + UI.rankNum(p.catch) +
+      '　弾道<b class="rankval">' + p.traj + '</b>';
   }
 
   function currentValue(p, t) {
@@ -210,8 +211,8 @@ const Screens = (() => {
     const label = (state.tour.kind === 'national' ? state.settings.nationalName : '地方大会');
     UI.el('pregame-title').textContent = label + '　' + r.name;
     const html =
-      '<p class="section-lead vs">' + esc(state.team.name) + '　<i>対</i>　' + esc(state.opponent.name) +
-        '<span class="tiny">（相手のチーム力 ' + Team.strength(state.opponent) + '）</span></p>' +
+      /* 相手のチーム力は出さない。オーダーと能力を見て、自分で見積もってもらう */
+      '<p class="section-lead vs">' + esc(state.team.name) + '　<i>対</i>　' + esc(state.opponent.name) + '</p>' +
       '<div class="twocol">' + lineupCard(state.team) + lineupCard(state.opponent) + '</div>';
     UI.html('pregame-body', html);
     const body = UI.el('pregame-body');
@@ -309,8 +310,24 @@ const Screens = (() => {
       }).join('')
       : '<p class="note">今年は引退する3年生がいませんでした。</p>';
 
+    /* 負けて引き抜かれていたら、誰を取られたのかを頭に出す。
+       名前とポジションだけでは分からないので、学年も能力も通算成績も並べる */
+    const taken = state.poachedFrom && state.poachedFrom.player
+      ? (function () {
+          const q = state.poachedFrom.player;
+          return '<section class="taken">' +
+            '<h3 class="taken__title">引き抜き</h3>' +
+            '<p class="taken__lead">' + esc(state.poachedFrom.to) + 'に <b>' + esc(q.name) + '</b>（' +
+              q.grade + '年・' + (q.kind === 'pitcher' ? '投手' : posName(q.pos)) + '・' +
+              UI.handMark(q) + '）を引き抜かれた。</p>' +
+            UI.playerDetail(q, { rename: false }) +
+            '<p class="note">空いた枠には、新入生が1人多く入る。</p>' +
+          '</section>';
+        })()
+      : '';
+
     UI.html('off-body',
-      '<p class="section-lead">3年生が引退します。</p>' + cards);
+      taken + '<p class="section-lead">3年生が引退します。</p>' + cards);
     UI.show('screen-offseason');
   }
 

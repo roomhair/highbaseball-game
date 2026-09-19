@@ -107,6 +107,12 @@ const UI = (() => {
     return '<span class="rank rank-' + r + '">' + r + '</span>';
   }
 
+  /** 評価と素の数字を並べて出す（特訓の画面などで使う） */
+  function rankNum(value) {
+    const r = rankOf(value);
+    return '<span class="rank rank-' + r + '">' + r + '</span><b class="rankval">' + value + '</b>';
+  }
+
   function aptSpan(letter) {
     return '<span class="rank rank-' + letter + '">' + letter + '</span>';
   }
@@ -390,7 +396,7 @@ const UI = (() => {
 
   return {
     el, esc, html, show, currentScreen, curtain, modal, closeModal,
-    avg, era, ipText, stat, rankSpan, aptSpan, pullText, handMark,
+    avg, era, ipText, stat, rankSpan, rankNum, aptSpan, pullText, handMark,
     playerRow, rosterTable, playerDetail, openPlayer, lineupEditor,
     careerBatLine, careerPitLine, init,
   };

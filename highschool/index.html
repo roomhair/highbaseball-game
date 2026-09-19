@@ -145,7 +145,15 @@
   <section class="screen" id="screen-game">
     <div class="container container--wide">
       <div id="game-scoreboard" class="scoreboard-wrap"></div>
+      <div class="speedbar" id="game-speed" role="group" aria-label="試合の速さ">
+        <span class="speedbar__label">速さ</span>
+        <button type="button" class="speedbtn" data-sp="0">1打席ずつ</button>
+        <button type="button" class="speedbtn is-on" data-sp="1">通常</button>
+        <button type="button" class="speedbtn" data-sp="2">2倍</button>
+        <button type="button" class="speedbtn" data-sp="3">3倍</button>
+      </div>
       <div id="game-stage" class="stage"></div>
+      <p class="taphint" id="game-taphint" hidden>タップで次の打席へ</p>
       <div id="game-lineups" class="livelineups"></div>
       <button type="button" class="skip" id="btn-skip">スキップ ▶▶</button>
     </div>

@@ -71,13 +71,15 @@ const Tournament = (() => {
     rounds.push('準々決勝', '準決勝', '決勝');
 
     const levels = strengthLadder(base, rounds, kind);
+    /* 同じ大会の中で同じ高校名が出ないようにするだけ。
+       年をまたげば同じ名前が出てよい（常連校が何年も出てくるほうが自然） */
     const used = usedNames || new Set();
     return {
       kind,
       rounds: rounds.map((name, i) => ({
         name,
         level: levels[i],
-        schoolName: NAMES.schoolName(used),
+        schoolName: NAMES.schoolName(used, kind),
         done: false,
       })),
       index: 0,

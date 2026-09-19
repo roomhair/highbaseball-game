@@ -130,14 +130,15 @@ const Game = (() => {
   /* ---------- 大会 ---------- */
 
   function startTournament(kind) {
-    const used = new Set(state.usedSchools);
+    /* 高校名の重複を避けるのはこの大会の中だけ。
+       年をまたげば同じ常連校がまた出てくる */
+    const used = new Set();
     /* 地方大会の初戦は、自分のチーム力より少し下から。
        全国大会の初戦は、地方大会の決勝と同じくらいの強さにする。 */
     const base = kind === 'local'
-      ? Math.max(16, Math.round(Team.strength(state.team) * 0.52))
+      ? Math.max(16, Math.round(Team.strength(state.team) * 0.62))
       : Math.max(30, state.localFinalLevel || Math.round(Team.strength(state.team) * 1.1));
     state.tour = Tournament.create(kind, base, used);
-    state.usedSchools = Array.from(used);
     Growth.resetTour(state.team);
     state.phase = 'opening';
     save();
@@ -276,7 +277,9 @@ const Game = (() => {
       year: state.year, tour: state.tour.kind,
       result: round + '敗退',
     });
-    /* 負けたとき、設定が入っていれば一番いい選手を引き抜かれる */
+    /* 負けたとき、設定が入っていれば一番いい選手を引き抜かれる。
+       誰を取られたのかはオフシーズン画面の頭に出す（ふきだしだと
+       読み込み直したときに出しそびれる） */
     if (state.settings.poach) {
       const best = Team.bestPlayer(state.team);
       if (best) {
@@ -284,16 +287,7 @@ const Game = (() => {
         const i = list.findIndex((x) => x.id === best.id);
         if (i >= 0) list.splice(i, 1);
         Team.repair(state.team);
-        state.poachedFrom = { name: best.name, kind: best.kind, to: state.opponent.name };
-        UI.modal(
-          '<div class="pdetail"><h3 class="modal__title">引き抜き</h3>' +
-          '<p class="note">' + UI.esc(state.opponent.name) + 'に <b>' + UI.esc(best.name) + '</b>' +
-          '（' + (best.kind === 'pitcher' ? '投手' : '野手') + '）を引き抜かれた。</p>' +
-          '<p class="note">空いた枠には、来年の新入生が1人多く入る。</p>' +
-          '<div class="actions actions--modal"><button type="button" class="btn btn--primary" id="pm-ok">オフシーズンへ</button></div></div>',
-          { onOpen(body) { body.querySelector('#pm-ok').addEventListener('click', () => { UI.closeModal(); toOffseason(); }); } }
-        );
-        return;
+        state.poachedFrom = { to: state.opponent.name, player: best };
       }
     }
     toOffseason();
@@ -435,6 +429,7 @@ const Game = (() => {
 
   function boot() {
     UI.init();
+    GameScreen.init();
     const saved = Storage.load();
     state = fresh();
     applySettings();
