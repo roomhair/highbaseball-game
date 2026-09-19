@@ -148,6 +148,17 @@ table, .stat__num, .result-score, .scoreboard { font-variant-numeric: tabular-nu
 }
 .appbar__icon:hover { color: var(--ink); border-color: var(--ink-mute); }
 
+/* 設定は歯車だけだと何のボタンか分かりづらいので、言葉も一緒に出す */
+.appbar__btn {
+  flex: none; display: inline-flex; align-items: center; gap: 4px;
+  height: 30px; padding: 0 9px;
+  border: 1px solid var(--line); background: transparent;
+  color: var(--ink-mute); border-radius: 3px; cursor: pointer;
+  font: inherit; font-size: 14px; line-height: 1;
+}
+.appbar__btn span { font-size: 12px; letter-spacing: .08em; }
+.appbar__btn:hover { color: var(--ink); border-color: var(--ink-mute); }
+
 /* ===== 画面 ===== */
 #app { min-height: 50vh; }
 .screen { display: none; }
@@ -808,6 +819,15 @@ tr.prow.is-picked .rank, tr.prow.is-picked .rankval, tr.prow.is-picked td { colo
 }
 .field__input--inline { width: auto; max-width: 11em; font-size: 18px; font-weight: 700; }
 .field__help { font-size: 11.5px; color: var(--ink-faint); }
+/* 入れ物の外に置く説明。ぶら下げず、行間をとって読ませる */
+.field__help--block { margin: -2px 0 0; line-height: 1.8; }
+
+/* 設定の中の小見出し。何と何の設定なのか、目で切れるようにする */
+.set-heading {
+  margin: 26px 0 10px; padding-bottom: 5px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px; font-weight: 700; letter-spacing: .18em; color: var(--ink-mute);
+}
 .field--check { display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; }
 .field--check input { margin-top: 5px; width: 17px; height: 17px; accent-color: var(--accent); }
 .field--boxed { margin: 16px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }

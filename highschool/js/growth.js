@@ -27,12 +27,22 @@ const Growth = (() => {
   }
 
   /* 学年が下のほうが伸びしろがある */
-  const GRADE_GAIN = { 1: 1.25, 2: 1.08, 3: 0.92 };
+  const GRADE_GAIN = { 1: 1.30, 2: 1.10, 3: 0.95 };
 
-  /** 能力は上に行くほど伸びにくい */
+  /**
+   * 能力は上に行くほど伸びにくい。
+   * 1試合の伸びを大きくすると、頭打ちが無い限り大会の途中で全員Sになってしまう。
+   * 残りを HEAD_SPAN で割ったものを HEAD_CURVE 乗しているので、
+   * 40台のうちはほぼ素通し、70を超えたあたりから急に鈍る。
+   */
+  function headroom(value) {
+    const G = CONFIG.GROWTH;
+    return RNG.clamp(Math.pow(Math.max(0, 100 - value) / G.HEAD_SPAN, G.HEAD_CURVE), 0.04, 1);
+  }
+
   function gainFor(value, points) {
-    const head = RNG.clamp((100 - value) / 55, 0.15, 1);
-    return Math.max(0, Math.round(points * head * RNG.clamp(RNG.norm(1, 0.35), 0.2, 1.9)));
+    return Math.max(0, Math.round(
+      points * headroom(value) * RNG.clamp(RNG.norm(1, 0.35), 0.2, 1.9)));
   }
 
   function statListFor(p) {
@@ -52,17 +62,20 @@ const Growth = (() => {
       const perf = isPit ? pitPerf(s) : batPerf(s);
 
       /* 伸びしろの元。出た選手ほど、活躍した選手ほど多い */
-      let points = played ? 1.0 + RNG.clamp(perf, -1.5, 8) * 0.22 : 0.35;
+      const G = CONFIG.GROWTH;
+      let points = played ? 1.0 + RNG.clamp(perf, -1.5, 8) * 0.22 : G.BENCH;
       points *= GRADE_GAIN[p.grade] || 1;
       points *= RNG.clamp(RNG.norm(1, 0.28), 0.3, 1.9);
 
       const ups = [];
       const stats = statListFor(p);
-      const n = points > 2.2 ? 2 : 1;
+      /* 1試合で動かす能力の数。出番が無かった選手は2つまで。
+         活躍した日はまとめて伸びるので、1試合で化けたように見える */
+      const n = !played ? 2 : (points > 2.6 ? 5 : (points > 1.8 ? 4 : 3));
       const picked = RNG.shuffle(stats.slice()).slice(0, n);
       picked.forEach((st) => {
         const before = p[st.key];
-        const add = gainFor(before, points * 1.15);
+        const add = gainFor(before, points * G.PER_STAT);
         if (add > 0) {
           p[st.key] = RNG.stat(before + add);
           if (p[st.key] > before) {
@@ -71,7 +84,7 @@ const Growth = (() => {
         }
       });
       /* 投手は球速も少しずつ上がる */
-      if (isPit && played && RNG.chance(0.28)) {
+      if (isPit && played && RNG.chance(CONFIG.GROWTH.VELO_CHANCE)) {
         const before = p.velo;
         p.velo = Math.min(165, before + RNG.range(1, 2));
         if (p.velo > before) {

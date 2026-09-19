@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>高校野球物語｜部屋</title>
-  <meta name="description" content="部員を集め、特訓し、地方大会から全国大会までを勝ち上がる高校野球の育成シミュレーション。登録なし・無料で遊べます。">
+  <title>強奪高校野球｜部屋</title>
+  <meta name="description" content="特訓し、強奪し、地方大会から全国大会までを勝ち上がる高校野球の育成シミュレーション。勝てば相手の主力を1人もらえます。登録なし・無料で遊べます。">
   <link rel="canonical" href="https://baseball.roomhaird.com/highschool/">
 
   <meta property="og:type" content="website">
-  <meta property="og:title" content="高校野球物語">
-  <meta property="og:description" content="部員を集め、特訓し、地方大会から全国大会までを勝ち上がる。">
+  <meta property="og:title" content="強奪高校野球">
+  <meta property="og:description" content="特訓し、強奪し、地方大会から全国大会までを勝ち上がる。">
   <meta property="og:url" content="https://baseball.roomhaird.com/highschool/">
   <meta name="twitter:card" content="summary">
 
@@ -30,8 +30,8 @@
 
 <header class="appbar">
   <a class="appbar__home" href="../">← 部屋</a>
-  <button type="button" class="appbar__title" id="btn-home">高校野球物語</button>
-  <button type="button" class="appbar__icon" id="btn-settings" aria-label="設定">⚙</button>
+  <button type="button" class="appbar__title" id="btn-home">強奪高校野球</button>
+  <button type="button" class="appbar__btn" id="btn-settings">⚙<span>設定</span></button>
   <button type="button" class="appbar__icon" id="theme-toggle" aria-label="配色を切り替える">◐</button>
 </header>
 
@@ -44,10 +44,10 @@
     <div class="container">
       <header class="hero">
         <p class="hero__eyebrow">HIGH SCHOOL BASEBALL</p>
-        <h1 class="hero__title">高校野球物語</h1>
+        <h1 class="hero__title">強奪高校野球</h1>
         <!-- 大会の名前は設定で変えられる。data-national の付いた場所は
              まとめて書き換わる（js/main.js の applySettings） -->
-        <p class="hero__lead">部員を集め、特訓し、<br>夢の<b data-national>乙大人園</b>へ</p>
+        <p class="hero__lead">特訓し、強奪し、<br>夢の<b data-national>乙大人園</b>へ</p>
       </header>
 
       <div class="rules">
@@ -248,25 +248,44 @@
   <section class="screen" id="screen-settings">
     <div class="container">
       <h2 class="section-title">設定</h2>
+      <p class="note">名前と遊び方を決めます。ここで変えたことは、いつでも直せます。</p>
+
+      <h3 class="set-heading">名前</h3>
       <div class="form">
         <label class="field">
           <span class="field__label">全国大会の名前</span>
           <input type="text" id="set-national" class="field__input" maxlength="12">
-          <span class="field__help">大会名の表示がすべてこの名前に変わります。</span>
+          <span class="field__help">初期値は「乙大人園」。ゲーム中の大会名の表示がすべてこの名前に変わります。</span>
         </label>
         <label class="field">
-          <span class="field__label">自校名</span>
+          <span class="field__label">自分の高校の名前</span>
           <input type="text" id="set-school" class="field__input" maxlength="14">
+          <span class="field__help">スコアボードや大会の組み合わせに出ます。</span>
         </label>
+      </div>
+
+      <h3 class="set-heading">遊び方</h3>
+      <div class="form">
         <label class="field field--check">
           <input type="checkbox" id="set-poach">
-          <span>敗戦時、相手チームに選手を引き抜かれる</span>
+          <span>負けたとき、相手に主力を1人強奪される</span>
         </label>
+        <p class="field__help field__help--block">
+          入れておくと、負けた年はいちばん良い選手を持っていかれます。
+          そのかわり翌年、取られた選手と同じ種類（野手か投手か）の新入生が1人多く入ります。
+          外すと、負けても部員は減りません。
+        </p>
       </div>
+
+      <h3 class="set-heading">やり直し</h3>
       <div class="actions">
         <button type="button" class="btn btn--primary" id="btn-settings-save">保存して戻る</button>
-        <button type="button" class="btn btn--danger" id="btn-settings-reset">最初からやり直す</button>
+        <button type="button" class="btn btn--danger" id="btn-settings-reset">はじめから</button>
       </div>
+      <p class="field__help field__help--block">
+        「はじめから」を押すと、いまの代とこれまでの記録をすべて消して、チーム作りからやり直します。
+        押したあとに確認が出ます。
+      </p>
     </div>
   </section>
 

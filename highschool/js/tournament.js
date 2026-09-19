@@ -47,22 +47,18 @@ const Tournament = (() => {
     const out = [];
     for (let i = 0; i < n; i++) {
       const t = n === 1 ? 1 : i / (n - 1);
-      /* 後半ほど急に強くなる（序盤は勝てて、終盤で歯が立たなくなる） */
-      const curve = Math.pow(t, 1.10);
+      /* ほぼ一直線に上げる。1回戦から決勝までの幅が広いので、
+         これで1回戦→2回戦→3回戦が1つずつはっきり強くなる。
+         自軍も試合ごとに大きく伸びるので、相手の上がり方が緩いと
+         3回戦あたりから消化試合になってしまう */
+      const curve = Math.pow(t, 1.05);
       out.push(from + (to - from) * curve);
-    }
-
-    /* 1回戦と2回戦だけは持ち上げる。曲線どおりだと弱すぎて練習試合になってしまう。
-       3回戦より下にはなるよう、3回戦の値からの割合で決めている */
-    if (n >= 3) {
-      out[0] = Math.max(out[0], out[2] * 0.80);
-      out[1] = Math.max(out[1], out[2] * 0.90);
     }
 
     /* ゆらぎを足す。ここで「妙に強い2回戦」や「楽な3回戦」が生まれる */
     for (let i = 0; i < n; i++) {
       const mustRise = rounds[i] === '準々決勝' || rounds[i] === '準決勝' || rounds[i] === '決勝';
-      const jitter = mustRise ? 0.07 : 0.16;
+      const jitter = mustRise ? 0.07 : 0.13;
       out[i] *= 1 + (Math.random() * 2 - 1) * jitter;
       if (!mustRise && i > 0 && RNG.chance(0.14)) out[i] = Math.min(out[i], out[i - 1] * 0.92);
     }
