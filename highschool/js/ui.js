@@ -76,6 +76,34 @@ const UI = (() => {
     if (closeModal.after) { const f = closeModal.after; closeModal.after = null; f(); }
   }
 
+  /**
+   * 「よろしいですか？」を聞く。
+   * ブラウザの window.confirm は、このページのような枠（sandbox）の中では
+   * 出ないことがあるので、自前のふきだしで聞く。
+   */
+  function confirmBox(opt, onYes) {
+    modal(
+      '<h3 class="modal__title">' + esc(opt.title || '確認') + '</h3>' +
+      '<p class="confirmbox">' + esc(opt.body || '') + '</p>' +
+      '<div class="actions actions--modal">' +
+        '<button type="button" class="btn" id="cf-no">' + esc(opt.no || 'やめる') + '</button>' +
+        '<button type="button" class="btn btn--danger" id="cf-yes">' + esc(opt.yes || 'はい') + '</button>' +
+      '</div>',
+      {
+        kind: 'confirm',
+        onOpen(body) {
+          body.querySelector('#cf-no').addEventListener('click', () => {
+            closeModal.back = null; closeModal.after = null; closeModal();
+          });
+          body.querySelector('#cf-yes').addEventListener('click', () => {
+            closeModal.back = null; closeModal.after = null; closeModal();
+            onYes();
+          });
+        },
+      }
+    );
+  }
+
   /* ---------- 数字の書式 ---------- */
 
   function avg(h, ab) {
@@ -699,7 +727,7 @@ const UI = (() => {
   }
 
   return {
-    el, esc, html, show, currentScreen, curtain, modal, closeModal,
+    el, esc, html, show, currentScreen, curtain, modal, closeModal, confirmBox,
     avg, era, ipText, stat, rankSpan, rankNum, aptSpan, pullText, handMark,
     playerRow, rosterTable, rosterPanel, sortPlayers, playerDetail, openPlayer,
     lineupEditor, roleText, makeSortable, wireRename,

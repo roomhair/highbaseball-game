@@ -741,6 +741,10 @@ tr.prow.is-picked .rank, tr.prow.is-picked .rankval, tr.prow.is-picked td { colo
 }
 @keyframes modalin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 /* オーダー変更は情報が多いので、画面いっぱいに広く取る */
+/* 確認のふきだしは小さく */
+.modal[data-kind="confirm"] .modal__panel { width: min(100%, 420px); }
+.confirmbox { margin: 0; font-size: 14px; line-height: 1.8; }
+
 .modal[data-kind="lineup"] { padding: 8px; }
 .modal[data-kind="lineup"] .modal__panel { width: min(100%, 980px); max-height: 94vh; padding: 16px 14px 20px; }
 .modal__close {

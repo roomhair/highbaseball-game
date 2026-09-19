@@ -484,12 +484,25 @@ const Game = (() => {
   }
 
   function resetAll() {
-    if (!window.confirm('保存されている進行をすべて消して、最初からやり直します。よろしいですか？')) return;
-    Storage.clear();
-    state = fresh();
-    applySettings();
-    UI.show('screen-top');
-    UI.el('btn-continue').hidden = true;
+    UI.confirmBox({
+      title: '最初からやり直す',
+      body: '保存されている記録がすべて削除されますが、よろしいですか？',
+      yes: '削除して最初から',
+    }, () => {
+      Storage.clear();
+      state = fresh();
+      applySettings();
+      showTopButtons();
+      UI.show('screen-top');
+    });
+  }
+
+  /** トップのボタンの出し方。記録があるかどうかで変わる */
+  function showTopButtons() {
+    const saved = Storage.load();
+    UI.el('btn-continue').hidden = !saved;
+    UI.el('btn-start').textContent = saved ? 'はじめから' : 'はじめる';
+    UI.el('top-note').textContent = saved ? '前回の続きが残っています。' : '';
   }
 
   /* ---------- 起動 ---------- */
@@ -497,24 +510,24 @@ const Game = (() => {
   function boot() {
     UI.init();
     GameScreen.init();
-    const saved = Storage.load();
     state = fresh();
     applySettings();
-    if (saved) {
-      UI.el('btn-continue').hidden = false;
-      UI.el('btn-start').textContent = 'はじめから（データを消す）';
-      UI.el('top-note').textContent = '前回の続きが残っています。「はじめから」を選ぶと、その記録は消えます。';
-    }
+    showTopButtons();
 
     const on = (id, fn) => { const n = UI.el(id); if (n) n.addEventListener('click', fn); };
 
     on('btn-start', () => {
-      if (Storage.load() && !window.confirm('保存されている記録をすべて消して、最初から始めます。よろしいですか？')) return;
-      Storage.clear();
-      UI.el('btn-continue').hidden = true;
-      UI.el('btn-start').textContent = 'はじめる';
-      UI.el('top-note').textContent = '';
-      start();
+      const begin = () => {
+        Storage.clear();
+        showTopButtons();
+        start();
+      };
+      if (!Storage.load()) { begin(); return; }
+      UI.confirmBox({
+        title: 'はじめから',
+        body: '保存されている記録が削除されますが、よろしいですか？',
+        yes: '削除してはじめる',
+      }, begin);
     });
     on('btn-continue', () => { const s = Storage.load(); if (s) resume(s); });
     on('btn-home', () => UI.show('screen-top'));
