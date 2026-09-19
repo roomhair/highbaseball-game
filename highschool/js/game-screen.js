@@ -83,11 +83,15 @@ const GameScreen = (() => {
         const p = Team.find(t, s.pid);
         if (!p) return '';
         const now = cur.side === key && cur.order === i + 1;
+        /* その試合の打席結果を全部並べる（消さない） */
+        const done = (cur.results[p.id] || []);
+        const res = done.map((t, k) =>
+          '<i class="ll__r' + (k === done.length - 1 && now ? ' is-last' : '') + '">' + esc(t) + '</i>').join('');
         return '<li class="ll__item' + (now ? ' is-now' : '') + '" data-pid="' + p.id + '">' +
           '<span class="ll__no">' + (i + 1) + '</span>' +
           '<span class="ll__pos">' + posShort(s.pos) + '</span>' +
           '<span class="ll__name">' + esc(p.name) + '</span>' +
-          '<span class="ll__res">' + esc(cur.results[p.id] || '') + '</span></li>';
+          '<span class="ll__res">' + res + '</span></li>';
       }).join('');
       const pit = Team.find(t, cur[key + 'Pitcher']);
       return '<div class="ll' + (cur.side === key ? ' is-batting' : '') + '">' +
@@ -192,7 +196,6 @@ const GameScreen = (() => {
       st.inning = e.inning; st.half = e.half;
       st.maxInning = Math.max(st.maxInning, e.inning);
       cur.side = e.half === 'top' ? 'away' : 'home';
-      if (e.half === 'top') { cur.results = {}; }   // 回をまたぐと結果表示を消す
       const arr = cur.side === 'away' ? st.awayInn : st.homeInn;
       if (arr[e.inning - 1] == null) arr[e.inning - 1] = 0;
       return '<div class="stage__half">' + halfLabel(e) + (e.tie ? '　タイブレーク' : '') + '</div>' +
@@ -214,7 +217,7 @@ const GameScreen = (() => {
     if (e.k === 'pa') {
       const off = e.half === 'top' ? 'away' : 'home';
       cur.side = off; cur.order = e.order;
-      cur.results[e.batter] = e.text;
+      (cur.results[e.batter] = cur.results[e.batter] || []).push(e.text);
       const arr = off === 'away' ? st.awayInn : st.homeInn;
       arr[e.inning - 1] = (arr[e.inning - 1] || 0) + (e.runs || 0);
       st.awayR = e.score[0]; st.homeR = e.score[1];

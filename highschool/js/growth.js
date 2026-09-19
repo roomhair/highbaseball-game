@@ -61,17 +61,22 @@ const Growth = (() => {
       const n = points > 2.2 ? 2 : 1;
       const picked = RNG.shuffle(stats.slice()).slice(0, n);
       picked.forEach((st) => {
-        const add = gainFor(p[st.key], points * 1.15);
+        const before = p[st.key];
+        const add = gainFor(before, points * 1.15);
         if (add > 0) {
-          p[st.key] = RNG.stat(p[st.key] + add);
-          ups.push({ key: st.key, label: st.label, amount: add });
+          p[st.key] = RNG.stat(before + add);
+          if (p[st.key] > before) {
+            ups.push({ key: st.key, label: st.label, amount: p[st.key] - before, before, after: p[st.key] });
+          }
         }
       });
       /* 投手は球速も少しずつ上がる */
       if (isPit && played && RNG.chance(0.28)) {
-        const add = RNG.range(1, 2);
-        p.velo = Math.min(165, p.velo + add);
-        ups.push({ key: 'velo', label: '球速', amount: add, unit: 'km/h' });
+        const before = p.velo;
+        p.velo = Math.min(165, before + RNG.range(1, 2));
+        if (p.velo > before) {
+          ups.push({ key: 'velo', label: '球速', amount: p.velo - before, before, after: p.velo, unit: 'km/h' });
+        }
       }
 
       /* ---- 覚醒 ---- */
@@ -83,22 +88,25 @@ const Growth = (() => {
           p.awakened = true;
           const boostStats = RNG.shuffle(stats.slice()).slice(0, isPit ? 2 : 3);
           boostStats.forEach((st) => {
-            const add = RNG.range(7, 15);
-            p[st.key] = RNG.stat(p[st.key] + add);
-            ups.push({ key: st.key, label: st.label, amount: add, awake: true });
+            const before = p[st.key];
+            p[st.key] = RNG.stat(before + RNG.range(7, 15));
+            ups.push({ key: st.key, label: st.label, amount: p[st.key] - before, before, after: p[st.key], awake: true });
           });
           if (isPit) {
-            const add = RNG.range(3, 7);
-            p.velo = Math.min(168, p.velo + add);
-            ups.push({ key: 'velo', label: '球速', amount: add, unit: 'km/h', awake: true });
+            const vb = p.velo;
+            p.velo = Math.min(168, vb + RNG.range(3, 7));
+            ups.push({ key: 'velo', label: '球速', amount: p.velo - vb, before: vb, after: p.velo, unit: 'km/h', awake: true });
             /* 決め球が一段階よくなる */
             if (p.pitches.length) {
-              p.pitches[0].level = Math.min(7, p.pitches[0].level + 1);
-              ups.push({ key: 'pitch', label: p.pitches[0].name, amount: 1, awake: true });
+              const lb = p.pitches[0].level;
+              p.pitches[0].level = Math.min(7, lb + 1);
+              ups.push({ key: 'pitch', label: p.pitches[0].name, amount: p.pitches[0].level - lb,
+                         before: lb, after: p.pitches[0].level, awake: true });
             }
           } else if (p.traj < 4 && RNG.chance(0.45)) {
+            const tb = p.traj;
             p.traj++;
-            ups.push({ key: 'traj', label: '弾道', amount: 1, awake: true });
+            ups.push({ key: 'traj', label: '弾道', amount: 1, before: tb, after: p.traj, awake: true });
           }
         }
       }
@@ -128,7 +136,11 @@ const Growth = (() => {
     const out = [];
     ups.forEach((u) => {
       const hit = out.find((x) => x.label === u.label);
-      if (hit) { hit.amount += u.amount; hit.awake = hit.awake || u.awake; }
+      if (hit) {
+        hit.amount += u.amount;
+        hit.after = u.after;                 // 最後に落ち着いた値を残す
+        hit.awake = hit.awake || u.awake;
+      }
       else out.push(Object.assign({}, u));
     });
     return out;

@@ -292,8 +292,15 @@ td.hl { font-weight: 700; }
   padding-top: 2px; border-top: 1px dotted var(--line-soft); white-space: normal;
 }
 .cardline__abil .rank { font-size: 11.5px; margin: 0 1px 0 2px; }
+/* 対象が多いカードは1人1行に詰める */
+.cardline--tight { padding: 4px 0; grid-template-columns: 1fr auto auto; }
+.cardline--tight .cardline__name { font-size: 13.5px; }
+.cardline--tight .cardline__up { font-size: 15px; }
+.cardline--tight .cardline__now { font-size: 11px; }
 /* 評価の横に出す素の数字 */
 .rankval { font-weight: 600; font-size: 11.5px; color: var(--ink); margin-left: 1px; }
+td.role { font-size: 11px; color: var(--ink-mute); }
+.roster td.c .rankval { font-size: 11px; color: var(--ink-mute); }
 /* 引き抜かれた選手のお知らせ（オフシーズン画面の頭） */
 .taken { margin: 0 0 22px; padding: 12px 14px; border: 1.5px solid var(--ng); border-radius: 4px; background: var(--panel); }
 .taken__title { margin: 0 0 4px; font-size: 12px; letter-spacing: .2em; color: var(--ng); }
@@ -384,24 +391,38 @@ td.hl { font-weight: 700; }
 .outs .out.is-on { background: var(--ng); border-color: var(--ng); }
 .outs span { font-size: 9px; letter-spacing: .12em; color: var(--ink-faint); margin-left: 3px; }
 
-.livelineups { display: grid; gap: 12px; }
-@media (min-width: 720px) { .livelineups { grid-template-columns: 1fr 1fr; } }
-.ll { border: 1px solid var(--line-soft); border-radius: 4px; padding: 8px 10px; }
+/* 両チームのオーダーは、狭い画面でも必ず横に2つ並べる。
+   縦に積むと下のチームが画面の外に出てしまい、
+   いまどちらの攻撃なのかが見えなくなる */
+.livelineups { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+@media (min-width: 720px) { .livelineups { gap: 12px; } }
+.ll { border: 1px solid var(--line-soft); border-radius: 4px; padding: 6px 6px; min-width: 0; }
+@media (min-width: 720px) { .ll { padding: 8px 10px; } }
 .ll.is-batting { border-color: var(--accent); }
 .ll__title { margin: 0 0 6px; font-size: 13px; font-weight: 800; letter-spacing: .06em; }
 .ll__title i { font-style: normal; margin-left: 8px; font-size: 10.5px; font-weight: 400; color: var(--ink-faint); letter-spacing: .1em; }
 .ll.is-batting .ll__title i { color: var(--accent); }
 .ll__list { list-style: none; margin: 0; padding: 0; }
 .ll__item {
-  display: grid; grid-template-columns: 1.6em 1.6em 1fr auto; gap: 6px;
-  align-items: baseline; padding: 2px 4px; font-size: 12.5px; border-radius: 2px; cursor: pointer;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 1px 4px;
+  padding: 2px 3px; font-size: 11.5px; border-radius: 2px; cursor: pointer; min-width: 0;
 }
+@media (min-width: 720px) { .ll__item { font-size: 12.5px; gap: 2px 6px; padding: 2px 4px; } }
+.ll__name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 打席結果はその試合ぶん全部。入りきらなければ次の行に回す */
+.ll__res { flex: 1 1 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px 3px; }
+.ll__r {
+  font-style: normal; font-size: 10px; line-height: 1.5; color: var(--ink-mute);
+  border: 1px solid var(--line-soft); border-radius: 2px; padding: 0 2px; white-space: nowrap;
+}
+.ll__item.is-now .ll__r { color: inherit; border-color: currentColor; opacity: .85; }
+.ll__r.is-last { font-weight: 700; }
 .ll__item.is-now { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
-.ll__no, .ll__pos { color: var(--ink-faint); font-size: 11px; }
+.ll__no, .ll__pos { color: var(--ink-faint); font-size: 10.5px; flex: none; }
 .ll__item.is-now .ll__no, .ll__item.is-now .ll__pos { color: inherit; opacity: .8; }
-.ll__res { font-size: 11.5px; color: var(--ink-mute); }
-.ll__item.is-now .ll__res { color: inherit; }
-.ll__p { margin: 6px 0 0; font-size: 11.5px; color: var(--ink-mute); }
+.ll__p { margin: 6px 0 0; font-size: 11px; color: var(--ink-mute); }
+.ll__title { font-size: 12px; }
+@media (min-width: 720px) { .ll__title { font-size: 13px; } }
 
 .skip {
   position: fixed; right: 12px; bottom: 14px; z-index: 40;
@@ -435,7 +456,66 @@ td.hl { font-weight: 700; }
 .tourstat p { margin: 4px 0; font-size: 13px; }
 .tourstat b { font-size: 17px; }
 
+/* 打順の並べ替え。取っ手だけ touch-action を切って、
+   ほかの場所では今までどおり画面をスクロールできるようにする */
+.lineup-hint { margin: 0 0 4px; font-size: 11.5px; }
+.lineup-hint b { font-size: 14px; }
+td.grip {
+  touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
+  color: var(--ink-faint); font-size: 15px; width: 1.8em; padding-left: 2px; padding-right: 2px;
+}
+td.grip:active { cursor: grabbing; }
+tbody.is-sorting tr { transition: none; }
+tr.is-dragging { background: var(--bg-2); opacity: .85; }
+tr.is-dragging td.grip { color: var(--accent); }
+
+/* ===== 勝敗の画面 ===== */
+.verdict { padding: 36px 0 12px; text-align: center; }
+.verdict__box { border-top: 1.5px solid var(--line); border-bottom: 1.5px solid var(--line); padding: 26px 16px; }
+.verdict__box.is-win { border-color: var(--accent); }
+.verdict__box.is-lose { border-color: var(--ng); }
+.verdict__where { margin: 0; font-size: 11.5px; letter-spacing: .24em; color: var(--ink-faint); }
+.verdict__word {
+  margin: 8px 0 10px; font-size: 44px; font-weight: 800; letter-spacing: .26em;
+  animation: rise .5s cubic-bezier(.2,.9,.3,1) both;
+}
+.verdict__box.is-win .verdict__word { color: var(--accent); }
+.verdict__box.is-lose .verdict__word { color: var(--ng); }
+.verdict__score { margin: 0; font-size: 16px; font-weight: 700; }
+.verdict__score b { font-size: 26px; margin: 0 3px; }
+.verdict__note { margin: 6px 0 0; font-size: 12px; color: var(--ink-mute); letter-spacing: .1em; }
+.verdict__lead { margin: 14px 0 0; font-size: 13px; color: var(--ink-mute); }
+
+/* ===== 試合後の成長 ===== */
+.grlist { display: grid; gap: 10px; }
+.gr { border: 1px solid var(--line-soft); border-radius: 4px; padding: 8px 12px; background: var(--panel); }
+.gr.is-awake { border: 1.5px solid var(--crimson); }
+.gr__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 4px; }
+.gr__head b { font-size: 15px; }
+.gr__head span { font-size: 11px; color: var(--ink-mute); }
+.gr__awake { font-style: normal; font-size: 11px; font-weight: 700; color: var(--crimson); letter-spacing: .1em; }
+.gr__list { list-style: none; margin: 0; padding: 0; }
+.gr__list li {
+  display: grid; grid-template-columns: 5.2em 3.2em 1fr; gap: 6px;
+  align-items: baseline; padding: 2px 0; font-size: 12.5px;
+}
+.gr__label { color: var(--ink-mute); font-size: 12px; }
+.gr__up { font-weight: 800; color: var(--accent); }
+.gr__from { color: var(--ink-faint); }
+.gr__to { font-weight: 700; }
+
+/* ===== 次の試合のお知らせ ===== */
+.nextup { padding: 54px 0 18px; text-align: center; }
+.nextup__eyebrow { margin: 0; font-size: 11px; letter-spacing: .3em; color: var(--ink-faint); }
+.nextup__title { margin: 10px 0 16px; font-size: 26px; font-weight: 800; letter-spacing: .14em; }
+.nextup__vs { margin: 0; font-size: 15px; color: var(--ink-mute); }
+.nextup__vs b { color: var(--ink); font-size: 18px; }
+.taphint--static { animation: none; margin-top: 26px; }
+
 /* ===== 引き抜き・オフシーズン ===== */
+tr.prow.is-picked { background: var(--accent); color: var(--accent-ink); }
+tr.prow.is-picked .rank, tr.prow.is-picked .rankval, tr.prow.is-picked td { color: inherit; }
+
 .incoming { border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; margin-bottom: 10px; background: var(--panel); }
 .swaplist { display: grid; gap: 6px; max-height: 52vh; overflow-y: auto; }
 .swapitem {

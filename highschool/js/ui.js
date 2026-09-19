@@ -129,25 +129,42 @@ const UI = (() => {
     return (p.throws === 'L' ? '左' : '右') + '投' + (p.bats === 'L' ? '左' : '右') + '打';
   }
 
-  /** 一覧用の1行 */
+  /** その選手がオーダーのどこにいるか。控えなら「控え」 */
+  function roleText(team, p) {
+    if (!team) return '';
+    if (p.kind === 'pitcher') {
+      const i = (team.rotation || []).indexOf(p.id);
+      if (i === 0) return '先発';
+      if (i > 0) return (i + 1) + '番手';
+      return '投手';
+    }
+    const i = (team.lineup || []).findIndex((s) => s.pid === p.id);
+    if (i < 0) return '控え';
+    return (i + 1) + '番 ' + posShort(team.lineup[i].pos);
+  }
+
+  /** 一覧用の1行。能力は評価だけでなく素の数字も添える */
   function playerRow(p, opts) {
     opts = opts || {};
     const isPit = p.kind === 'pitcher';
     const cells = isPit
-      ? ['<td class="c">' + p.velo + '</td>',
-         '<td class="c">' + rankSpan(p.control) + '</td>',
-         '<td class="c">' + rankSpan(p.stamina) + '</td>',
+      ? ['<td class="c"><b class="rankval">' + p.velo + '</b></td>',
+         '<td class="c">' + rankNum(p.control) + '</td>',
+         '<td class="c">' + rankNum(p.stamina) + '</td>',
          '<td class="t-break">' + p.pitches.map((q) => esc(q.name) + '<i>' + q.level + '</i>').join('・') + '</td>'].join('')
-      : ['<td class="c">' + p.traj + '</td>',
-         '<td class="c">' + rankSpan(p.meet) + '</td>',
-         '<td class="c">' + rankSpan(p.power) + '</td>',
-         '<td class="c">' + rankSpan(p.speed) + '</td>',
-         '<td class="c">' + rankSpan(p.arm) + '</td>',
-         '<td class="c">' + rankSpan(p.field) + '</td>',
-         '<td class="c">' + rankSpan(p.catch) + '</td>'].join('');
+      : ['<td class="c"><b class="rankval">' + p.traj + '</b></td>',
+         '<td class="c">' + rankNum(p.meet) + '</td>',
+         '<td class="c">' + rankNum(p.power) + '</td>',
+         '<td class="c">' + rankNum(p.speed) + '</td>',
+         '<td class="c">' + rankNum(p.arm) + '</td>',
+         '<td class="c">' + rankNum(p.field) + '</td>',
+         '<td class="c">' + rankNum(p.catch) + '</td>'].join('');
+    /* 自分のチームを渡されたときは、打順・守備位置（控えなら「控え」）も出す */
+    const role = opts.team ? '<td class="c role">' + roleText(opts.team, p) + '</td>' : '';
     return '<tr data-pid="' + p.id + '" class="prow' + (opts.mark ? ' is-' + opts.mark : '') + '">' +
       '<td class="c g' + p.grade + '">' + p.grade + '</td>' +
       '<td class="nm">' + esc(p.name) + (p.awakened ? '<em class="awake-dot" title="覚醒">◆</em>' : '') + '</td>' +
+      role +
       '<td class="c">' + (isPit ? '投' : posShort(p.pos)) + '</td>' +
       '<td class="c hand">' + handMark(p) + '</td>' +
       cells + '</tr>';
@@ -159,8 +176,10 @@ const UI = (() => {
     const head = isPit
       ? '<th>球速</th><th>制球</th><th>スタ</th><th class="t-break">変化球</th>'
       : '<th>弾道</th><th>ミート</th><th>パワー</th><th>走力</th><th>肩力</th><th>守備</th><th>捕球</th>';
+    const roleHead = opts.team ? '<th>いまの役割</th>' : '';
     return '<div class="tablewrap"><table class="roster">' +
-      '<thead><tr><th>年</th><th class="nm">選手</th><th>位置</th><th class="hand">利き</th>' + head + '</tr></thead>' +
+      '<thead><tr><th>年</th><th class="nm">選手</th>' + roleHead +
+      '<th>位置</th><th class="hand">利き</th>' + head + '</tr></thead>' +
       '<tbody>' + players.map((p) => playerRow(p, opts)).join('') + '</tbody></table></div>';
   }
 
@@ -250,6 +269,56 @@ const UI = (() => {
     });
   }
 
+  /* ---------- 並べ替え（指でもマウスでも） ----------
+     行の左はしの「≡」をつまんで上下に動かすと、その場で順番が変わる。
+     行全体をつまめるようにすると画面のスクロールができなくなるので、
+     つまめるのはこの取っ手だけにしてある。 */
+
+  function makeSortable(tbody, onDone) {
+    let drag = null;
+    const rows = () => Array.from(tbody.querySelectorAll('tr'));
+
+    tbody.addEventListener('pointerdown', (e) => {
+      const grip = e.target.closest('.grip');
+      if (!grip) return;
+      const tr = grip.closest('tr');
+      if (!tr) return;
+      drag = tr;
+      tr.classList.add('is-dragging');
+      tbody.classList.add('is-sorting');
+      /* 受け口は tbody にする。動かしている行そのものを捕まえると、
+         並べ替えでその行が一度DOMから外れたときに指を見失う */
+      try { tbody.setPointerCapture(e.pointerId); } catch (_) { /* 古い端末では省く */ }
+      e.preventDefault();
+    });
+
+    tbody.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      e.preventDefault();
+      for (const tr of rows()) {
+        if (tr === drag) continue;
+        const r = tr.getBoundingClientRect();
+        if (e.clientY >= r.top && e.clientY <= r.bottom) {
+          const mid = r.top + r.height / 2;
+          if (e.clientY < mid) tbody.insertBefore(drag, tr);
+          else tbody.insertBefore(drag, tr.nextSibling);
+          break;
+        }
+      }
+    });
+
+    const end = () => {
+      if (!drag) return;
+      drag.classList.remove('is-dragging');
+      tbody.classList.remove('is-sorting');
+      drag = null;
+      onDone(rows().map((tr) => tr.dataset.pid).filter(Boolean));
+    };
+    tbody.addEventListener('pointerup', end);
+    tbody.addEventListener('pointercancel', end);
+    tbody.addEventListener('lostpointercapture', end);
+  }
+
   /* ---------- オーダー編集 ---------- */
 
   function lineupEditor(team, onDone) {
@@ -261,13 +330,14 @@ const UI = (() => {
         if (!p) return '';
         const options = DATASET_POSITIONS.map((k) =>
           '<option value="' + k + '"' + (k === slot.pos ? ' selected' : '') + '>' + posShort(k) + '</option>').join('');
-        return '<tr data-i="' + i + '">' +
+        return '<tr data-i="' + i + '" data-pid="' + p.id + '">' +
+          '<td class="c grip" aria-hidden="true">≡</td>' +
           '<td class="c ord">' + (i + 1) + '</td>' +
           '<td class="c"><select class="possel" data-i="' + i + '">' + options + '</select></td>' +
           '<td class="nm"><button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
             '<span class="tiny">' + p.grade + '年 ' + handMark(p) + ' ' +
             (slot.pos === 'DH' ? '' : '適性' + p.apt[slot.pos]) + '</span></td>' +
-          '<td class="c tiny">' + rankSpan(p.meet) + rankSpan(p.power) + rankSpan(p.speed) + '</td>' +
+          '<td class="c tiny">' + rankNum(p.meet) + ' ' + rankNum(p.power) + ' ' + rankNum(p.speed) + '</td>' +
           '<td class="c"><button type="button" class="btn btn--tiny up" data-i="' + i + '">▲</button>' +
             '<button type="button" class="btn btn--tiny down" data-i="' + i + '">▼</button></td>' +
           '<td class="c"><button type="button" class="btn btn--tiny swap" data-i="' + i + '">交代</button></td>' +
@@ -282,19 +352,22 @@ const UI = (() => {
       const pitchers = team.rotation.map((id, i) => {
         const p = Team.find(team, id);
         if (!p) return '';
-        return '<tr data-pi="' + i + '"><td class="c ord">' + (i + 1) + '</td>' +
+        return '<tr data-pi="' + i + '" data-pid="' + p.id + '">' +
+          '<td class="c grip" aria-hidden="true">≡</td>' +
+          '<td class="c ord">' + (i + 1) + '</td>' +
           '<td class="nm"><button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
           '<span class="tiny">' + p.grade + '年 ' + p.velo + 'km/h ' + handMark(p) + '</span></td>' +
-          '<td class="c tiny">' + rankSpan(p.control) + rankSpan(p.stamina) + '</td>' +
+          '<td class="c tiny">' + rankNum(p.control) + ' ' + rankNum(p.stamina) + '</td>' +
           '<td class="c"><button type="button" class="btn btn--tiny pup" data-pi="' + i + '">▲</button>' +
           '<button type="button" class="btn btn--tiny pdown" data-pi="' + i + '">▼</button></td></tr>';
       }).join('');
 
       return '<div class="lineup-edit">' +
         '<h3 class="modal__title">オーダー編集</h3>' +
-        '<div class="tablewrap"><table class="lineup"><thead><tr><th>打順</th><th>守備</th><th class="nm">選手</th><th>ミ/パ/走</th><th>順</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+        '<p class="note lineup-hint">左はしの <b>≡</b> をつまんで上下に動かすと、打順を入れ替えられます。</p>' +
+        '<div class="tablewrap"><table class="lineup"><thead><tr><th></th><th>打順</th><th>守備</th><th class="nm">選手</th><th>ミ/パ/走</th><th>順</th><th></th></tr></thead><tbody id="lu-bat">' + rows + '</tbody></table></div>' +
         '<h4 class="sub">投手の起用順<span class="sub__note">上から先発</span></h4>' +
-        '<div class="tablewrap"><table class="lineup"><tbody>' + pitchers + '</tbody></table></div>' +
+        '<div class="tablewrap"><table class="lineup"><tbody id="lu-pit">' + pitchers + '</tbody></table></div>' +
         benchHtml +
         '<div class="actions actions--modal">' +
         '<button type="button" class="btn" id="lu-auto">おまかせ</button>' +
@@ -315,6 +388,24 @@ const UI = (() => {
     }
 
     function wire(body) {
+      /* つまんで並べ替え */
+      const batBody = body.querySelector('#lu-bat');
+      if (batBody) makeSortable(batBody, (order) => {
+        const map = {};
+        team.lineup.forEach((sl) => { map[sl.pid] = sl; });
+        /* 守備位置は打順にくっついて動かない（1番の守備位置はそのまま1番に残る） */
+        const posOrder = team.lineup.map((sl) => sl.pos);
+        team.lineup = order.map((pid, k) => ({ pid, pos: posOrder[k] }));
+        /* 念のため、元の並びに無いIDが混じっていたら組み直す */
+        if (team.lineup.some((sl) => !map[sl.pid])) Team.autoLineup(team);
+        refresh();
+      });
+      const pitBody = body.querySelector('#lu-pit');
+      if (pitBody) makeSortable(pitBody, (order) => {
+        team.rotation = order.slice();
+        refresh();
+      });
+
       body.querySelectorAll('.up').forEach((b) => b.addEventListener('click', () => {
         const i = +b.dataset.i; if (i <= 0) return;
         [team.lineup[i - 1], team.lineup[i]] = [team.lineup[i], team.lineup[i - 1]];
@@ -368,8 +459,8 @@ const UI = (() => {
           ? '<div class="swaplist">' + benchList.map((p) =>
               '<button type="button" class="swapitem" data-pid="' + p.id + '">' +
               '<b>' + esc(p.name) + '</b><span>' + p.grade + '年 ' + posShort(p.pos) + ' ' + handMark(p) + '</span>' +
-              '<span class="tiny">ミ' + rankOf(p.meet) + ' パ' + rankOf(p.power) + ' 走' + rankOf(p.speed) +
-              ' 守' + rankOf(p.field) + '</span></button>').join('') + '</div>'
+              '<span class="tiny">ミ' + rankNum(p.meet) + '　パ' + rankNum(p.power) +
+              '　走' + rankNum(p.speed) + '　守' + rankNum(p.field) + '</span></button>').join('') + '</div>'
           : '<p class="note">控えがいません。</p>') +
         '<div class="actions actions--modal"><button type="button" class="btn" id="sw-back">戻る</button></div>';
       html('modal-body', body);
@@ -397,7 +488,7 @@ const UI = (() => {
   return {
     el, esc, html, show, currentScreen, curtain, modal, closeModal,
     avg, era, ipText, stat, rankSpan, rankNum, aptSpan, pullText, handMark,
-    playerRow, rosterTable, playerDetail, openPlayer, lineupEditor,
+    playerRow, rosterTable, playerDetail, openPlayer, lineupEditor, roleText, makeSortable,
     careerBatLine, careerPitLine, init,
   };
 })();

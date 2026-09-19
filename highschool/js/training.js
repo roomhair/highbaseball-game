@@ -26,10 +26,14 @@ const Training = (() => {
 
   /** 練習カードを1枚引く */
   function draw(team) {
+    /* 当たりはずれの幅はそのまま。大きく伸びるカードも、
+       ほとんど伸びないカードも、これまでどおりの割合で出る。
+       変えたのは「1枚で何人に効くか」と「どれだけ伸びるか」。 */
     const kinds = [
       { key: 'single', weight: 100 },
       { key: 'big',    weight: 14 },
-      { key: 'group',  weight: 26 },
+      { key: 'group',  weight: 40 },
+      { key: 'all',    weight: 9 },
       { key: 'traj',   weight: 7 },
       { key: 'velo',   weight: 16 },
       { key: 'break',  weight: 16 },
@@ -46,7 +50,7 @@ const Training = (() => {
 
     if (kind === 'velo') {
       const p = RNG.pick(pitchers(team));
-      const amount = RNG.range(1, 5);
+      const amount = RNG.range(2, 8);
       return { kind, title: '走り込み', targets: [{ pid: p.id, name: p.name, label: '球速', amount, key: 'velo', unit: 'km/h' }] };
     }
 
@@ -55,7 +59,7 @@ const Training = (() => {
       if (!cand.length) return draw(team);
       const p = RNG.pick(cand);
       const q = RNG.pick(p.pitches.filter((x) => x.level < 7));
-      return { kind, title: '変化球練習', targets: [{ pid: p.id, name: p.name, label: q.name, amount: 1, key: 'pitch', pitch: q.name }] };
+      return { kind, title: '変化球練習', targets: [{ pid: p.id, name: p.name, label: q.name, amount: RNG.range(1, 2), key: 'pitch', pitch: q.name }] };
     }
 
     if (kind === 'newball') {
@@ -66,17 +70,30 @@ const Training = (() => {
       const pool = PITCH_TYPES.filter((t) => !have.has(t.name));
       if (!pool.length) return draw(team);
       const t = RNG.weighted(pool);
-      return { kind, title: '新球習得', targets: [{ pid: p.id, name: p.name, label: t.name, amount: RNG.range(1, 3), key: 'newpitch', pitch: t.name }] };
+      return { kind, title: '新球習得', targets: [{ pid: p.id, name: p.name, label: t.name, amount: RNG.range(2, 4), key: 'newpitch', pitch: t.name }] };
     }
 
     if (kind === 'group') {
       const isPit = RNG.chance(0.3);
-      const pool = RNG.shuffle((isPit ? pitchers(team) : batters(team)).slice()).slice(0, 3);
+      const src = (isPit ? pitchers(team) : batters(team)).slice();
+      const pool = RNG.shuffle(src).slice(0, isPit ? RNG.range(3, 5) : RNG.range(4, 7));
+      const stat = RNG.pick(isPit ? PITCHER_STATS : BATTER_STATS);
+      const amount = RNG.range(2, 5);
+      return {
+        kind, title: isPit ? '投手陣で合同練習' : 'グループ練習',
+        targets: pool.map((p) => ({ pid: p.id, name: p.name, label: stat.label, amount, key: stat.key })),
+      };
+    }
+
+    /* 部員全員に効くカード。1人あたりの伸びは小さいが、人数のぶん効く */
+    if (kind === 'all') {
+      const isPit = RNG.chance(0.3);
+      const src = isPit ? pitchers(team) : batters(team);
       const stat = RNG.pick(isPit ? PITCHER_STATS : BATTER_STATS);
       const amount = RNG.range(1, 3);
       return {
-        kind, title: isPit ? '投手陣で合同練習' : '全体練習',
-        targets: pool.map((p) => ({ pid: p.id, name: p.name, label: stat.label, amount, key: stat.key })),
+        kind, title: isPit ? '投手陣の全体練習' : '野手陣の全体練習',
+        targets: src.map((p) => ({ pid: p.id, name: p.name, label: stat.label, amount, key: stat.key })),
       };
     }
 
@@ -84,7 +101,7 @@ const Training = (() => {
     const isPit = RNG.chance(0.35);
     const p = RNG.pick(isPit ? pitchers(team) : batters(team));
     const stat = RNG.pick(isPit ? PITCHER_STATS : BATTER_STATS);
-    const amount = kind === 'big' ? RNG.range(6, 10) : RNG.range(1, 4);
+    const amount = kind === 'big' ? RNG.range(10, 16) : RNG.range(2, 7);
     return {
       kind,
       title: kind === 'big' ? '猛特訓' : '個人練習',

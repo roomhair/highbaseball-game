@@ -13,6 +13,9 @@
 const Game = (() => {
 
   let state = null;
+  /* 試合の中身は保存しない（大きいので）。勝敗画面から成績画面までのあいだ、
+     ここに置いておくだけ */
+  let lastSim = null;
 
   /* ---------- 状態 ---------- */
 
@@ -193,24 +196,48 @@ const Game = (() => {
     Growth.commitStats(state.team);
     Growth.commitStats(state.opponent);
 
+    /* 成長画面で「誰が」を分かりやすくするため、いまの役割も添えておく */
+    report.forEach((r) => {
+      const p = Team.find(state.team, r.pid);
+      r.role = p ? UI.roleText(state.team, p) : '';
+    });
+
     state.tour.games++;
     state.tour.runsFor += my.runs;
     state.tour.runsAgainst += op.runs;
-    state.lastResult = { win, myRuns: my.runs, opRuns: op.runs, round: round.name };
+    state.lastResult = {
+      win, myRuns: my.runs, opRuns: op.runs, round: round.name,
+      oppName: state.opponent.name, tourName: tourLabel(),
+      cold: res.cold, walkoff: ctx.walkoff,
+      last: state.tour.index >= state.tour.rounds.length - 1,
+    };
+    state.lastReport = report;
 
+    lastSim = { res, meta: { mySide: state.mySide, roundName: round.name, tourLabel: tourLabel(), report } };
+
+    state.phase = 'verdict';
+    save();
+    Screens.verdict(state);
+  }
+
+  function toGrowth() {
+    state.phase = 'growth';
+    save();
+    Screens.growth(state);
+  }
+
+  function toResult() {
+    if (!lastSim) { afterResult(); return; }
     state.phase = 'result';
     save();
-
+    const r = state.lastResult;
     const btn = UI.el('btn-result-next');
-    btn.textContent = win
-      ? (state.tour.index >= state.tour.rounds.length - 1
+    btn.textContent = r.win
+      ? (r.last
           ? (state.tour.kind === 'local' ? state.settings.nationalName + 'へ' : '優勝！')
           : '引き抜きへ')
       : 'オフシーズンへ';
-
-    GameScreen.result(state, res, {
-      mySide: state.mySide, roundName: round.name, tourLabel: tourLabel(), report,
-    });
+    GameScreen.result(state, lastSim.res, lastSim.meta);
   }
 
   function afterResult() {
@@ -223,7 +250,6 @@ const Game = (() => {
   function toPoach() {
     state.phase = 'poach';
     save();
-    UI.el('btn-poach-skip').textContent = '引き抜かない';
     Screens.poachWin(state,
       (p) => {
         Screens.poachRelease(state, p,
@@ -247,8 +273,10 @@ const Game = (() => {
     state.tour.index++;
     state.opponent = null;
     if (state.tour.index >= state.tour.rounds.length) { finishTournament(true); return; }
+    /* いきなり試合前の画面に行かず、次に誰と当たるのかを一度見せる */
+    state.phase = 'nextup';
     save();
-    toPregame();
+    Screens.nextUp(state);
   }
 
   /* ---------- 大会の終わり ---------- */
@@ -371,10 +399,11 @@ const Game = (() => {
       case 'training-result': Screens.trainingResult(state, '地方大会へ'); break;
       case 'opening': Screens.opening(state); break;
       case 'pregame': case 'game': Screens.pregame(state); break;
-      /* 結果画面そのものは残していないので、その次の処理から続ける */
-      case 'result':
+      /* 試合の中身は保存していないので、その次の処理から続ける */
+      case 'verdict': case 'growth': case 'result':
         if (state.lastResult && state.lastResult.win) toPoach(); else lose();
         break;
+      case 'nextup': Screens.nextUp(state); break;
       case 'poach': toPoach(); break;
       case 'champion': Screens.champion(state); break;
       case 'offseason':
@@ -462,6 +491,12 @@ const Game = (() => {
     on('btn-open-lineup', () => UI.lineupEditor(state.team, () => { save(); Screens.opening(state); }));
 
     on('btn-play', playGame);
+    on('btn-verdict-next', toGrowth);
+    on('btn-growth-next', toResult);
+    const nextup = UI.el('screen-nextup');
+    if (nextup) nextup.addEventListener('click', () => {
+      if (state && state.phase === 'nextup') toPregame();
+    });
     on('btn-pregame-lineup', () => UI.lineupEditor(state.team, () => { save(); Screens.pregame(state); }));
 
     on('btn-skip', () => GameScreen.skip());
