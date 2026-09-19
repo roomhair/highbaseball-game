@@ -140,7 +140,13 @@ const Game = (() => {
        チームが強くなればそのぶん勝ち上がれる。
        年ごとに少しだけゆらぎを入れて、当たり年・外れ年を作る */
     const F = CONFIG.FIELD;
-    const j = 1 + (Math.random() * 2 - 1) * F.yearJitter;
+    let j = 1 + (Math.random() * 2 - 1) * F.yearJitter;
+    /* まれに顔ぶれが大きく変わる。手薄な年に当たれば、
+       まだ力の足りないチームにも勝ち上がる目が出る */
+    if (RNG.chance(F.oddYear)) {
+      const r = RNG.chance(0.5) ? F.weakYear : F.strongYear;
+      j = r[0] + Math.random() * (r[1] - r[0]);
+    }
     let from, to;
     if (kind === 'local') {
       from = F.local.from * j;

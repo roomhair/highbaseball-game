@@ -103,15 +103,19 @@ const Sim = (() => {
    * 練習試合ぶんの通算成績も resolveVs を通して作るので、
    * 「通算成績の割に打たない」ということが起きない。
    */
-  function resolvePA(bat, pit, defTeam, defRating, fatigue, defenders) {
-    const stuff = stuffOf(pit) * (1 - 0.22 * fatigue);
-    const ctrl = (pit.control / 100) * (1 - 0.28 * fatigue);
-    return resolveVs(bat, stuff, ctrl, defRating, defenders);
+  function resolvePA(bat, pit, defTeam, defRating, fatigue, defenders, offForm, defForm) {
+    const d = 1 - (defForm || 0) / 130;
+    const stuff = C(stuffOf(pit) * (1 - 0.22 * fatigue) * d, 0, 1);
+    const ctrl = C((pit.control / 100) * (1 - 0.28 * fatigue) * d, 0, 1);
+    return resolveVs(bat, stuff, ctrl, defRating, defenders, offForm);
   }
 
-  function resolveVs(bat, stuff, ctrl, defRating, defenders) {
-    const contact = bat.meet / 100;
-    const pw = bat.power / 100;
+  function resolveVs(bat, stuff, ctrl, defRating, defenders, form) {
+    /* その日の調子。ふだんは小さいが、まれに「今日は打てる」日がある。
+       これがあるおかげで、力の差がある相手にもたまに勝てる */
+    const f = form || 0;
+    const contact = C((bat.meet + f) / 100, 0.02, 1);
+    const pw = C((bat.power + f) / 100, 0.02, 1);
 
     /* 三振・四球・死球 */
     const pK = C(0.150 + 0.36 * (stuff - contact), 0.02, 0.55);
@@ -193,11 +197,17 @@ const Sim = (() => {
 
   /* ---------- 試合を組み立てる ---------- */
 
+  /** その試合のチームの調子。20回に1回ほど、大きく振れる日がある */
+  function rollForm() {
+    return RNG.chance(0.05) ? RNG.norm(0, 11) : RNG.norm(0, 3.5);
+  }
+
   function sideState(team, isHome) {
     Team.repair(team);
     const rot = team.rotation.slice();
     return {
       team, isHome,
+      form: rollForm(),
       order: 0,
       runs: 0, hits: 0, errors: 0, lob: 0,
       byInning: [],
@@ -362,7 +372,7 @@ const Sim = (() => {
       const fatigue = Math.max(0, (def.bf - capacityOf(pit)) / 18);
       const defenders = Team.defenders(defTeam, def.pitcherId);
       const defRating = defenseOf(defTeam, def.pitcherId);
-      const res = resolvePA(bat, pit, defTeam, defRating, fatigue, defenders);
+      const res = resolvePA(bat, pit, defTeam, defRating, fatigue, defenders, off.form, def.form);
       res.slotIndex = slotIndex;
 
       def.bf++;
