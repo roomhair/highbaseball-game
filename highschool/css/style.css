@@ -456,18 +456,56 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .tourstat p { margin: 4px 0; font-size: 13px; }
 .tourstat b { font-size: 17px; }
 
-/* 打順の並べ替え。取っ手だけ touch-action を切って、
-   ほかの場所では今までどおり画面をスクロールできるようにする */
-.lineup-hint { margin: 0 0 4px; font-size: 11.5px; }
-.lineup-hint b { font-size: 14px; }
-td.grip {
-  touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
-  color: var(--ink-faint); font-size: 15px; width: 1.8em; padding-left: 2px; padding-right: 2px;
+/* ===== オーダー編集 =====
+   野手13人をひとつづきの並びで出す。取っ手をつまむと行が指について動く。
+   取っ手だけ touch-action を切ってあるので、ほかの場所では今までどおり
+   画面をスクロールできる。 */
+.lineup-hint { margin: 0 0 10px; font-size: 12px; line-height: 1.7; }
+.lulist { list-style: none; margin: 0 0 4px; padding: 0; }
+.lurow {
+  display: grid;
+  grid-template-columns: 38px 2.4em 3.2em 1fr auto;
+  grid-template-areas: "grip no pos main arrow" ". . . stats stats";
+  align-items: center; gap: 0 6px;
+  padding: 4px 4px 4px 0; border-bottom: 1px solid var(--line-soft);
+  background: var(--bg);
 }
-td.grip:active { cursor: grabbing; }
-tbody.is-sorting tr { transition: none; }
-tr.is-dragging { background: var(--bg-2); opacity: .85; }
-tr.is-dragging td.grip { color: var(--accent); }
+.lurow.is-bench { background: var(--bg-2); }
+.lurow.is-bench .luno { color: var(--ink-faint); font-size: 11px; }
+/* つまんでいる行。浮かせて、いま動かしているのが分かるようにする */
+.lurow.is-dragging {
+  position: relative; z-index: 3;
+  background: var(--panel);
+  box-shadow: 0 8px 22px rgba(20, 18, 12, .28);
+  border-radius: 4px; border-bottom-color: transparent;
+}
+:root[data-theme="dark"] .lurow.is-dragging { box-shadow: 0 8px 22px rgba(0, 0, 0, .6); }
+.lulist.is-sorting { cursor: grabbing; }
+.lulist.is-sorting .lurow:not(.is-dragging) { transition: none; }
+
+/* 取っ手。指でつまめるよう、行の高さいっぱいに広くとる */
+.lugrip {
+  grid-area: grip;
+  display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 3px;
+  align-self: stretch; min-height: 42px;
+  touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
+  border-right: 1px solid var(--line-soft); background: var(--bg-2); border-radius: 3px 0 0 3px;
+}
+.lugrip i { display: block; width: 16px; height: 2px; border-radius: 1px; background: var(--ink-faint); }
+.lugrip:active { cursor: grabbing; }
+.lurow.is-dragging .lugrip { background: var(--accent); }
+.lurow.is-dragging .lugrip i { background: var(--accent-ink); }
+
+.luno { grid-area: no; text-align: center; font-size: 15px; font-weight: 800; }
+.luno--wide { font-size: 11.5px; font-weight: 700; letter-spacing: .04em; }
+.lupos { grid-area: pos; }
+.lupos__bench { display: block; text-align: center; font-size: 12px; color: var(--ink-faint); }
+.lumain { grid-area: main; min-width: 0; display: grid; }
+.lumain .pname { text-align: left; font-size: 14px; }
+.lumain .tiny { display: block; }
+.lustats { grid-area: stats; font-size: 11px; color: var(--ink-mute); padding: 1px 0 2px; }
+.luarrow { grid-area: arrow; display: flex; flex-direction: column; gap: 2px; }
+.luarrow .btn--tiny { min-height: 20px; padding: 0 6px; font-size: 10px; }
 
 /* ===== 勝敗の画面 ===== */
 .verdict { padding: 36px 0 12px; text-align: center; }

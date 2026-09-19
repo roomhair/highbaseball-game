@@ -168,11 +168,11 @@ const Screens = (() => {
   function trainingResult(state, nextLabel) {
     const rows = Training.summarize(state.training);
     const html = rows.length
-      ? '<div class="tablewrap"><table class="growth"><thead><tr><th class="nm">選手</th><th>年</th><th>項目</th><th>変化</th></tr></thead><tbody>' +
+      ? '<div class="tablewrap"><table class="growth"><thead><tr><th class="nm">選手</th><th>年</th><th>項目</th><th>上がり幅</th><th>変化</th></tr></thead><tbody>' +
         rows.map((r) => '<tr><td class="nm">' + esc(r.name) + '</td><td class="c">' + r.grade + '</td>' +
           '<td>' + esc(r.label) + '</td>' +
-          '<td class="c up">' + r.before + ' → <b>' + r.after + '</b>' + (r.unit ? esc(r.unit) : '') +
-          ' <i>(+' + r.amount + ')</i></td></tr>').join('') +
+          '<td class="c up"><b class="gr__up">+' + r.amount + (r.unit ? esc(r.unit) : '') + '</b></td>' +
+          '<td class="c">' + upText(r) + '</td></tr>').join('') +
         '</tbody></table></div>'
       : '<p class="note">今回は伸びた選手がいませんでした。</p>';
     UI.html('train-result', html);
@@ -235,7 +235,11 @@ const Screens = (() => {
 
   /* ---------- 試合後の成長 ---------- */
 
+  /** 「いくつ上がって、いくつになったか」。能力なら評価の文字も添える */
   function upText(u) {
+    if (u.key === 'newpitch') {
+      return '<span class="gr__to">習得（' + u.after + '）</span>';
+    }
     if (u.key === 'velo') {
       return '<span class="gr__from">' + u.before + '</span>→<span class="gr__to">' + u.after + '</span>km/h';
     }

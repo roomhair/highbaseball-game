@@ -30,14 +30,14 @@ const Training = (() => {
        ほとんど伸びないカードも、これまでどおりの割合で出る。
        変えたのは「1枚で何人に効くか」と「どれだけ伸びるか」。 */
     const kinds = [
-      { key: 'single', weight: 100 },
-      { key: 'big',    weight: 14 },
-      { key: 'group',  weight: 40 },
-      { key: 'all',    weight: 9 },
-      { key: 'traj',   weight: 7 },
-      { key: 'velo',   weight: 16 },
-      { key: 'break',  weight: 16 },
-      { key: 'newball', weight: 6 },
+      { key: 'single', weight: 30 },
+      { key: 'big',    weight: 9 },
+      { key: 'group',  weight: 85 },
+      { key: 'all',    weight: 15 },
+      { key: 'traj',   weight: 5 },
+      { key: 'velo',   weight: 14 },
+      { key: 'break',  weight: 14 },
+      { key: 'newball', weight: 5 },
     ];
     const kind = RNG.weighted(kinds).key;
 
@@ -49,17 +49,27 @@ const Training = (() => {
     }
 
     if (kind === 'velo') {
-      const p = RNG.pick(pitchers(team));
+      /* 何人かで走り込むこともある */
+      const pool = RNG.shuffle(pitchers(team).slice()).slice(0, RNG.range(1, 3));
       const amount = RNG.range(2, 8);
-      return { kind, title: '走り込み', targets: [{ pid: p.id, name: p.name, label: '球速', amount, key: 'velo', unit: 'km/h' }] };
+      return {
+        kind, title: pool.length > 1 ? '合同で走り込み' : '走り込み',
+        targets: pool.map((p) => ({ pid: p.id, name: p.name, label: '球速', amount, key: 'velo', unit: 'km/h' })),
+      };
     }
 
     if (kind === 'break') {
       const cand = pitchers(team).filter((p) => p.pitches.some((q) => q.level < 7));
       if (!cand.length) return draw(team);
-      const p = RNG.pick(cand);
-      const q = RNG.pick(p.pitches.filter((x) => x.level < 7));
-      return { kind, title: '変化球練習', targets: [{ pid: p.id, name: p.name, label: q.name, amount: RNG.range(1, 2), key: 'pitch', pitch: q.name }] };
+      const pool = RNG.shuffle(cand.slice()).slice(0, RNG.range(1, 2));
+      const amount = RNG.range(1, 2);
+      return {
+        kind, title: '変化球練習',
+        targets: pool.map((p) => {
+          const q = RNG.pick(p.pitches.filter((x) => x.level < 7));
+          return { pid: p.id, name: p.name, label: q.name, amount, key: 'pitch', pitch: q.name };
+        }),
+      };
     }
 
     if (kind === 'newball') {

@@ -351,7 +351,7 @@ const Game = (() => {
     Screens.pick({
       title: '新入生（野手）',
       lead: state.need.bat + '人ひと組の候補が5つ。入部させる組を選んでください。',
-      setLabel: '候補', pickLabel: 'この新入生を迎える',
+      setLabel: '候補', pickLabel: 'この新入生たちを迎える',
       sets: state.sets.list,
       onSelect(i) {
         Offseason.enroll(state.team, state.sets.list[i]);
@@ -370,7 +370,7 @@ const Game = (() => {
     Screens.pick({
       title: '新入生（投手）',
       lead: state.need.pit + '人ひと組の候補が5つ。入部させる組を選んでください。',
-      setLabel: '候補', pickLabel: 'この新入生を迎える',
+      setLabel: '候補', pickLabel: 'この新入生たちを迎える',
       sets: state.sets.list,
       onSelect(i) {
         Offseason.enroll(state.team, state.sets.list[i]);

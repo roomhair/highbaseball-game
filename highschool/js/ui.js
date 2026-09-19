@@ -270,116 +270,224 @@ const UI = (() => {
   }
 
   /* ---------- 並べ替え（指でもマウスでも） ----------
-     行の左はしの「≡」をつまんで上下に動かすと、その場で順番が変わる。
-     行全体をつまめるようにすると画面のスクロールができなくなるので、
-     つまめるのはこの取っ手だけにしてある。 */
+     行の左はしの取っ手をつまむと、その行が指について動く。
+     動かしているあいだ、すれ違った行とその場で入れ替わる。
+     つまめるのは取っ手だけ。行全体をつまめるようにすると
+     画面のスクロールができなくなってしまう。 */
 
-  function makeSortable(tbody, onDone) {
-    let drag = null;
-    const rows = () => Array.from(tbody.querySelectorAll('tr'));
+  function makeSortable(list, opt) {
+    let drag = null;      // いま動かしている行
+    let grabY = 0;        // 行の上はしから指までの距離
+    let lastY = 0;        // いちばん新しい指の位置
+    let raf = 0;
 
-    tbody.addEventListener('pointerdown', (e) => {
-      const grip = e.target.closest('.grip');
+    /* 入れ替えや自動スクロールで行の位置が動いても、
+       指の下から離れないように毎回置き直す */
+    function place() {
+      if (!drag) return;
+      drag.style.transform = '';
+      const nat = drag.getBoundingClientRect();
+      drag.style.transform = 'translateY(' + ((lastY - grabY) - nat.top) + 'px)';
+    }
+
+    /* 見た目のまん中が隣の行のまん中を越えたら、その場で入れ替える */
+    function reorder() {
+      if (!drag) return;
+      for (let guard = 0; guard < 24; guard++) {
+        const r = drag.getBoundingClientRect();
+        const mid = r.top + r.height / 2;
+        const next = drag.nextElementSibling;
+        const prev = drag.previousElementSibling;
+        if (next) {
+          const nr = next.getBoundingClientRect();
+          if (mid > nr.top + nr.height / 2) {
+            list.insertBefore(next, drag);
+            place();
+            if (opt.onMove) opt.onMove(list);
+            continue;
+          }
+        }
+        if (prev) {
+          const pr = prev.getBoundingClientRect();
+          if (mid < pr.top + pr.height / 2) {
+            list.insertBefore(drag, prev);
+            place();
+            if (opt.onMove) opt.onMove(list);
+            continue;
+          }
+        }
+        break;
+      }
+    }
+
+    /** スクロールする入れ物（ふきだしの中身など）を探す */
+    function scrollerOf(node) {
+      for (let n = node.parentElement; n; n = n.parentElement) {
+        const ov = getComputedStyle(n).overflowY;
+        if ((ov === 'auto' || ov === 'scroll') && n.scrollHeight > n.clientHeight + 2) return n;
+      }
+      return null;
+    }
+    const scroller = scrollerOf(list);
+
+    /* 上や下のはしまで持っていくと、ひとりでにスクロールする。
+       これが無いと、控えの選手をいちばん上まで持ち上げられない */
+    function tick() {
+      if (!drag) { raf = 0; return; }
+      const box = scroller
+        ? scroller.getBoundingClientRect()
+        : { top: 0, bottom: window.innerHeight };
+      const margin = 64;
+      let dir = 0;
+      if (lastY < box.top + margin) dir = -1;
+      else if (lastY > box.bottom - margin) dir = 1;
+      if (dir) {
+        if (scroller) scroller.scrollTop += dir * 14;
+        else window.scrollBy(0, dir * 14);
+        place();
+        reorder();
+      }
+      raf = requestAnimationFrame(tick);
+    }
+
+    list.addEventListener('pointerdown', (e) => {
+      const grip = e.target.closest('.lugrip');
       if (!grip) return;
-      const tr = grip.closest('tr');
-      if (!tr) return;
-      drag = tr;
-      tr.classList.add('is-dragging');
-      tbody.classList.add('is-sorting');
-      /* 受け口は tbody にする。動かしている行そのものを捕まえると、
-         並べ替えでその行が一度DOMから外れたときに指を見失う */
-      try { tbody.setPointerCapture(e.pointerId); } catch (_) { /* 古い端末では省く */ }
+      const row = grip.closest('.lurow');
+      if (!row) return;
+      drag = row;
+      lastY = e.clientY;
+      grabY = e.clientY - row.getBoundingClientRect().top;
+      row.classList.add('is-dragging');
+      list.classList.add('is-sorting');
+      place();
+      try { list.setPointerCapture(e.pointerId); } catch (_) { /* 古い端末では省く */ }
+      if (!raf) raf = requestAnimationFrame(tick);
       e.preventDefault();
     });
 
-    tbody.addEventListener('pointermove', (e) => {
+    list.addEventListener('pointermove', (e) => {
       if (!drag) return;
       e.preventDefault();
-      for (const tr of rows()) {
-        if (tr === drag) continue;
-        const r = tr.getBoundingClientRect();
-        if (e.clientY >= r.top && e.clientY <= r.bottom) {
-          const mid = r.top + r.height / 2;
-          if (e.clientY < mid) tbody.insertBefore(drag, tr);
-          else tbody.insertBefore(drag, tr.nextSibling);
-          break;
-        }
-      }
+      lastY = e.clientY;
+      place();
+      reorder();
     });
 
     const end = () => {
       if (!drag) return;
+      drag.style.transform = '';
       drag.classList.remove('is-dragging');
-      tbody.classList.remove('is-sorting');
+      list.classList.remove('is-sorting');
       drag = null;
-      onDone(rows().map((tr) => tr.dataset.pid).filter(Boolean));
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      if (opt.onDone) {
+        opt.onDone(Array.from(list.children).map((n) => n.dataset.pid).filter(Boolean));
+      }
     };
-    tbody.addEventListener('pointerup', end);
-    tbody.addEventListener('pointercancel', end);
-    tbody.addEventListener('lostpointercapture', end);
+    list.addEventListener('pointerup', end);
+    list.addEventListener('pointercancel', end);
   }
 
-  /* ---------- オーダー編集 ---------- */
+  /* ---------- オーダー編集 ----------
+     野手13人をひとつづきの並びで出す。上から9人がスタメンで、
+     残りが控え。控えの選手を上に持ち上げれば、そのままスタメンに入る。
+     （だから「交代」のボタンはいらない） */
 
   function lineupEditor(team, onDone) {
-    let selected = null;
+
+    /* 打順の位置に守備位置がくっついている。選手が入れ替わっても
+       1番の守備位置は1番に残る */
+    let posOrder = team.lineup.map((sl) => sl.pos);
+
+    function batterIds() {
+      const inLine = team.lineup.map((sl) => sl.pid);
+      const bench = team.batters.filter((p) => inLine.indexOf(p.id) < 0).map((p) => p.id);
+      return inLine.concat(bench);
+    }
+
+    function batRow(pid, i) {
+      const p = Team.find(team, pid);
+      if (!p) return '';
+      const bench = i >= 9;
+      const pos = bench ? null : posOrder[i];
+      const options = DATASET_POSITIONS.map((k) =>
+        '<option value="' + k + '"' + (k === pos ? ' selected' : '') + '>' + posShort(k) + '</option>').join('');
+      return '<li class="lurow' + (bench ? ' is-bench' : '') + '" data-pid="' + p.id + '">' +
+        '<span class="lugrip" aria-hidden="true"><i></i><i></i><i></i></span>' +
+        '<span class="luno">' + (bench ? '控' : (i + 1)) + '</span>' +
+        '<span class="lupos">' +
+          (bench ? '<span class="lupos__bench">' + posShort(p.pos) + '</span>'
+                 : '<select class="possel" data-i="' + i + '">' + options + '</select>') +
+        '</span>' +
+        '<span class="lumain">' +
+          '<button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
+          '<span class="tiny">' + p.grade + '年 ' + handMark(p) +
+            (bench || pos === 'DH' ? '' : '　適性' + p.apt[pos]) + '</span>' +
+        '</span>' +
+        '<span class="lustats">ミ' + rankNum(p.meet) + '　パ' + rankNum(p.power) +
+          '　走' + rankNum(p.speed) + '　守' + rankNum(p.field) + '</span>' +
+        '<span class="luarrow">' +
+          '<button type="button" class="btn btn--tiny up" data-i="' + i + '">▲</button>' +
+          '<button type="button" class="btn btn--tiny down" data-i="' + i + '">▼</button>' +
+        '</span>' +
+      '</li>';
+    }
+
+    function pitRow(pid, i) {
+      const p = Team.find(team, pid);
+      if (!p) return '';
+      return '<li class="lurow" data-pid="' + p.id + '">' +
+        '<span class="lugrip" aria-hidden="true"><i></i><i></i><i></i></span>' +
+        '<span class="luno luno--wide">' + (i === 0 ? '先発' : (i + 1) + '番手') + '</span>' +
+        '<span class="lumain">' +
+          '<button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
+          '<span class="tiny">' + p.grade + '年 ' + p.velo + 'km/h ' + handMark(p) + '</span>' +
+        '</span>' +
+        '<span class="lustats">制' + rankNum(p.control) + '　ス' + rankNum(p.stamina) + '</span>' +
+        '<span class="luarrow">' +
+          '<button type="button" class="btn btn--tiny pup" data-i="' + i + '">▲</button>' +
+          '<button type="button" class="btn btn--tiny pdown" data-i="' + i + '">▼</button>' +
+        '</span>' +
+      '</li>';
+    }
 
     function render() {
-      const rows = team.lineup.map((slot, i) => {
-        const p = Team.find(team, slot.pid);
-        if (!p) return '';
-        const options = DATASET_POSITIONS.map((k) =>
-          '<option value="' + k + '"' + (k === slot.pos ? ' selected' : '') + '>' + posShort(k) + '</option>').join('');
-        return '<tr data-i="' + i + '" data-pid="' + p.id + '">' +
-          '<td class="c grip" aria-hidden="true">≡</td>' +
-          '<td class="c ord">' + (i + 1) + '</td>' +
-          '<td class="c"><select class="possel" data-i="' + i + '">' + options + '</select></td>' +
-          '<td class="nm"><button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
-            '<span class="tiny">' + p.grade + '年 ' + handMark(p) + ' ' +
-            (slot.pos === 'DH' ? '' : '適性' + p.apt[slot.pos]) + '</span></td>' +
-          '<td class="c tiny">' + rankNum(p.meet) + ' ' + rankNum(p.power) + ' ' + rankNum(p.speed) + '</td>' +
-          '<td class="c"><button type="button" class="btn btn--tiny up" data-i="' + i + '">▲</button>' +
-            '<button type="button" class="btn btn--tiny down" data-i="' + i + '">▼</button></td>' +
-          '<td class="c"><button type="button" class="btn btn--tiny swap" data-i="' + i + '">交代</button></td>' +
-          '</tr>';
-      }).join('');
-
-      const benchList = Team.bench(team);
-      const benchHtml = benchList.length
-        ? '<h4 class="sub">控え</h4>' + UI.rosterTable(benchList)
-        : '';
-
-      const pitchers = team.rotation.map((id, i) => {
-        const p = Team.find(team, id);
-        if (!p) return '';
-        return '<tr data-pi="' + i + '" data-pid="' + p.id + '">' +
-          '<td class="c grip" aria-hidden="true">≡</td>' +
-          '<td class="c ord">' + (i + 1) + '</td>' +
-          '<td class="nm"><button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
-          '<span class="tiny">' + p.grade + '年 ' + p.velo + 'km/h ' + handMark(p) + '</span></td>' +
-          '<td class="c tiny">' + rankNum(p.control) + ' ' + rankNum(p.stamina) + '</td>' +
-          '<td class="c"><button type="button" class="btn btn--tiny pup" data-pi="' + i + '">▲</button>' +
-          '<button type="button" class="btn btn--tiny pdown" data-pi="' + i + '">▼</button></td></tr>';
-      }).join('');
-
       return '<div class="lineup-edit">' +
         '<h3 class="modal__title">オーダー編集</h3>' +
-        '<p class="note lineup-hint">左はしの <b>≡</b> をつまんで上下に動かすと、打順を入れ替えられます。</p>' +
-        '<div class="tablewrap"><table class="lineup"><thead><tr><th></th><th>打順</th><th>守備</th><th class="nm">選手</th><th>ミ/パ/走</th><th>順</th><th></th></tr></thead><tbody id="lu-bat">' + rows + '</tbody></table></div>' +
+        '<p class="note lineup-hint">左はしの取っ手をつまんで上下に動かすと、並べ替えられます。' +
+          '<b>上の9人がスタメン</b>、残りが控えです。控えの選手を上に持ち上げれば、そのまま出場します。</p>' +
+        '<ul class="lulist" id="lu-bat">' + batterIds().map(batRow).join('') + '</ul>' +
         '<h4 class="sub">投手の起用順<span class="sub__note">上から先発</span></h4>' +
-        '<div class="tablewrap"><table class="lineup"><tbody id="lu-pit">' + pitchers + '</tbody></table></div>' +
-        benchHtml +
+        '<ul class="lulist" id="lu-pit">' + team.rotation.map(pitRow).join('') + '</ul>' +
         '<div class="actions actions--modal">' +
         '<button type="button" class="btn" id="lu-auto">おまかせ</button>' +
         '<button type="button" class="btn btn--primary" id="lu-done">決定</button>' +
         '</div></div>';
     }
 
-    function open() {
-      modal(render(), {
-        kind: 'lineup',
-        onOpen(body) { wire(body); },
+    /* 動かしているあいだ、番号と守備位置の表示だけ付け替える */
+    function relabel(list) {
+      Array.from(list.children).forEach((li, i) => {
+        const no = li.querySelector('.luno');
+        if (!no) return;
+        if (list.id === 'lu-pit') { no.textContent = i === 0 ? '先発' : (i + 1) + '番手'; return; }
+        const bench = i >= 9;
+        li.classList.toggle('is-bench', bench);
+        no.textContent = bench ? '控' : (i + 1);
+        const sel = li.querySelector('.possel');
+        if (sel && !bench) sel.value = posOrder[i];
       });
+    }
+
+    function applyBatters(order) {
+      team.lineup = order.slice(0, 9).map((pid, k) => ({ pid, pos: posOrder[k] }));
+      /* 控えも並べた順に持っておく（次に開いたときも同じ並びで出す） */
+      const byId = {};
+      team.batters.forEach((p) => { byId[p.id] = p; });
+      team.batters = order.map((pid) => byId[pid]).filter(Boolean)
+        .concat(team.batters.filter((p) => order.indexOf(p.id) < 0));
+      refresh();
     }
 
     function refresh() {
@@ -388,91 +496,69 @@ const UI = (() => {
     }
 
     function wire(body) {
-      /* つまんで並べ替え */
-      const batBody = body.querySelector('#lu-bat');
-      if (batBody) makeSortable(batBody, (order) => {
-        const map = {};
-        team.lineup.forEach((sl) => { map[sl.pid] = sl; });
-        /* 守備位置は打順にくっついて動かない（1番の守備位置はそのまま1番に残る） */
-        const posOrder = team.lineup.map((sl) => sl.pos);
-        team.lineup = order.map((pid, k) => ({ pid, pos: posOrder[k] }));
-        /* 念のため、元の並びに無いIDが混じっていたら組み直す */
-        if (team.lineup.some((sl) => !map[sl.pid])) Team.autoLineup(team);
-        refresh();
-      });
-      const pitBody = body.querySelector('#lu-pit');
-      if (pitBody) makeSortable(pitBody, (order) => {
-        team.rotation = order.slice();
-        refresh();
+      const bat = body.querySelector('#lu-bat');
+      if (bat) makeSortable(bat, { onMove: relabel, onDone: applyBatters });
+      const pit = body.querySelector('#lu-pit');
+      if (pit) makeSortable(pit, {
+        onMove: relabel,
+        onDone: (order) => { team.rotation = order.slice(); refresh(); },
       });
 
+      const move = (list, i, d) => {
+        const j = i + d;
+        if (j < 0 || j >= list.length) return null;
+        const next = list.slice();
+        [next[i], next[j]] = [next[j], next[i]];
+        return next;
+      };
       body.querySelectorAll('.up').forEach((b) => b.addEventListener('click', () => {
-        const i = +b.dataset.i; if (i <= 0) return;
-        [team.lineup[i - 1], team.lineup[i]] = [team.lineup[i], team.lineup[i - 1]];
-        refresh();
+        const next = move(batterIds(), +b.dataset.i, -1);
+        if (next) applyBatters(next);
       }));
       body.querySelectorAll('.down').forEach((b) => b.addEventListener('click', () => {
-        const i = +b.dataset.i; if (i >= team.lineup.length - 1) return;
-        [team.lineup[i + 1], team.lineup[i]] = [team.lineup[i], team.lineup[i + 1]];
-        refresh();
+        const next = move(batterIds(), +b.dataset.i, 1);
+        if (next) applyBatters(next);
       }));
       body.querySelectorAll('.pup').forEach((b) => b.addEventListener('click', () => {
-        const i = +b.dataset.pi; if (i <= 0) return;
-        [team.rotation[i - 1], team.rotation[i]] = [team.rotation[i], team.rotation[i - 1]];
-        refresh();
+        const next = move(team.rotation, +b.dataset.i, -1);
+        if (next) { team.rotation = next; refresh(); }
       }));
       body.querySelectorAll('.pdown').forEach((b) => b.addEventListener('click', () => {
-        const i = +b.dataset.pi; if (i >= team.rotation.length - 1) return;
-        [team.rotation[i + 1], team.rotation[i]] = [team.rotation[i], team.rotation[i + 1]];
-        refresh();
+        const next = move(team.rotation, +b.dataset.i, 1);
+        if (next) { team.rotation = next; refresh(); }
       }));
+
       body.querySelectorAll('.possel').forEach((sel) => sel.addEventListener('change', () => {
         const i = +sel.dataset.i;
         const next = sel.value;
-        /* 同じ守備位置が2人にならないよう、持っていた選手と入れ替える */
-        const other = team.lineup.findIndex((s, k) => k !== i && s.pos === next);
-        if (other >= 0) team.lineup[other].pos = team.lineup[i].pos;
-        team.lineup[i].pos = next;
+        /* 同じ守備位置が2人にならないよう、持っていた打順と入れ替える */
+        const other = posOrder.findIndex((v, k) => k !== i && v === next);
+        if (other >= 0) posOrder[other] = posOrder[i];
+        posOrder[i] = next;
+        team.lineup = team.lineup.map((sl, k) => ({ pid: sl.pid, pos: posOrder[k] }));
         refresh();
       }));
-      body.querySelectorAll('.swap').forEach((b) => b.addEventListener('click', () => {
-        const i = +b.dataset.i;
-        openSwap(i);
-      }));
+
       body.querySelectorAll('.pname').forEach((b) => b.addEventListener('click', () => {
         const p = Team.find(team, b.dataset.pid);
         if (!p) return;
-        openPlayer(p, { onRename: () => { /* 名前はそのまま反映される */ } });
+        openPlayer(p);
         closeModal.after = () => refresh();
       }));
+
       const auto = body.querySelector('#lu-auto');
-      if (auto) auto.addEventListener('click', () => { Team.autoLineup(team); refresh(); });
-      const done = body.querySelector('#lu-done');
-      if (done) done.addEventListener('click', () => { closeModal.after = null; closeModal(); if (onDone) onDone(); });
-    }
-
-    function openSwap(i) {
-      const benchList = Team.bench(team);
-      const cur = Team.find(team, team.lineup[i].pid);
-      const body = '<h3 class="modal__title">' + (i + 1) + '番・' + esc(cur ? cur.name : '') + ' と交代</h3>' +
-        (benchList.length
-          ? '<div class="swaplist">' + benchList.map((p) =>
-              '<button type="button" class="swapitem" data-pid="' + p.id + '">' +
-              '<b>' + esc(p.name) + '</b><span>' + p.grade + '年 ' + posShort(p.pos) + ' ' + handMark(p) + '</span>' +
-              '<span class="tiny">ミ' + rankNum(p.meet) + '　パ' + rankNum(p.power) +
-              '　走' + rankNum(p.speed) + '　守' + rankNum(p.field) + '</span></button>').join('') + '</div>'
-          : '<p class="note">控えがいません。</p>') +
-        '<div class="actions actions--modal"><button type="button" class="btn" id="sw-back">戻る</button></div>';
-      html('modal-body', body);
-      const node = el('modal-body');
-      node.querySelectorAll('.swapitem').forEach((b) => b.addEventListener('click', () => {
-        team.lineup[i].pid = b.dataset.pid;
+      if (auto) auto.addEventListener('click', () => {
+        Team.autoLineup(team);
+        posOrder = team.lineup.map((sl) => sl.pos);
         refresh();
-      }));
-      node.querySelector('#sw-back').addEventListener('click', refresh);
+      });
+      const done = body.querySelector('#lu-done');
+      if (done) done.addEventListener('click', () => {
+        closeModal.after = null; closeModal(); if (onDone) onDone();
+      });
     }
 
-    open();
+    modal(render(), { kind: 'lineup', onOpen(body) { wire(body); } });
   }
 
   /* ---------- 共通の初期化 ---------- */
