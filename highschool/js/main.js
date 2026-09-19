@@ -59,7 +59,8 @@ const Game = (() => {
     save();
     Screens.pick({
       title: '野手を選ぶ',
-      lead: '13人ひと組のデータセットが5つ。どれか1つを選んでください。選手をタップすると詳しく見られます。',
+      lead: '13人ひと組のチームが5つ。どれか1つを選んでください。選手をタップすると詳しく見られます。',
+      setLabel: 'チーム', pickLabel: 'このチームにする',
       sets: state.sets.list,
       onSelect(i) {
         const chosen = state.sets.list[i];
@@ -80,7 +81,8 @@ const Game = (() => {
     save();
     Screens.pick({
       title: '投手を選ぶ',
-      lead: '7人ひと組のデータセットが5つ。どれか1つを選んでください。',
+      lead: '7人ひと組のチームが5つ。どれか1つを選んでください。',
+      setLabel: 'チーム', pickLabel: 'このチームにする',
       sets: state.sets.list,
       onSelect(i) {
         state.team.pitchers = state.sets.list[i];
@@ -326,7 +328,8 @@ const Game = (() => {
     save();
     Screens.pick({
       title: '新入生（野手）',
-      lead: state.need.bat + '人ひと組が5つ。入部させる組を選んでください。',
+      lead: state.need.bat + '人ひと組の候補が5つ。入部させる組を選んでください。',
+      setLabel: '候補', pickLabel: 'この新入生を迎える',
       sets: state.sets.list,
       onSelect(i) {
         Offseason.enroll(state.team, state.sets.list[i]);
@@ -344,7 +347,8 @@ const Game = (() => {
     save();
     Screens.pick({
       title: '新入生（投手）',
-      lead: state.need.pit + '人ひと組が5つ。入部させる組を選んでください。',
+      lead: state.need.pit + '人ひと組の候補が5つ。入部させる組を選んでください。',
+      setLabel: '候補', pickLabel: 'この新入生を迎える',
       sets: state.sets.list,
       onSelect(i) {
         Offseason.enroll(state.team, state.sets.list[i]);

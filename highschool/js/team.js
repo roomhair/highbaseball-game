@@ -129,14 +129,21 @@ const Team = (() => {
     return map;
   }
 
-  /** チーム力（0〜100）。相手の強さを決めるときの目安にする */
+  /** チーム力（0〜100）。相手の強さを決めるときの目安にし、画面にも出す。
+     1試合で投げるのはほとんど先発1人なので、控え投手を同じ重みで混ぜない。
+     ここが実際の強さとずれていると「チーム力の割に勝てない」に見えてしまう。 */
   function strength(team) {
     const bat = team.lineup.length
       ? team.lineup.map((s) => Player.rating(find(team, s.pid)) || 0)
       : team.batters.map(Player.rating);
-    const pit = team.pitchers.map(Player.rating).sort((a, b) => b - a).slice(0, 3);
+    const order = (team.rotation && team.rotation.length)
+      ? team.rotation.map((id) => Player.rating(find(team, id)) || 0)
+      : team.pitchers.map(Player.rating).sort((a, b) => b - a);
     const avg = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 40);
-    return Math.round(avg(bat) * 0.6 + avg(pit) * 0.4);
+    const starter = order[0] || 40;
+    const relief = avg(order.slice(1, 3));
+    const pit = starter * 0.68 + relief * 0.32;
+    return Math.round(avg(bat) * 0.58 + pit * 0.42);
   }
 
   /** いちばん良い選手（負けたときに引き抜かれる1人） */

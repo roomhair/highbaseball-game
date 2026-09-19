@@ -19,8 +19,13 @@ const Player = (() => {
   function currentSeq() { return seq; }
   function setSeq(n) { seq = Math.max(seq, n | 0); }
 
-  /* 学年ごとの下駄。1年→2年→3年で強くなるが、talent の効きのほうが大きい */
-  const GRADE_BASE = { 1: 33, 2: 42, 3: 49 };
+  /* 学年ごとの下駄。1年→2年→3年で強くなるが、talent の効きのほうが大きい。
+     入部したての部員はとにかく弱い。ここから3年かけて伸ばしていくゲームなので、
+     最初の数字はF・Gだらけで構わない。 */
+  const GRADE_BASE = { 1: 25, 2: 34, 3: 41 };
+  /* 相手校のように「チームの強さ」を指定して作るときの、学年ぶんの差。
+     こちらは GRADE_BASE と切り離してある（自軍だけを弱くしたいため） */
+  const GRADE_TILT = { 1: -6, 2: 0, 3: 4 };
   const GRADE_VELO = { 1: 0, 2: 5, 3: 9 };
 
   /** 隠し才能。まれに「逸材」が出る */
@@ -116,50 +121,37 @@ const Player = (() => {
   }
 
   /* ---------- 練習試合ぶんの通算成績 ----------
-     ゲームには出てこない練習試合を、数字だけ先に積んでおく。 */
+     ゲームには出てこない練習試合を、数字だけ先に積んでおく。
+     中身は sim.js に任せてあり、実際の試合とまったく同じ計算で回している。
+     別の式で作ると「通算打率の割に大会では打たない」が起きてしまう。
 
-  function seedPracticeBat(p, games) {
-    const avg = RNG.clamp(0.120 + p.meet * 0.0022 + p.power * 0.0006, 0.06, 0.45);
-    const pa = Math.round(games * RNG.norm(3.6, 0.4));
-    const bb = Math.round(pa * RNG.clamp(RNG.norm(0.075, 0.03), 0.01, 0.20));
-    const sf = Math.round(pa * 0.012), sh = Math.round(pa * RNG.clamp(RNG.norm(0.03, 0.02), 0, 0.10));
-    const ab = Math.max(0, pa - bb - sf - sh);
-    const h = Math.round(ab * RNG.clamp(RNG.norm(avg, 0.035), 0.02, 0.55));
-    const hrRate = RNG.clamp((p.power - 35) / 100 * 0.055 * (0.55 + 0.22 * p.traj), 0, 0.10);
-    const hr = Math.round(ab * hrRate * RNG.clamp(RNG.norm(1, 0.35), 0.2, 2));
-    const d2 = Math.round((h - hr) * RNG.clamp(RNG.norm(0.16, 0.04), 0.05, 0.30));
-    const d3 = Math.round((h - hr) * RNG.clamp(RNG.norm(0.03 + p.speed * 0.0004, 0.02), 0, 0.10));
-    const so = Math.round(ab * RNG.clamp(RNG.norm(0.22 - p.meet * 0.0012, 0.04), 0.03, 0.45));
-    const sb = Math.round(games * RNG.clamp((p.speed - 40) / 100 * 0.22, 0, 0.5));
-    return {
-      g: games, pa, ab, h: Math.max(hr, h), d2: Math.max(0, d2), d3: Math.max(0, d3), hr,
-      rbi: Math.round(h * 0.55 + hr * 1.2), r: Math.round(h * 0.5 + bb * 0.3),
-      bb, so, sb, sf, sh,
-    };
+     peerLevel は「その選手がぶつかる相手のだいたいの強さ」。
+     大会の相手は自チームの力に合わせて用意されるので、
+     入部したての部員は低めの相手を想定しておけばだいたい合う。 */
+
+  const HOME_PEER_LEVEL = 26;
+
+  function seedPracticeBat(p, games, peerLevel) {
+    const pa = Math.max(0, Math.round(games * RNG.norm(3.6, 0.25)));
+    const s = Sim.careerBat(p, pa, peerLevel == null ? HOME_PEER_LEVEL : peerLevel);
+    s.g = games;
+    return s;
   }
 
-  function seedPracticePit(p, games) {
-    const brk = breakScore(p);
-    const starts = Math.round(games * 0.55);
-    const outs = Math.max(3, Math.round(games * RNG.norm(11, 2.5)));
-    const ip = outs / 3;
-    /* 9イニングあたりの割合を作ってから、投球回ぶんに直す */
-    const bb9  = RNG.clamp(RNG.norm(6.2 - p.control * 0.05, 0.8), 0.6, 11);
-    const so9  = RNG.clamp(RNG.norm(1.0 + (p.velo - 110) * 0.10 + brk * 4.5, 1.2), 0.8, 15);
-    const h9   = RNG.clamp(RNG.norm(13.5 - p.control * 0.035 - (p.velo - 110) * 0.06 - brk * 4, 1.5), 4, 20);
-    const era  = RNG.clamp(RNG.norm(8.2 - p.control * 0.030 - (p.velo - 110) * 0.05 - brk * 4, 1.0), 0.35, 14);
-    const h    = Math.round(ip * h9 / 9);
-    const er   = Math.round(ip * era / 9);
-    return {
-      g: games, gs: starts,
-      w: Math.round(starts * 0.52), l: Math.round(starts * 0.30),
-      outs, bf: Math.round(ip * 4.4), h,
-      hr: Math.round(h * 0.045),
-      bb: Math.round(ip * bb9 / 9),
-      so: Math.round(ip * so9 / 9),
-      r: Math.round(er * 1.22), er,
-      cg: Math.round(starts * 0.35), sho: 0,
-    };
+  function seedPracticePit(p, games, peerLevel) {
+    const outs = Math.max(0, Math.round(games * RNG.norm(11, 2.2)));
+    const s = Sim.careerPit(p, outs, peerLevel == null ? HOME_PEER_LEVEL : peerLevel);
+    s.g = games;
+    s.gs = Math.round(games * 0.55);
+    /* 勝敗は投球回と失点から、ざっくり割り振る */
+    const ip = Math.max(1, s.outs / 3);
+    const era = s.er * 9 / ip;
+    const winRate = RNG.clamp(0.72 - era * 0.055, 0.12, 0.88);
+    s.w = Math.round(s.gs * winRate);
+    s.l = Math.max(0, s.gs - s.w - Math.round(s.gs * 0.12));
+    s.cg = Math.round(s.gs * RNG.clamp(0.55 - era * 0.04, 0.05, 0.6));
+    s.sho = Math.round(s.cg * RNG.clamp(0.22 - era * 0.03, 0, 0.2));
+    return s;
   }
 
   /** 練習試合の試合数のめやす。学年が上なほど多く積んである */
@@ -170,10 +162,10 @@ const Player = (() => {
   /* ---------- 選手を作る ---------- */
 
   function baseOf(grade, level) {
-    /* level を指定しなければ学年どおり。指定があれば、そちらに寄せる
-       （相手校は大会の強さに合わせて作るため） */
-    const g = GRADE_BASE[grade] || 40;
-    return level == null ? g : (level + (g - 41) * 0.55);
+    /* level を指定しなければ学年どおり（自軍の部員）。
+       指定があれば、その強さに学年ぶんの差を足す（相手校） */
+    if (level == null) return GRADE_BASE[grade] || 30;
+    return level + (GRADE_TILT[grade] || 0);
   }
 
   function newBatter(opt) {
@@ -223,7 +215,9 @@ const Player = (() => {
     p.career = emptyBat();
     p.tour = emptyBat();
     p.game = emptyBat();
-    if (opt.practice !== false) addStats(p.career, seedPracticeBat(p, practiceGames(grade)));
+    if (opt.practice !== false) {
+      addStats(p.career, seedPracticeBat(p, practiceGames(grade), opt.level));
+    }
     return p;
   }
 
@@ -271,8 +265,9 @@ const Player = (() => {
     p.batTour = emptyBat();
     p.batGame = emptyBat();
     if (opt.practice !== false) {
-      addStats(p.career, seedPracticePit(p, practiceGames(grade)));
-      addStats(p.batCareer, seedPracticeBat(p, Math.round(practiceGames(grade) * 0.7)));
+      const g = practiceGames(grade);
+      addStats(p.career, seedPracticePit(p, g, opt.level));
+      addStats(p.batCareer, seedPracticeBat(p, Math.round(g * 0.7), opt.level));
     }
     return p;
   }
@@ -294,11 +289,15 @@ const Player = (() => {
       /* 野手と並べて比べられるよう、球速の目盛りは rating 専用にしてある
          （試合の計算に使う Sim.veloScore とは別） */
       const velo = RNG.clamp((p.velo - 104) / 52, 0, 1) * 100;
-      return Math.round(velo * 0.30 + p.control * 0.28 + p.stamina * 0.16 + breakScore(p) * 100 * 0.26);
+      /* 球威（球速＋変化球）と制球でほぼ決まる。スタミナは終盤にしか効かない */
+      return Math.round(velo * 0.26 + breakScore(p) * 100 * 0.28 + p.control * 0.34 + p.stamina * 0.12);
     }
+    /* 試合でどれだけ効くかに合わせた重み。打てるかどうかがほとんどで、
+       守備・肩・走力はそれより小さい。ここが実際の効き目とずれていると
+       「能力の割に勝てない」に見えてしまう */
     return Math.round(
-      p.meet * 0.27 + p.power * 0.24 + p.speed * 0.13 +
-      p.field * 0.13 + p.catch * 0.09 + p.arm * 0.09 + (p.traj - 1) / 3 * 100 * 0.05
+      p.meet * 0.34 + p.power * 0.28 + (p.traj - 1) / 3 * 100 * 0.07 +
+      p.speed * 0.08 + p.field * 0.13 + p.catch * 0.06 + p.arm * 0.04
     );
   }
 

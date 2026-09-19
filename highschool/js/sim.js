@@ -95,18 +95,26 @@ const Sim = (() => {
 
   /**
    * 打席の結果を決める。返り値は
-   *   { code, text, bbType, spot, hit, bases(進塁数), out(アウト数) }
-   * code は 'K','BB','HBP','1B','2B','3B','HR','OUT','E','SF','DP','FC'
+   *   { code, text, bbType, spot, out(アウト数) }
+   * code は 'K','BB','HBP','1B','2B','3B','HR','OUT','E'
+   *
+   * 投手を渡す resolvePA と、球威・制球の数字だけを渡す resolveVs に分けてある。
+   * 練習試合ぶんの通算成績も resolveVs を通して作るので、
+   * 「通算成績の割に打たない」ということが起きない。
    */
   function resolvePA(bat, pit, defTeam, defRating, fatigue, defenders) {
     const stuff = stuffOf(pit) * (1 - 0.22 * fatigue);
     const ctrl = (pit.control / 100) * (1 - 0.28 * fatigue);
+    return resolveVs(bat, stuff, ctrl, defRating, defenders);
+  }
+
+  function resolveVs(bat, stuff, ctrl, defRating, defenders) {
     const contact = bat.meet / 100;
     const pw = bat.power / 100;
 
     /* 三振・四球・死球 */
-    const pK = C(0.150 + 0.30 * (stuff - contact), 0.02, 0.50);
-    const pBB = C(0.082 + 0.13 * (0.5 - ctrl) - 0.03 * (contact - 0.5), 0.018, 0.30);
+    const pK = C(0.150 + 0.36 * (stuff - contact), 0.02, 0.55);
+    const pBB = C(0.082 + 0.17 * (0.5 - ctrl) - 0.03 * (contact - 0.5), 0.015, 0.32);
     const pHBP = C(0.010 + 0.02 * (0.5 - ctrl), 0.002, 0.045);
 
     let r = Math.random();
@@ -125,8 +133,8 @@ const Sim = (() => {
     /* 本塁打。フライとライナーからしか出ない */
     if (type === 'FB' || type === 'LD') {
       const pHR = C(
-        0.030 + 0.115 * (pw - 0.42) + 0.014 * (bat.traj - 2) +
-        0.03 * (contact - 0.5) - 0.045 * (stuff - 0.45),
+        0.026 + 0.145 * (pw - 0.42) + 0.016 * (bat.traj - 2) +
+        0.03 * (contact - 0.5) - 0.050 * (stuff - 0.45),
         0.0008, 0.20
       ) * (type === 'FB' ? 1.25 : 0.55);
       if (RNG.chance(pHR)) {
@@ -135,22 +143,24 @@ const Sim = (() => {
       }
     }
 
-    /* 失策。内野ゴロと、守りにくい打球で起きる */
-    const fielder = defenders[spot];
-    if (fielder && (type === 'GB' || (type === 'LD' && !isOF) || (type === 'FB' && isOF))) {
-      const eff = Team.defScore(fielder, spot);
+    /* 失策。内野ゴロと、守りにくい打球で起きる。
+       守る選手が分かっているときはその選手の守備、
+       分からないとき（通算成績を作るとき）はチーム全体の守備で見る */
+    if (type === 'GB' || (type === 'LD' && !isOF) || (type === 'FB' && isOF)) {
+      const fielder = defenders ? defenders[spot] : null;
+      const eff = fielder ? Team.defScore(fielder, spot) : defRating * 100;
       const base = type === 'GB' ? 0.045 : 0.018;
-      const pE = C(base + (52 - eff) / 100 * 0.22, 0.004, 0.26);
+      const pE = C(base + (52 - eff) / 100 * 0.24, 0.004, 0.26);
       if (RNG.chance(pE)) {
-        return { code: 'E', text: posShort(spot) + '失', out: 0, spot, by: fielder.id };
+        return { code: 'E', text: posShort(spot) + '失', out: 0, spot, by: fielder ? fielder.id : null };
       }
     }
 
     /* 安打になるか。打球の種類でまったく違う */
     const babip = C(
-      0.300 + 0.24 * (contact - stuff) + 0.06 * (pw - 0.5) +
-      0.05 * (bat.speed / 100 - 0.5) - 0.26 * (defRating - 0.45),
-      0.10, 0.55
+      0.300 + 0.30 * (contact - stuff) + 0.07 * (pw - 0.5) +
+      0.05 * (bat.speed / 100 - 0.5) - 0.28 * (defRating - 0.45),
+      0.09, 0.58
     );
     const byType = { GB: 0.235, LD: 0.660, FB: 0.215, PU: 0.020 }[type];
     const pHit = C(byType * (babip / 0.30), 0.01, 0.92);
@@ -176,7 +186,7 @@ const Sim = (() => {
     }
 
     /* アウト。どういうアウトだったかを文字にする */
-    const mark = type === 'GB' ? 'ゴロ' : (type === 'LD' ? '直' : (isOF ? '飛' : '飛'));
+    const mark = type === 'GB' ? 'ゴロ' : (type === 'LD' ? '直' : '飛');
     return { code: 'OUT', text: posShort(spot) + mark, out: 1, spot, bbType: type, isOF };
   }
 
@@ -581,5 +591,102 @@ const Sim = (() => {
     });
   }
 
-  return { play, resolvePA, stuffOf, veloScore, defenseOf, capacityOf };
+  /* ---------- 練習試合ぶんの通算成績 ----------
+     ゲームには出てこない練習試合を、試合とまったく同じ計算で回して数字にする。
+     こうしておかないと「通算打率の割に大会では打たない」が起きる。
+     相手は「その選手が実際にぶつかるくらいの相手」を想定する。 */
+
+  /* level ごとの、相手の先発投手の球威・制球と、守備のまとまり。
+     実際に Tournament.makeTeam で作ったチームから測った値を並べてある */
+  const PEER = [
+    [15, 0.298, 0.325, 0.230],
+    [25, 0.409, 0.404, 0.332],
+    [35, 0.520, 0.496, 0.442],
+    [45, 0.640, 0.627, 0.532],
+    [55, 0.727, 0.732, 0.654],
+    [65, 0.796, 0.813, 0.756],
+    [75, 0.833, 0.914, 0.854],
+    [85, 0.873, 0.982, 0.950],
+    [95, 0.898, 0.990, 0.996],
+  ];
+
+  function peerProfile(level) {
+    const lv = C(level, PEER[0][0], PEER[PEER.length - 1][0]);
+    for (let i = 1; i < PEER.length; i++) {
+      if (lv <= PEER[i][0]) {
+        const a = PEER[i - 1], b = PEER[i];
+        const t = (lv - a[0]) / (b[0] - a[0]);
+        return {
+          stuff: a[1] + (b[1] - a[1]) * t,
+          ctrl:  a[2] + (b[2] - a[2]) * t,
+          def:   a[3] + (b[3] - a[3]) * t,
+        };
+      }
+    }
+    const last = PEER[PEER.length - 1];
+    return { stuff: last[1], ctrl: last[2], def: last[3] };
+  }
+
+  /** その level のチームで、打順に入るくらいの打者像 */
+  function peerBatter(level) {
+    const m = RNG.stat(level + 8);   // スタメンは控えより8ほど上
+    return { meet: m, power: m, speed: m, traj: 2, bats: 'R', pull: 12 };
+  }
+
+  /** 打者の練習試合ぶんの成績 */
+  function careerBat(bat, pa, level) {
+    const pf = peerProfile(level);
+    const s = Player.emptyBat();
+    for (let i = 0; i < pa; i++) {
+      const res = resolveVs(bat, pf.stuff, pf.ctrl, pf.def, null);
+      s.pa++;
+      switch (res.code) {
+        case 'K':  s.ab++; s.so++; break;
+        case 'BB': case 'HBP': s.bb++; break;
+        case '1B': s.ab++; s.h++; break;
+        case '2B': s.ab++; s.h++; s.d2++; break;
+        case '3B': s.ab++; s.h++; s.d3++; break;
+        case 'HR': s.ab++; s.h++; s.hr++; break;
+        case 'E':  s.ab++; break;
+        default:
+          /* 外野フライの一部は犠飛になる */
+          if (res.isOF && RNG.chance(0.04)) s.sf++; else s.ab++;
+      }
+    }
+    const single = s.h - s.d2 - s.d3 - s.hr;
+    /* 打点と得点は前後の打者しだい。実際の試合で出ている割合から見積もる */
+    s.rbi = Math.round(single * 0.26 + s.d2 * 0.43 + s.d3 * 0.58 + s.hr * 1.60 + s.sf);
+    s.r = Math.round((s.h + s.bb - s.hr) * 0.303 + s.hr);
+    s.sb = Math.round(pa * C((bat.speed - 40) / 100 * 0.016, 0, 0.05));
+    return s;
+  }
+
+  /** 投手の練習試合ぶんの成績 */
+  function careerPit(pit, outsTarget, level) {
+    const foe = peerBatter(level);
+    const pf = peerProfile(level);
+    const stuff = stuffOf(pit), ctrl = pit.control / 100;
+    const s = Player.emptyPit();
+    let guard = 0;
+    while (s.outs < outsTarget && guard++ < outsTarget * 12 + 200) {
+      const res = resolveVs(foe, stuff, ctrl, pf.def, null);
+      s.bf++;
+      switch (res.code) {
+        case 'K': s.so++; s.outs++; break;
+        case 'BB': case 'HBP': s.bb++; break;
+        case '1B': case '2B': case '3B': s.h++; break;
+        case 'HR': s.h++; s.hr++; break;
+        case 'E': break;
+        default: s.outs++;
+      }
+    }
+    s.r = Math.round((s.h - s.hr) * 0.31 + s.bb * 0.14 + s.hr * 1.45);
+    s.er = s.r;
+    return s;
+  }
+
+  return {
+    play, resolvePA, resolveVs, stuffOf, veloScore, defenseOf, capacityOf,
+    peerProfile, peerBatter, careerBat, careerPit,
+  };
 })();

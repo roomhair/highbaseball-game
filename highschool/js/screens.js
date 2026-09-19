@@ -18,15 +18,18 @@ const Screens = (() => {
   function pick(opt) {
     UI.el('pick-title').textContent = opt.title;
     UI.el('pick-lead').textContent = opt.lead || '';
+    /* 呼び方は画面ごとに変わる（チーム作りなら「チーム1」、新入生なら「候補1」） */
+    const setLabel = opt.setLabel || 'チーム';
+    const pickLabel = opt.pickLabel || 'このチームにする';
 
     const html = opt.sets.map((players, i) => {
       const s = Dataset.summary(players);
       return '<article class="dataset">' +
         '<header class="dataset__head">' +
-          '<h3 class="dataset__no">データセット ' + (i + 1) + '</h3>' +
+          '<h3 class="dataset__no">' + esc(setLabel) + ' ' + (i + 1) + '</h3>' +
           '<p class="dataset__meta">' + s.count + '人　' + gradeText(s.byGrade) +
             '　<span class="dataset__best">注目： ' + esc(s.best.name) + '（' + s.best.grade + '年）</span></p>' +
-          '<button type="button" class="btn btn--primary dataset__pick" data-i="' + i + '">このメンバーにする</button>' +
+          '<button type="button" class="btn btn--primary dataset__pick" data-i="' + i + '">' + esc(pickLabel) + '</button>' +
         '</header>' +
         UI.rosterTable(players) +
       '</article>';
@@ -116,10 +119,11 @@ const Screens = (() => {
         const p = Team.find(state.team, t.pid);
         const cur = p ? currentValue(p, t) : '';
         return '<li class="cardline"><span class="cardline__name">' + esc(t.name) +
-          '<i>' + (p ? p.grade + '年' : '') + '</i></span>' +
+          '<i>' + (p ? p.grade + '年・' + roleText(state.team, p) : '') + '</i></span>' +
           '<span class="cardline__stat">' + esc(t.label) + '</span>' +
           '<span class="cardline__up">+' + t.amount + (t.unit ? esc(t.unit) : '') + '</span>' +
-          '<span class="cardline__now">' + cur + '</span></li>';
+          '<span class="cardline__now">' + cur + '</span>' +
+          (p ? '<span class="cardline__abil">' + abilityLine(p) + '</span>' : '') + '</li>';
       }).join('');
       UI.html('train-card',
         '<div class="traincard traincard--' + card.kind + '">' +
@@ -133,6 +137,31 @@ const Screens = (() => {
     const passBtn = UI.el('btn-train-pass');
     passBtn.disabled = !Training.canPass(st);
     UI.show('screen-training');
+  }
+
+  /** その選手がオーダーのどこにいるか。控えなら「控え」 */
+  function roleText(team, p) {
+    if (p.kind === 'pitcher') {
+      const i = team.rotation.indexOf(p.id);
+      if (i === 0) return '先発';
+      if (i > 0) return (i + 1) + '番手';
+      return '投手';
+    }
+    const i = team.lineup.findIndex((s) => s.pid === p.id);
+    if (i < 0) return '控え';
+    return (i + 1) + '番・' + posShort(team.lineup[i].pos);
+  }
+
+  /** いまの能力をひと並びに。特訓で「誰を伸ばすか」を決める材料 */
+  function abilityLine(p) {
+    if (p.kind === 'pitcher') {
+      return p.velo + 'km/h　制球' + UI.rankSpan(p.control) + '　スタミナ' + UI.rankSpan(p.stamina) +
+        '　' + esc(p.pitches.map((q) => q.name + q.level).join('・'));
+    }
+    return 'ミート' + UI.rankSpan(p.meet) + '　パワー' + UI.rankSpan(p.power) +
+      '　走力' + UI.rankSpan(p.speed) + '　肩' + UI.rankSpan(p.arm) +
+      '　守備' + UI.rankSpan(p.field) + '　捕球' + UI.rankSpan(p.catch) +
+      '　弾道' + p.traj;
   }
 
   function currentValue(p, t) {
@@ -297,5 +326,6 @@ const Screens = (() => {
   return {
     pick, ready, training, trainingResult, opening, pregame,
     poachWin, poachRelease, champion, offseason, settings, lineupCard, bindRows,
+    roleText, abilityLine,
   };
 })();

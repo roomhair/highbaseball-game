@@ -180,12 +180,14 @@ const Growth = (() => {
     });
   }
 
-  /** オフシーズンの練習試合ぶん（通算成績にだけ積む） */
+  /** オフシーズンの練習試合ぶん（通算成績にだけ積む）。
+     相手は、いまのチーム力なら大会で当たるくらいの高校を想定する */
   function offseasonPractice(team) {
+    const peer = Math.round(RNG.clamp(Team.strength(team) * 0.62, 10, 95));
     Team.all(team).forEach((p) => {
       const games = RNG.range(8, 18);
-      if (p.kind === 'pitcher') Player.addStats(p.career, Player.seedPracticePit(p, games));
-      else Player.addStats(p.career, Player.seedPracticeBat(p, games));
+      if (p.kind === 'pitcher') Player.addStats(p.career, Player.seedPracticePit(p, games, peer));
+      else Player.addStats(p.career, Player.seedPracticeBat(p, games, peer));
     });
   }
 

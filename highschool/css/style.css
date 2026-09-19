@@ -286,6 +286,12 @@ td.hl { font-weight: 700; }
 .cardline__stat { font-size: 13px; color: var(--ink-mute); }
 .cardline__up { font-size: 17px; font-weight: 800; color: var(--accent); }
 .cardline__now { grid-column: 1 / -1; font-size: 11.5px; color: var(--ink-faint); }
+/* いまの能力。特訓で誰を伸ばすか決める材料なので、カードに出しておく */
+.cardline__abil {
+  grid-column: 1 / -1; font-size: 11px; line-height: 1.7; color: var(--ink-mute);
+  padding-top: 2px; border-top: 1px dotted var(--line-soft); white-space: normal;
+}
+.cardline__abil .rank { font-size: 11.5px; margin: 0 1px 0 2px; }
 
 .growth td.up b { color: var(--accent); }
 .growth td.up i { font-style: normal; color: var(--ink-faint); font-size: 11px; }
