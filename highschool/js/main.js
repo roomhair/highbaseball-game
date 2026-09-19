@@ -136,12 +136,22 @@ const Game = (() => {
     /* 高校名の重複を避けるのはこの大会の中だけ。
        年をまたげば同じ常連校がまた出てくる */
     const used = new Set();
-    /* 地方大会の初戦は、自分のチーム力より少し下から。
-       全国大会の初戦は、地方大会の決勝と同じくらいの強さにする。 */
-    const base = kind === 'local'
-      ? Math.max(16, Math.round(Team.strength(state.team) * 0.62))
-      : Math.max(30, state.localFinalLevel || Math.round(Team.strength(state.team) * 1.1));
-    state.tour = Tournament.create(kind, base, used);
+    /* 相手の強さは自軍に合わせて動かさない。決められた強さの相手が並ぶので、
+       チームが強くなればそのぶん勝ち上がれる。
+       年ごとに少しだけゆらぎを入れて、当たり年・外れ年を作る */
+    const F = CONFIG.FIELD;
+    const j = 1 + (Math.random() * 2 - 1) * F.yearJitter;
+    let from, to;
+    if (kind === 'local') {
+      from = F.local.from * j;
+      to = F.local.to * j;
+      state.localJitter = j;
+    } else {
+      /* 全国大会の1回戦は、地方大会の決勝と同じくらいの強さから */
+      from = state.localFinalLevel || F.local.to * (state.localJitter || 1);
+      to = Math.max(from * 1.15, F.national.to * (state.localJitter || 1));
+    }
+    state.tour = Tournament.create(kind, from, to, used);
     Growth.resetTour(state.team);
     state.phase = 'opening';
     save();

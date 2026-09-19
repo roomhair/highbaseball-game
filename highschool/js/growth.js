@@ -193,9 +193,11 @@ const Growth = (() => {
   }
 
   /** オフシーズンの練習試合ぶん（通算成績にだけ積む）。
-     相手は、いまのチーム力なら大会で当たるくらいの高校を想定する */
+     相手は地方大会に出てくるくらいの高校を想定する。ここを自軍の強さに
+     合わせてしまうと、強くなっても通算成績が伸びなくなってしまう */
   function offseasonPractice(team) {
-    const peer = Math.round(RNG.clamp(Team.strength(team) * 0.62, 10, 95));
+    const F = CONFIG.FIELD.local;
+    const peer = Math.round((F.from + F.to) / 2);
     Team.all(team).forEach((p) => {
       const games = RNG.range(8, 18);
       if (p.kind === 'pitcher') Player.addStats(p.career, Player.seedPracticePit(p, games, peer));
