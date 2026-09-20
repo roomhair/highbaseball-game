@@ -123,6 +123,18 @@ const GameScreen = (() => {
 
   /* ---------- 両軍のオーダー ---------- */
 
+  /** 名前の下に出す、打つほうの能力だけの小さい行。
+      守備や肩まで並べると半分の幅に収まらないので、
+      打席を見ているあいだに気になる4つだけにしてある */
+  function abTiny(p) {
+    const r = (v) => {
+      const g = rankOf(v);
+      return '<b class="rank-' + g + '">' + g + '</b>';
+    };
+    return '<span class="ll__ab">弾道' + p.traj +
+      ' ミート' + r(p.meet) + ' パワー' + r(p.power) + ' 走力' + r(p.speed) + '</span>';
+  }
+
   function liveLineups(away, home, cur) {
     const side = (t, key) => {
       const rows = t.lineup.map((s, i) => {
@@ -137,7 +149,8 @@ const GameScreen = (() => {
           '<span class="ll__no">' + (i + 1) + '</span>' +
           '<span class="ll__pos">' + posShort(s.pos) + '</span>' +
           '<span class="ll__name">' + esc(p.name) + '</span>' +
-          '<span class="ll__res">' + res + '</span></li>';
+          '<span class="ll__res">' + res + '</span>' +
+          abTiny(p) + '</li>';
       }).join('');
       const pit = Team.find(t, cur[key + 'Pitcher']);
       return '<div class="ll' + (cur.side === key ? ' is-batting' : '') + '">' +
