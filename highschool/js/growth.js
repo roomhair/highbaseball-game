@@ -73,13 +73,18 @@ const Growth = (() => {
 
       const ups = [];
       const stats = statListFor(p);
-      /* 1試合で動かす能力の数。出番が無かった選手は2つまで。
-         活躍した日はまとめて伸びるので、1試合で化けたように見える */
-      const n = !played ? 2 : (points > 2.6 ? 5 : (points > 1.8 ? 4 : 3));
-      const picked = RNG.shuffle(stats.slice()).slice(0, n);
-      picked.forEach((st) => {
+      /* その試合の伸びしろの合計を出し、持っている能力ぜんぶに配る。
+         1つに固めると +40 も跳ねて何が伸びたのか分からなくなるので、
+         配る先を広くして、1つあたりは MAX_STEP で頭を押さえてある。
+         出番が無かった選手は、そのうち2つだけ。 */
+      const budget = points * (isPit ? G.PER_GAME_PIT : G.PER_GAME_BAT);
+      const picked = RNG.shuffle(stats.slice()).slice(0, played ? stats.length : 2);
+      /* 配る比率もばらけさせる。毎回きれいに等分だと機械的に見える */
+      const w = picked.map(() => 0.45 + Math.random());
+      const wsum = w.reduce((a, b) => a + b, 0) || 1;
+      picked.forEach((st, i) => {
         const before = p[st.key];
-        const add = gainFor(before, points * G.PER_STAT);
+        const add = Math.min(G.MAX_STEP, gainFor(before, budget * w[i] / wsum));
         if (add > 0) {
           p[st.key] = RNG.stat(before + add);
           if (p[st.key] > before) {
@@ -115,10 +120,14 @@ const Growth = (() => {
         if (RNG.chance(chance)) {
           awakened = true;
           p.awakened = true;
-          const boostStats = RNG.shuffle(stats.slice()).slice(0, isPit ? 2 : 3);
-          boostStats.forEach((st) => {
+          /* 覚醒も、少数の能力に固めず持っている能力ぜんぶに配る。
+             合計は変えていないが、1つが +15 跳ねることは無くなる。
+             通常の成長と同じ能力に乗ることがあるので（mergeUps でまとまる）、
+             ここを絞らないと合わせて +24 になってしまっていた */
+          const per = isPit ? [4, 9] : [3, 8];
+          stats.forEach((st) => {
             const before = p[st.key];
-            p[st.key] = RNG.stat(before + RNG.range(7, 15));
+            p[st.key] = RNG.stat(before + RNG.range(per[0], per[1]));
             ups.push({ key: st.key, label: st.label, amount: p[st.key] - before, before, after: p[st.key], awake: true });
           });
           if (isPit) {
