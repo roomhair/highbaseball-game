@@ -181,7 +181,18 @@ const Growth = (() => {
       }
       else out.push(Object.assign({}, u));
     });
-    return out;
+    return out.sort((a, b) => upRank(a) - upRank(b));
+  }
+
+  /* 画面に出すときの並び。毎回ばらばらだと、どこが伸びたのか探すことになる。
+     選手の詳細や特訓の画面と同じ並びにしてある。
+     ここに無いもの（守備適性・変化球など）は後ろにまとめる */
+  const UP_ORDER = ['traj', 'meet', 'power', 'speed', 'arm', 'field', 'catch',
+                    'velo', 'control', 'stamina'];
+
+  function upRank(u) {
+    const i = UP_ORDER.indexOf(u.key);
+    return i < 0 ? UP_ORDER.length : i;
   }
 
   /** その試合が「名場面」に残るか */
