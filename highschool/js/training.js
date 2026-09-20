@@ -44,10 +44,10 @@ const Training = (() => {
      ここが小さいと、年に1度しか来ない特訓が誤差になってしまう。
      球速と変化球は上限（168km/h・切れ味7）が近いので、そのままにしてある */
   const POWER_TIERS = [
-    { key: 's',  weight: 30, label: '',        stat: [3, 5],   velo: [1, 3],  pitch: 1, ball: [1, 2] },
-    { key: 'm',  weight: 40, label: '',        stat: [5, 9],   velo: [3, 5],  pitch: 1, ball: [2, 3] },
-    { key: 'l',  weight: 22, label: 'みっちり', stat: [10, 17], velo: [5, 8],  pitch: 2, ball: [3, 4] },
-    { key: 'xl', weight: 8,  label: '猛特訓',   stat: [20, 32], velo: [9, 14], pitch: 3, ball: [5, 6] },
+    { key: 's',  weight: 30, label: '',        stat: [4, 7],   velo: [1, 3],  pitch: 1, ball: [1, 2] },
+    { key: 'm',  weight: 40, label: '',        stat: [7, 12],  velo: [3, 5],  pitch: 1, ball: [2, 3] },
+    { key: 'l',  weight: 22, label: 'みっちり', stat: [14, 23], velo: [5, 8],  pitch: 2, ball: [3, 4] },
+    { key: 'xl', weight: 8,  label: '猛特訓',   stat: [27, 43], velo: [9, 14], pitch: 3, ball: [5, 6] },
   ];
 
   /* 何の練習か */
