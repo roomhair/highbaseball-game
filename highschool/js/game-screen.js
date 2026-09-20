@@ -405,15 +405,25 @@ const GameScreen = (() => {
     clearTimeout(timer);
     ctx.paused = true;
     showTapHint(false);
+    /* ふきだしの外を触ったとき、×で閉じたとき、Esc を押したときも
+       試合に戻す。どの閉じ方でも止まったままにならないようにしておく。
+       ここを「試合に戻る」のボタンだけにしていたときは、外を触ると
+       試合が止まったまま動かなくなっていた */
+    UI.closeModal.after = resumeTime;
     timeMenu();
   }
 
-  function closeTime() {
-    UI.closeModal();
-    if (!ctx || ctx.done) return;
+  /** どの閉じ方でもここを通る。二重に呼ばれても平気なようにしてある */
+  function resumeTime() {
+    if (!ctx || ctx.done || !ctx.paused) return;
     ctx.paused = false;
     render(UI.el('game-stage').innerHTML);
     step();
+  }
+
+  function closeTime() {
+    UI.closeModal();          // 閉じたあとに resumeTime が呼ばれる
+    resumeTime();             // 念のため（after が外されていた場合の保険）
   }
 
   function timeMenu() {
