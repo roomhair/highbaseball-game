@@ -92,27 +92,32 @@ const Screens = (() => {
     UI.show('screen-ready');
   }
 
-  /** キャプテンの欄。決まっていなければ、決めるまで先へ進めない */
-  function captainBox(t) {
+  /** キャプテンの欄。決まっていなければ赤くする。
+      leaving を渡すと、そこに入っている選手は「これから引退する」扱いにする */
+  function captainBox(t, leaving) {
     const cap = Team.captain(t);
-    return '<div class="capbox' + (cap ? '' : ' is-empty') + '">' +
+    const out = cap && leaving && leaving.indexOf(cap.id) >= 0;
+    const ok = cap && !out;
+    return '<div class="capbox' + (ok ? '' : ' is-empty') + '">' +
       '<div class="capbox__label">キャプテン</div>' +
-      (cap
+      (ok
         ? '<div class="capbox__name"><b>' + esc(cap.name) + '</b>' +
           '<span>' + cap.grade + '年・' + UI.roleText(t, cap) + '</span></div>'
-        : '<div class="capbox__none">まだ決まっていません</div>') +
+        : (out
+            ? '<div class="capbox__none"><b>' + esc(cap.name) + '</b> は引退します</div>'
+            : '<div class="capbox__none">まだ決まっていません</div>')) +
       '<button type="button" class="btn btn--small" id="btn-captain">' +
-        (cap ? '決め直す' : 'キャプテンを決める') + '</button>' +
+        (ok ? '変える' : 'キャプテンを決める') + '</button>' +
     '</div>';
   }
 
   /** キャプテンの欄のボタンをつなぐ */
-  function wireCaptain(root, team, onDone) {
+  function wireCaptain(root, team, onDone, exclude) {
     const b = root.querySelector('#btn-captain');
     if (b) b.addEventListener('click', () => UI.captainPicker(team, () => {
       onChange();          // 決めた時点で保存する
       if (onDone) onDone();
-    }));
+    }, { exclude: exclude }));
   }
 
   /** キャプテンが決まるまで「特訓へ」を押せなくする */
@@ -621,15 +626,33 @@ const Screens = (() => {
         })()
       : '';
 
+    /* キャプテンはここでも変えられる。引退して空いたときだけでなく、
+       続けられる場合でも、気が変わったら替えられるようにしておく。
+       強制はしない（このまま先へ進んでもよい） */
+    const leaving = retired.map((f) => f.player.id);
+    const cap = Team.captain(state.team);
+    const capOut = cap && leaving.indexOf(cap.id) >= 0;
+    const capPart =
+      '<h3 class="sub">キャプテン</h3>' +
+      captainBox(state.team, leaving) +
+      '<p class="note">' +
+        (!cap ? 'キャプテンが決まっていません。'
+              : (capOut ? '引退するので、新しいキャプテンを決めてください。'
+                        : '続けてもらうならこのままで構いません。気が変わったらここで変えられます。')) +
+        '学年は問いません。引退する3年生は選べません。</p>';
+
     UI.html('off-body',
-      taken + '<p class="section-lead">3年生が引退します。名前を押すと能力を見られます。</p>' + cards);
+      taken + '<p class="section-lead">3年生が引退します。名前を押すと能力を見られます。</p>' +
+      cards + capPart);
+    const body = UI.el('off-body');
     const all = retired.map((f) => f.player).concat(
       state.poachedFrom && state.poachedFrom.player ? [state.poachedFrom.player] : []);
-    UI.el('off-body').querySelectorAll('.retire__name').forEach((b) =>
+    body.querySelectorAll('.retire__name').forEach((b) =>
       b.addEventListener('click', () => {
         const q = all.find((x) => x.id === b.dataset.pid);
-        if (q) UI.openPlayer(q, { rename: false });
+        if (q) UI.openPlayer(q, { team: state.team, rename: false });
       }));
+    wireCaptain(body, state.team, () => offseason(state, retired), leaving);
     UI.show('screen-offseason');
   }
 

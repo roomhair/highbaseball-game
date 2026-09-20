@@ -771,13 +771,17 @@ const UI = (() => {
      部を束ねる1人を決める。特訓に進む前に必ず決めてもらう。
      3年生が引退すると空くので、代替わりのたびに選び直すことになる。 */
 
-  function captainPicker(team, onDone) {
+  function captainPicker(team, onDone, opts) {
+    opts = opts || {};
+    /* オフシーズンでは、これから引退する3年生を候補から外す。
+       選んでも次の画面で居なくなってしまうため */
+    const skip = new Set(opts.exclude || []);
     const cap = Team.captain(team);
     /* 学年の高い順。同じ学年なら打順・起用順の早い順 */
     const order = {};
     team.lineup.forEach((s, i) => { order[s.pid] = i; });
     (team.rotation || []).forEach((id, i) => { if (order[id] == null) order[id] = 20 + i; });
-    const list = Team.all(team).slice().sort((a, b) =>
+    const list = Team.all(team).filter((p) => !skip.has(p.id)).sort((a, b) =>
       (b.grade - a.grade) ||
       ((order[a.id] == null ? 99 : order[a.id]) - (order[b.id] == null ? 99 : order[b.id])));
 
@@ -798,8 +802,9 @@ const UI = (() => {
 
     modal(
       '<h3 class="modal__title">キャプテンを決める</h3>' +
-      '<p class="time__where">部を束ねる1人を選んでください。' +
-        '3年生が引退すると空くので、代替わりのたびに決め直します。</p>' +
+      '<p class="time__where">部を束ねる1人を選んでください。学年は問いません。' +
+        'キャプテンが引退したら、そのときに決め直します。' +
+        'オフシーズンにはいつでも変えられます。</p>' +
       '<div class="spick__list capsel">' + list.map(row).join('') + '</div>',
       {
         kind: 'captain',
