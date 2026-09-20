@@ -357,7 +357,18 @@ const GameScreen = (() => {
   }
 
   function pitBox(t, label) {
-    const used = t.pitchers.filter((p) => p.game.outs > 0 || p.game.g);
+    /* 出てきた順に並べる。名簿の並び（t.pitchers）は起用順と関係ないので、
+       そのまま使うと先発が2番目以降に出てしまう。
+       Sim は rotation[0] を先発、以降を順に継投させるので、
+       先発を頭に置いたうえで rotation の順に並べれば登板順になる。 */
+    const rot = t.rotation || [];
+    const order = (p) => {
+      if (p.game.gs) return -1;
+      const i = rot.indexOf(p.id);
+      return i < 0 ? rot.length : i;
+    };
+    const used = t.pitchers.filter((p) => p.game.outs > 0 || p.game.g)
+      .sort((a, b) => order(a) - order(b));
     const rows = used.map((p) => {
       const s = p.game;
       const mark = s.w ? '○' : (s.l ? '●' : '');
