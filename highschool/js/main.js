@@ -181,7 +181,7 @@ const Game = (() => {
     state.mySide = RNG.chance(0.5) ? 'home' : 'away';
     state.phase = 'pregame';
     save();
-    Screens.pregame(state);
+    Screens.pregame(state, { onChange: save });
   }
 
   function playGame() {
@@ -434,7 +434,7 @@ const Game = (() => {
       case 'training': Screens.training(state); break;
       case 'training-result': Screens.trainingResult(state, '地方大会へ'); break;
       case 'opening': Screens.opening(state); break;
-      case 'pregame': case 'game': Screens.pregame(state); break;
+      case 'pregame': case 'game': Screens.pregame(state, { onChange: save }); break;
       /* 試合の中身は保存していないので、その次の処理から続ける */
       case 'verdict': case 'growth': case 'result':
         if (state.lastResult && state.lastResult.win) toPoach(); else lose();
@@ -474,7 +474,7 @@ const Game = (() => {
     /* 名前を変えたら、いま出ている画面を描き直す */
     if (back === 'screen-ready') Screens.ready(state);
     if (back === 'screen-opening') Screens.opening(state);
-    if (back === 'screen-pregame' && state.opponent) Screens.pregame(state);
+    if (back === 'screen-pregame' && state.opponent) Screens.pregame(state, { onChange: save });
   }
 
   /** 全国大会の名前を、画面に出ているところへまとめて反映する */
@@ -552,7 +552,7 @@ const Game = (() => {
     if (nextup) nextup.addEventListener('click', () => {
       if (state && state.phase === 'nextup') toPregame();
     });
-    on('btn-pregame-lineup', () => UI.lineupEditor(state.team, () => { save(); Screens.pregame(state); }));
+    on('btn-pregame-lineup', () => UI.lineupEditor(state.team, () => { save(); Screens.pregame(state, { onChange: save }); }));
 
     on('btn-skip', () => GameScreen.skip());
     on('btn-result-next', afterResult);

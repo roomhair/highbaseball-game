@@ -257,19 +257,12 @@ td.hl { font-weight: 700; }
 .g3 { font-weight: 700; }
 .awake-dot { font-style: normal; color: var(--crimson); font-size: 9px; margin-left: 3px; vertical-align: 2px; }
 
-/* 能力の評価（S〜G）。いちばん上のSだけは塗りつぶして目立たせる */
+/* 能力の評価（S〜G）。どれも文字の色だけで見分ける */
 .rank, .stat__rank {
   display: inline-block; min-width: 1.15em; text-align: center;
   font-weight: 800; font-size: 12.5px; letter-spacing: 0;
 }
-/* Sは金色の札にして、ひと目でそれと分かるようにする */
-.rank-S, .stat__rank.rank-S {
-  background: linear-gradient(160deg, color-mix(in srgb, var(--r-s) 70%, #fff) 0%, var(--r-s) 45%,
-              color-mix(in srgb, var(--r-s) 82%, #000) 100%);
-  color: var(--r-s-ink);
-  border-radius: 3px; padding: 0 3px; min-width: 1.3em;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, .25);
-}
+.rank-S, .stat__rank.rank-S { color: var(--r-s); }
 
 /* 守備適性の文字は色を付けない（能力の評価と見分けるため） */
 .apt-letter {
@@ -298,6 +291,35 @@ td.hl { font-weight: 700; }
 .lineupcard { border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; background: var(--panel); }
 .lineupcard__title { margin: 0 0 4px; font-size: 14px; font-weight: 800; letter-spacing: .08em; }
 .lineupcard__p { margin: 6px 0 2px; font-size: 11.5px; color: var(--ink-mute); white-space: normal; line-height: 1.6; }
+
+/* 打順表の見出し。数字の列が何なのかは、書いておかないと分からない */
+.lineup thead th {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .04em;
+  color: var(--ink-faint); white-space: nowrap;
+  padding: 0 3px 3px; border-bottom: 1px solid var(--line-soft); text-align: center;
+}
+.lineup thead th.nm { text-align: left; }
+
+/* 先発を選ぶ列 */
+.spick { margin-top: 10px; border-top: 1px solid var(--line-soft); padding-top: 8px; }
+.spick__head { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; color: var(--ink-mute); margin-bottom: 6px; }
+.spick__list { display: flex; flex-direction: column; gap: 4px; }
+.spick__item {
+  display: grid; grid-template-columns: 1fr auto; align-items: baseline;
+  gap: 1px 8px; width: 100%; text-align: left;
+  border: 1px solid var(--line); border-radius: 4px; background: transparent;
+  padding: 5px 8px; cursor: pointer; font: inherit; color: inherit;
+}
+.spick__item:hover { border-color: var(--ink-mute); background: var(--bg-2); }
+.spick__item.is-on { border-color: var(--accent); border-width: 1.5px; background: var(--bg-2); }
+.spick__nm { font-size: 12.5px; font-weight: 700; }
+.spick__item.is-on .spick__nm::after {
+  content: '先発'; margin-left: 6px; font-size: 9.5px; font-weight: 700;
+  letter-spacing: .1em; color: var(--accent);
+}
+.spick__meta { grid-column: 1 / -1; font-size: 10.5px; color: var(--ink-mute); }
+.spick__fat { grid-column: 2; font-size: 10.5px; color: var(--ink-faint); white-space: nowrap; }
+.spick__fat.is-tired { color: var(--ng); font-weight: 700; }
 .twocol { display: grid; gap: 14px; }
 @media (min-width: 720px) { .twocol { grid-template-columns: 1fr 1fr; } }
 .vs i { font-style: normal; margin: 0 8px; color: var(--ink-faint); }
@@ -463,18 +485,37 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .fv-base.is-on { fill: var(--accent); stroke: var(--accent); }
 .fv-home { fill: var(--ink-faint); }
 /* 打球。本塁から落ちどころまで飛ぶ */
+/* 打球。本塁から飛んでいくのが分かるように、
+   ①本塁に打点の印を出し ②そこから軌跡の線を伸ばし ③線の上をボールが走る */
+.ballfrom {
+  fill: none; stroke: var(--accent); stroke-width: 1.6;
+  animation: hit .78s ease-out both;
+}
+.ballfrom.is-hr { stroke: var(--crimson); animation-duration: .95s; }
+@keyframes hit {
+  from { opacity: .95; transform: scale(.4); transform-origin: 100px 152px; }
+  to   { opacity: 0;   transform: scale(2.6); transform-origin: 100px 152px; }
+}
+.balltrail {
+  stroke: var(--accent); stroke-width: 1.5; stroke-linecap: round; opacity: .5;
+  stroke-dasharray: var(--len); stroke-dashoffset: var(--len);
+  animation: trail .78s cubic-bezier(.25,.75,.4,1) both;
+}
+.balltrail.is-hr { stroke: var(--crimson); opacity: .6; animation-duration: .95s; }
+@keyframes trail { to { stroke-dashoffset: 0; } }
 .ball {
   fill: var(--ink); stroke: var(--bg); stroke-width: 1.4;
-  animation: fly .62s cubic-bezier(.25,.75,.4,1) both;
+  animation: fly .78s cubic-bezier(.25,.75,.4,1) both;
 }
-.ball.is-hr { fill: var(--crimson); animation-duration: .8s; }
+.ball.is-hr { fill: var(--crimson); animation-duration: .95s; }
 @keyframes fly {
-  from { transform: translate(0, 0) scale(.5); opacity: .4; }
-  40%  { opacity: 1; }
-  to   { transform: translate(calc(var(--dx) * 1px), calc(var(--dy) * 1px)) scale(1); opacity: 1; }
+  from { transform: translate(0, 0) scale(.62); }
+  to   { transform: translate(calc(var(--dx) * 1px), calc(var(--dy) * 1px)) scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {
   .ball { animation: none; transform: translate(calc(var(--dx) * 1px), calc(var(--dy) * 1px)); }
+  .balltrail { animation: none; stroke-dashoffset: 0; }
+  .ballfrom { animation: none; opacity: 0; }
 }
 .outs { display: flex; gap: 4px; align-items: center; justify-content: center; margin-top: 2px; }
 .outs .out { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--line); display: inline-block; }

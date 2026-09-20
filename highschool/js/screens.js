@@ -84,7 +84,7 @@ const Screens = (() => {
     UI.show('screen-ready');
   }
 
-  /** スタメン9人と先発投手 */
+  /** スタメン9人と先発投手。opts.pickable なら先発を選べるようにする */
   function lineupCard(t, opts) {
     opts = opts || {};
     const rows = t.lineup.map((s, i) => {
@@ -97,15 +97,40 @@ const Screens = (() => {
         '<td class="c tiny">' + UI.handMark(p) + '</td>' +
         '<td class="c tiny">' + UI.rankNum(p.meet) + ' ' + UI.rankNum(p.power) + ' ' + UI.rankNum(p.speed) + '</td></tr>';
     }).join('');
+    /* 数字の列が何なのかは、見出しを付けないと分からない */
+    const head =
+      '<thead><tr>' +
+        '<th class="c">打順</th><th class="c">守備</th><th class="nm">選手</th>' +
+        '<th class="c tiny">学年</th><th class="c tiny">投打</th>' +
+        '<th class="c tiny">ミート　パワー　走力</th>' +
+      '</tr></thead>';
     const sp = Team.find(t, t.rotation[0]);
     return '<div class="lineupcard' + (opts.compact ? ' is-compact' : '') + '">' +
       '<h3 class="lineupcard__title">' + esc(t.name) + '</h3>' +
-      '<div class="tablewrap"><table class="lineup"><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="tablewrap"><table class="lineup">' + head + '<tbody>' + rows + '</tbody></table></div>' +
       (sp ? '<p class="lineupcard__p">先発　' +
         '<button type="button" class="linkbtn pitname" data-pid="' + sp.id + '">' + esc(sp.name) + '</button>' +
         '（' + sp.grade + '年・' + (sp.throws === 'L' ? '左' : '右') + '・' + sp.velo + 'km/h　制球' + rankOf(sp.control) +
         '　' + esc(Team.fatigueLabel(sp)) + '　' + sp.pitches.map((q) => esc(q.name)).join('・') + '）</p>' : '') +
+      (opts.pickable ? starterPicker(t) : '') +
       '</div>';
+  }
+
+  /** 先発を選ぶ列。試合前の画面だけに出す */
+  function starterPicker(t) {
+    const rot = (t.rotation || []).map((id) => Team.find(t, id)).filter(Boolean);
+    if (rot.length < 2) return '';
+    return '<div class="spick">' +
+      '<div class="spick__head">先発を選ぶ</div>' +
+      '<div class="spick__list">' + rot.map((p, i) =>
+        '<button type="button" class="spick__item' + (i === 0 ? ' is-on' : '') + '" data-pid="' + p.id + '">' +
+          '<span class="spick__nm">' + esc(p.name) + '</span>' +
+          '<span class="spick__fat' + (p.fatigue >= 40 ? ' is-tired' : '') + '">' +
+            esc(Team.fatigueLabel(p)) + '</span>' +
+          '<span class="spick__meta">' + p.grade + '年・' + (p.throws === 'L' ? '左' : '右') + '・' +
+            p.velo + 'km/h　制球 ' + UI.rankNum(p.control) + '　スタミナ ' + UI.rankNum(p.stamina) + '</span>' +
+        '</button>').join('') +
+      '</div></div>';
   }
 
   /* ---------- 特訓期間 ---------- */
@@ -269,23 +294,37 @@ const Screens = (() => {
 
   /* ---------- 試合開始前 ---------- */
 
-  function pregame(state) {
+  function pregame(state, opts) {
     const r = Tournament.currentRound(state.tour);
     const label = (state.tour.kind === 'national' ? state.settings.nationalName : '地方大会');
     UI.el('pregame-title').textContent = label + '　' + r.name;
     const html =
       /* 相手のチーム力は出さない。オーダーと能力を見て、自分で見積もってもらう */
       '<p class="section-lead vs">' + esc(state.team.name) + '　<i>対</i>　' + esc(state.opponent.name) + '</p>' +
-      '<div class="twocol">' + lineupCard(state.team) + lineupCard(state.opponent) + '</div>';
+      '<div class="twocol">' + lineupCard(state.team, { pickable: true }) +
+        lineupCard(state.opponent) + '</div>';
     UI.html('pregame-body', html);
     const body = UI.el('pregame-body');
     const open = (pid) => {
       const p = Team.find(state.team, pid) || Team.find(state.opponent, pid);
-      if (p) UI.openPlayer(p, { rename: !!Team.find(state.team, pid), onRename: () => pregame(state) });
+      if (p) UI.openPlayer(p, { rename: !!Team.find(state.team, pid), onRename: () => pregame(state, opts) });
     };
     bindRows(body, open);
     body.querySelectorAll('.pitname').forEach((b) =>
       b.addEventListener('click', () => open(b.dataset.pid)));
+    /* 先発を選ぶ。押された投手を起用順のいちばん前に持ってくる */
+    body.querySelectorAll('.spick__item').forEach((b) => {
+      b.addEventListener('click', () => {
+        const pid = b.dataset.pid;
+        const rot = state.team.rotation.slice();
+        const i = rot.indexOf(pid);
+        if (i <= 0) return;
+        rot.splice(i, 1); rot.unshift(pid);
+        state.team.rotation = rot;
+        if (opts && opts.onChange) opts.onChange();
+        pregame(state, opts);
+      });
+    });
     UI.show('screen-pregame');
   }
 

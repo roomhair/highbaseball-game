@@ -81,13 +81,30 @@ const GameScreen = (() => {
     return SPOT[e.spot] || null;
   }
 
+  /* 本塁の座標。打球はかならずここから飛んでいく */
+  const HOME = [100, 152];
+
   function fieldView(bases, outs, e) {
     const t = ballTarget(e);
     const b = (i) => (bases && bases[i] ? ' is-on' : '');
-    const ball = t
-      ? '<circle class="ball' + (e.code === 'HR' ? ' is-hr' : '') + '" cx="100" cy="152" r="4.4" ' +
-        'style="--dx:' + (t[0] - 100) + ';--dy:' + (t[1] - 152) + '"></circle>'
-      : '';
+    /* 打球は「本塁から飛んでいく」ことが分かるように、
+       本塁からの軌跡の線を先に引き、その上をボールが走る。
+       点が現れて移動するだけだと、どこから飛んだのか読み取れない。 */
+    let ball = '';
+    if (t) {
+      const dx = t[0] - HOME[0], dy = t[1] - HOME[1];
+      const len = Math.sqrt(dx * dx + dy * dy);
+      const hr = e.code === 'HR';
+      ball =
+        '<line class="balltrail' + (hr ? ' is-hr' : '') + '" ' +
+          'x1="' + HOME[0] + '" y1="' + HOME[1] + '" x2="' + t[0] + '" y2="' + t[1] + '" ' +
+          'style="--len:' + len.toFixed(1) + '"></line>' +
+        '<circle class="ballfrom' + (hr ? ' is-hr' : '') + '" ' +
+          'cx="' + HOME[0] + '" cy="' + HOME[1] + '" r="3"></circle>' +
+        '<circle class="ball' + (hr ? ' is-hr' : '') + '" ' +
+          'cx="' + HOME[0] + '" cy="' + HOME[1] + '" r="4.4" ' +
+          'style="--dx:' + dx + ';--dy:' + dy + '"></circle>';
+    }
     return '<div class="fieldview">' +
       '<svg viewBox="0 0 200 172" aria-hidden="true">' +
         '<path class="fv-grass" d="M100 152 L14 66 A122 122 0 0 1 186 66 Z"/>' +
