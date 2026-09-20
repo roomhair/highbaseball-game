@@ -594,10 +594,6 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .lufat--mid { color: var(--r-c); }
 .lufat--hi { color: var(--ng); font-weight: 700; }
 .pdetail__from { font-size: 11.5px; color: var(--accent); margin-top: 2px; }
-.pdetail__num { font-size: 11px; letter-spacing: .1em; color: var(--ink-faint); }
-.pdetail__num b { font-size: 15px; color: var(--ink); margin-left: 2px; }
-/* 背番号 */
-td.num, .num { font-size: 11px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
 .lurow.is-bench { background: var(--bg-2); }
 .lurow.is-bench .luno { color: var(--ink-faint); font-size: 11px; }
 /* つまんでいる行。浮かせて、いま動かしているのが分かるようにする */

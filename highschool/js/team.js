@@ -205,25 +205,6 @@ const Team = (() => {
     team.pitchers.forEach((p) => { p.fatigue = 0; });
   }
 
-  /**
-   * 背番号。高校野球の付け方に合わせて、
-   * エースが1、捕手が2、内野が3〜6、外野が7〜9。
-   * 指名打者は10、控え投手が11から、控えの野手がそのあと。
-   */
-  function uniformNumber(team, p) {
-    if (!team || !p) return null;
-    const rot = team.rotation || [];
-    const lineup = team.lineup || [];
-    if (p.kind === 'pitcher') {
-      const i = rot.indexOf(p.id);
-      return i === 0 ? 1 : 11 + Math.max(0, i - 1);
-    }
-    const slot = lineup.find((sl) => sl.pid === p.id);
-    if (slot) return slot.pos === 'DH' ? 10 : (POS[slot.pos] ? POS[slot.pos].num : 10);
-    const i = bench(team).findIndex((x) => x.id === p.id);
-    return 11 + Math.max(0, rot.length - 1) + Math.max(0, i);
-  }
-
   /** 疲れの見せ方 */
   function fatigueLabel(p) {
     const f = p.fatigue || 0;
@@ -253,6 +234,6 @@ const Team = (() => {
   return {
     create, all, find, defScore, autoLineup, autoRotation, orderBatters,
     bench, defenders, strength, bestPlayer, repair,
-    restPitchers, healPitchers, fatigueLabel, uniformNumber,
+    restPitchers, healPitchers, fatigueLabel,
   };
 })();

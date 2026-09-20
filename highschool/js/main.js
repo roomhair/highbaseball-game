@@ -58,11 +58,11 @@ const Game = (() => {
 
   function pickBatters() {
     state.phase = 'pick-bat';
-    state.sets = state.sets && state.sets.kind === 'bat' ? state.sets : { kind: 'bat', list: Dataset.make('batter', 5) };
+    state.sets = state.sets && state.sets.kind === 'bat' ? state.sets : { kind: 'bat', list: Dataset.make('batter', CONFIG.PICK_SETS) };
     save();
     Screens.pick({
       title: '野手を選ぶ',
-      lead: '13人ひと組のチームが5つ。どれか1つを選んでください。選手をタップすると詳しく見られます。',
+      lead: '13人ひと組のチームが' + CONFIG.PICK_SETS + 'つ。どれか1つを選んでください。選手をタップすると詳しく見られます。',
       setLabel: 'チーム', pickLabel: 'このチームにする',
       sets: state.sets.list,
       onSelect(i) {
@@ -80,11 +80,11 @@ const Game = (() => {
 
   function pickPitchers() {
     state.phase = 'pick-pit';
-    state.sets = state.sets && state.sets.kind === 'pit' ? state.sets : { kind: 'pit', list: Dataset.make('pitcher', 5) };
+    state.sets = state.sets && state.sets.kind === 'pit' ? state.sets : { kind: 'pit', list: Dataset.make('pitcher', CONFIG.PICK_SETS) };
     save();
     Screens.pick({
       title: '投手を選ぶ',
-      lead: '7人ひと組のチームが5つ。どれか1つを選んでください。',
+      lead: '7人ひと組のチームが' + CONFIG.PICK_SETS + 'つ。どれか1つを選んでください。',
       setLabel: 'チーム', pickLabel: 'このチームにする',
       sets: state.sets.list,
       onSelect(i) {
@@ -379,11 +379,11 @@ const Game = (() => {
     if (!state.need.bat) { state.phase = 'new-pit'; newcomerPitchers(); return; }
     state.phase = 'new-bat';
     state.sets = state.sets && state.sets.kind === 'nbat'
-      ? state.sets : { kind: 'nbat', list: Dataset.make('batter', 5, state.need.bat) };
+      ? state.sets : { kind: 'nbat', list: Dataset.make('batter', CONFIG.NEWCOMER_SETS, state.need.bat) };
     save();
     Screens.pick({
       title: '新入生（野手）',
-      lead: state.need.bat + '人ひと組の候補が5つ。入部させる組を選んでください。',
+      lead: state.need.bat + '人ひと組の候補が' + CONFIG.NEWCOMER_SETS + 'つ。入部させる組を選んでください。',
       setLabel: '候補', pickLabel: 'この新入生たちを迎える',
       sets: state.sets.list,
       onSelect(i) {
@@ -398,11 +398,11 @@ const Game = (() => {
   function newcomerPitchers() {
     if (!state.need.pit) { afterNewcomers(); return; }
     state.sets = state.sets && state.sets.kind === 'npit'
-      ? state.sets : { kind: 'npit', list: Dataset.make('pitcher', 5, state.need.pit) };
+      ? state.sets : { kind: 'npit', list: Dataset.make('pitcher', CONFIG.NEWCOMER_SETS, state.need.pit) };
     save();
     Screens.pick({
       title: '新入生（投手）',
-      lead: state.need.pit + '人ひと組の候補が5つ。入部させる組を選んでください。',
+      lead: state.need.pit + '人ひと組の候補が' + CONFIG.NEWCOMER_SETS + 'つ。入部させる組を選んでください。',
       setLabel: '候補', pickLabel: 'この新入生たちを迎える',
       sets: state.sets.list,
       onSelect(i) {

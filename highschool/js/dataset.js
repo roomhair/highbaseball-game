@@ -63,7 +63,7 @@ const Dataset = (() => {
     return players;
   }
 
-  /** 5つ用意する */
+  /** 指定された数だけ用意する */
   function make(kind, count, n) {
     const sets = [];
     for (let i = 0; i < (count || 5); i++) {

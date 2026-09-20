@@ -21,6 +21,10 @@ const CONFIG = {
     poach: true,                // 負けたとき相手に引き抜かれるか
   },
 
+  /* チーム作りで見せる組の数。新入生の選択は NEWCOMER_SETS のほう */
+  PICK_SETS: 3,
+  NEWCOMER_SETS: 5,
+
   /* 特訓 */
   TRAINING: {
     PICKS: 5,      // 「選択」できる回数（これを使い切ると終わり）
@@ -98,16 +102,16 @@ function rankOf(v) {
    key は内部用、short はスコアブックの1文字、num は守備番号。
    DH は守る場所が無いので適性を持たない（誰でも入れる）。 */
 const POSITIONS = [
-  { key: 'P',  short: '投', name: '投手',   num: 1 },
-  { key: 'C',  short: '捕', name: '捕手',   num: 2 },
-  { key: '1B', short: '一', name: '一塁手', num: 3 },
-  { key: '2B', short: '二', name: '二塁手', num: 4 },
-  { key: '3B', short: '三', name: '三塁手', num: 5 },
-  { key: 'SS', short: '遊', name: '遊撃手', num: 6 },
-  { key: 'LF', short: '左', name: '左翼手', num: 7 },
-  { key: 'CF', short: '中', name: '中堅手', num: 8 },
-  { key: 'RF', short: '右', name: '右翼手', num: 9 },
-  { key: 'DH', short: '指', name: '指名打者', num: 0 },
+  { key: 'P',  short: '投', name: '投手' },
+  { key: 'C',  short: '捕', name: '捕手' },
+  { key: '1B', short: '一', name: '一塁手' },
+  { key: '2B', short: '二', name: '二塁手' },
+  { key: '3B', short: '三', name: '三塁手' },
+  { key: 'SS', short: '遊', name: '遊撃手' },
+  { key: 'LF', short: '左', name: '左翼手' },
+  { key: 'CF', short: '中', name: '中堅手' },
+  { key: 'RF', short: '右', name: '右翼手' },
+  { key: 'DH', short: '指', name: '指名打者' },
 ];
 
 /* 野手データセットに一人ずつ入れる守備位置（捕一二三遊左中右DH） */

@@ -91,7 +91,6 @@ const Screens = (() => {
       const p = Team.find(t, s.pid);
       if (!p) return '';
       return '<tr class="prow" data-pid="' + p.id + '"><td class="c ord">' + (i + 1) + '</td>' +
-        '<td class="c num">' + Team.uniformNumber(t, p) + '</td>' +
         '<td class="c">' + posShort(s.pos) + '</td>' +
         '<td class="nm">' + esc(p.name) + '</td>' +
         '<td class="c tiny">' + p.grade + '年</td>' +
@@ -102,7 +101,7 @@ const Screens = (() => {
     return '<div class="lineupcard' + (opts.compact ? ' is-compact' : '') + '">' +
       '<h3 class="lineupcard__title">' + esc(t.name) + '</h3>' +
       '<div class="tablewrap"><table class="lineup"><tbody>' + rows + '</tbody></table></div>' +
-      (sp ? '<p class="lineupcard__p">先発　<span class="num">' + Team.uniformNumber(t, sp) + '</span> ' +
+      (sp ? '<p class="lineupcard__p">先発　' +
         '<button type="button" class="linkbtn pitname" data-pid="' + sp.id + '">' + esc(sp.name) + '</button>' +
         '（' + sp.grade + '年・' + (sp.throws === 'L' ? '左' : '右') + '・' + sp.velo + 'km/h　制球' + rankOf(sp.control) +
         '　' + esc(Team.fatigueLabel(sp)) + '　' + sp.pitches.map((q) => esc(q.name)).join('・') + '）</p>' : '') +
