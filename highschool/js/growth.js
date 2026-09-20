@@ -32,12 +32,16 @@ const Growth = (() => {
   /**
    * 能力は上に行くほど伸びにくい。
    * 1試合の伸びを大きくすると、頭打ちが無い限り大会の途中で全員Sになってしまう。
-   * 残りを HEAD_SPAN で割ったものを HEAD_CURVE 乗しているので、
-   * 40台のうちはほぼ素通し、70を超えたあたりから急に鈍る。
+   *
+   * ただし「残りに比例」にはしていない。それだと弱い選手ほど速く伸びるので、
+   * 特訓で積み上げた差が大会の途中で勝手に埋まってしまい、
+   * 上手に遊んでも勝率に出なくなる。
+   * 65あたりまでは満額で伸ばし、そこから上だけを急に鈍らせている。
    */
   function headroom(value) {
     const G = CONFIG.GROWTH;
-    return RNG.clamp(Math.pow(Math.max(0, 100 - value) / G.HEAD_SPAN, G.HEAD_CURVE), 0.04, 1);
+    const left = RNG.clamp(Math.max(0, 100 - value) / G.HEAD_SPAN, 0, 1);
+    return RNG.clamp(Math.pow(left, G.HEAD_CURVE), 0.04, 1);
   }
 
   function gainFor(value, points) {
@@ -63,7 +67,7 @@ const Growth = (() => {
 
       /* 伸びしろの元。出た選手ほど、活躍した選手ほど多い */
       const G = CONFIG.GROWTH;
-      let points = played ? 1.0 + RNG.clamp(perf, -1.5, 8) * 0.22 : G.BENCH;
+      let points = played ? G.BASE + RNG.clamp(perf, -1.5, 8) * G.PERF : G.BENCH;
       points *= GRADE_GAIN[p.grade] || 1;
       points *= RNG.clamp(RNG.norm(1, 0.28), 0.3, 1.9);
 
