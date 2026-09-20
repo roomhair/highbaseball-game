@@ -69,6 +69,27 @@ const Player = (() => {
   }
 
   /** 適性の落ち込み。守備計算で使う減点（A=0 … G=大きい） */
+  /**
+   * 守備適性を1つ上げる。上がったら新しい評価、上がらなければ null。
+   * Aはもう上がらない。下のほうほど上がりやすい（G 30% 〜 B 5%）。
+   */
+  const APT_UP = { B: 0.05, C: 0.10, D: 0.15, E: 0.20, F: 0.25, G: 0.30 };
+
+  function aptUpChance(letter) { return APT_UP[letter] || 0; }
+
+  function tryAptUp(p, posKey) {
+    if (!p || !p.apt || !posKey || posKey === 'DH') return null;
+    const now = p.apt[posKey];
+    const idx = APT_LETTERS.indexOf(now);
+    if (idx <= 0) return null;                    // Aはこれ以上ない
+    /* 左投げの選手は捕手・二塁・三塁・遊撃をやらない。
+       そこの適性はGのままにしておく */
+    if (p.throws === 'L' && RIGHT_ONLY.indexOf(posKey) >= 0) return null;
+    if (!RNG.chance(aptUpChance(now))) return null;
+    p.apt[posKey] = APT_LETTERS[idx - 1];
+    return { before: now, after: p.apt[posKey] };
+  }
+
   function aptPenalty(letter) {
     const idx = APT_LETTERS.indexOf(letter);
     return idx < 0 ? 30 : [0, 4, 9, 15, 21, 28, 36][idx];
@@ -320,6 +341,7 @@ const Player = (() => {
 
   return {
     newBatter, newPitcher, rating, breakScore, aptPenalty, handLabel, gradeLabel, RIGHT_ONLY,
+    tryAptUp, aptUpChance,
     emptyBat, emptyPit, addStats, seedPracticeBat, seedPracticePit, practiceGames,
     rollTalent, nextId, currentSeq, setSeq,
   };

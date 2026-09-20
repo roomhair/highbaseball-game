@@ -87,6 +87,18 @@ const Growth = (() => {
           }
         }
       });
+      /* 守備についた選手は、その場所の適性が上がることがある。
+         下手なうちほど上がりやすく（G 30%）、上手くなるほど鈍る（B 5%）。
+         守った場所だけが上がる（右翼を守って捕手が上手くなる道理はない） */
+      if (!isPit && played) {
+        const slot = (team.lineup || []).find((sl) => sl.pid === p.id);
+        const up = slot ? Player.tryAptUp(p, slot.pos) : null;
+        if (up) {
+          ups.push({ key: 'apt', label: posName(slot.pos) + '適性', pos: slot.pos,
+                     amount: 1, before: up.before, after: up.after, apt: true });
+        }
+      }
+
       /* 投手は球速も少しずつ上がる */
       if (isPit && played && RNG.chance(CONFIG.GROWTH.VELO_CHANCE)) {
         const before = p.velo;

@@ -504,34 +504,43 @@ const UI = (() => {
 
   function lineupEditor(team, onDone) {
 
-    /* 選手ID → 守備位置。打順ではなく選手について回る */
+    /* 選手ID → 守備位置。'BENCH' なら控え。
+       スタメンかどうかは「並びの上から9人」ではなく、守備位置が付いているかで決まる。
+       控えの選手に守備位置を付ければ、それだけでスタメンに入る。 */
+    const BENCH = 'BENCH';
     const posOf = {};
+    team.batters.forEach((p) => { posOf[p.id] = BENCH; });
     team.lineup.forEach((sl) => { posOf[sl.pid] = sl.pos; });
+
+    /* 並び順（13人ぶん）。打順はこの並びのうち、守備位置が付いている人だけで数える */
+    let order = team.lineup.map((sl) => sl.pid)
+      .concat(team.batters.map((p) => p.id).filter((id) => !team.lineup.some((sl) => sl.pid === id)));
+
     let tab = 'bat';        // 'bat' か 'pit'
-    let showBad = false;    // 決定を押すまでは重複を赤くしない
+    let showBad = false;    // 決定を押すまでは赤くしない
 
     function batterIds() {
-      const inLine = team.lineup.map((sl) => sl.pid);
-      const bench = team.batters.filter((p) => inLine.indexOf(p.id) < 0).map((p) => p.id);
-      return inLine.concat(bench);
+      /* 部員が入れ替わっていても落ちないように、毎回そろえ直す */
+      const ids = team.batters.map((p) => p.id);
+      order = order.filter((id) => ids.indexOf(id) >= 0)
+        .concat(ids.filter((id) => order.indexOf(id) < 0));
+      order.forEach((id) => { if (posOf[id] == null) posOf[id] = BENCH; });
+      return order;
     }
 
-    /** まだ誰も使っていない守備位置を1つ返す（控えが上がってきたとき用） */
-    function freePos(ids, self) {
-      const used = new Set(ids.slice(0, 9).filter((id) => id !== self).map((id) => posOf[id]));
-      const p = Team.find(team, self);
-      if (p && !used.has(p.pos)) return p.pos;
-      return DATASET_POSITIONS.find((k) => !used.has(k)) || 'DH';
-    }
+    /** スタメン（守備位置が付いている人）を並び順で */
+    function starters() { return batterIds().filter((id) => posOf[id] !== BENCH); }
 
-    /** 守備位置の重複を調べる */
-    function conflicts(ids) {
-      const seen = {}, dup = [];
-      ids.slice(0, 9).forEach((id) => {
+    /** 守備位置の過不足を調べる */
+    function problems() {
+      const st = starters();
+      const used = {}, dup = [];
+      st.forEach((id) => {
         const k = posOf[id];
-        if (seen[k]) { if (dup.indexOf(k) < 0) dup.push(k); } else seen[k] = true;
+        if (used[k]) { if (dup.indexOf(k) < 0) dup.push(k); } else used[k] = true;
       });
-      return dup;
+      const missing = DATASET_POSITIONS.filter((k) => !used[k]);
+      return { dup, missing, count: st.length };
     }
 
     function aptRow(p) {
@@ -539,20 +548,22 @@ const UI = (() => {
         '<span class="luapt"><i>' + posShort(k) + '</i>' + aptSpan(p.apt[k]) + '</span>').join('');
     }
 
-    function batRow(pid, i, ids) {
+    function batRow(pid, no, prob, i) {
       const p = Team.find(team, pid);
       if (!p) return '';
-      const bench = i >= 9;
-      const pos = bench ? null : posOf[pid];
-      const options = DATASET_POSITIONS.map((k) =>
-        '<option value="' + k + '"' + (k === pos ? ' selected' : '') + '>' + posShort(k) + '</option>').join('');
-      const bad = showBad && !bench && conflicts(ids).indexOf(pos) >= 0;
+      const pos = posOf[pid];
+      const bench = pos === BENCH;
+      /* どの選手も同じ選び方。「控」を選べば外れ、守備位置を選べば入る */
+      const options = ['<option value="' + BENCH + '"' + (bench ? ' selected' : '') + '>控</option>']
+        .concat(DATASET_POSITIONS.map((k) =>
+          '<option value="' + k + '"' + (k === pos ? ' selected' : '') + '>' + posShort(k) + '</option>')).join('');
+      const bad = showBad && !bench && prob.dup.indexOf(pos) >= 0;
       return '<li class="lurow' + (bench ? ' is-bench' : '') + (bad ? ' is-bad' : '') + '" data-pid="' + p.id + '">' +
         '<span class="lugrip" aria-hidden="true"><i></i><i></i><i></i></span>' +
-        '<span class="luno">' + (bench ? '控' : (i + 1)) + '</span>' +
+        '<span class="luno">' + (bench ? '控' : no) + '</span>' +
         '<span class="lupos">' +
-          (bench ? '<span class="lupos__bench">―</span>'
-                 : '<select class="possel" data-pid="' + p.id + '">' + options + '</select>') +
+          '<select class="possel' + (bench ? ' is-bench' : '') + '" data-pid="' + p.id + '">' +
+            options + '</select>' +
         '</span>' +
         '<span class="lumain">' +
           '<button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
@@ -595,18 +606,23 @@ const UI = (() => {
 
     function render() {
       const ids = batterIds();
-      const dup = conflicts(ids);
-      const warn = (showBad && dup.length)
-        ? '<p class="luwarn">守備位置が重なっています（' +
-            dup.map((k) => posName(k)).join('・') + '）。直してから決定してください。</p>'
-        : '';
+      const prob = problems();
+      const msgs = [];
+      if (prob.dup.length) msgs.push('守備位置が重なっています（' + prob.dup.map(posName).join('・') + '）');
+      if (prob.missing.length) msgs.push('守る人がいません（' + prob.missing.map(posName).join('・') + '）');
+      const warn = (showBad && msgs.length)
+        ? '<p class="luwarn">' + msgs.join('。') + '。直してから決定してください。</p>' : '';
       const hint = tab === 'bat'
-        ? '左はしの取っ手をつまんで上下に動かすと、並べ替えられます。' +
-          '<b>上の9人がスタメン</b>、残りが控えです。守備位置は選手について回るので、' +
-          '1人だけ変えても他の選手は動きません。'
+        ? '守備位置の欄で<b>「控」を選べば外れ、守備位置を選べばスタメンに入ります</b>。' +
+          '打順は左はしの取っ手をつまんで並べ替えます。' +
+          '9つの守備位置が1人ずつ埋まっていないと決定できません。'
         : '左はしの取っ手をつまんで、投げる順番を並べ替えられます。<b>いちばん上が先発</b>です。';
+      let no = 0;
       const list = tab === 'bat'
-        ? '<ul class="lulist" id="lu-bat">' + ids.map((pid, i) => batRow(pid, i, ids)).join('') + '</ul>'
+        ? '<ul class="lulist" id="lu-bat">' + ids.map((pid, i) => {
+            if (posOf[pid] !== BENCH) no++;
+            return batRow(pid, no, prob, i);
+          }).join('') + '</ul>'
         : '<ul class="lulist" id="lu-pit">' + team.rotation.map(pitRow).join('') + '</ul>';
       return '<div class="lineup-edit">' +
         '<h3 class="modal__title">オーダー変更</h3>' +
@@ -622,30 +638,30 @@ const UI = (() => {
         '</div></div>';
     }
 
-    /* 動かしているあいだ、番号と「控え」の表示だけ付け替える */
+    /* 動かしているあいだ、打順の番号だけ付け替える。
+       控えかどうかは守備位置で決まるので、動かしても変わらない */
     function relabel(list) {
+      let n = 0;
       Array.from(list.children).forEach((li, i) => {
         const no = li.querySelector('.luno');
         if (!no) return;
         if (list.id === 'lu-pit') { no.textContent = i === 0 ? '先発' : (i + 1) + '番手'; return; }
-        const bench = i >= 9;
-        li.classList.toggle('is-bench', bench);
-        no.textContent = bench ? '控' : (i + 1);
+        if (posOf[li.dataset.pid] !== BENCH) { n++; no.textContent = n; }
+        else no.textContent = '控';
       });
     }
 
-    function applyBatters(order) {
-      /* 控えから上がってきた選手には、空いている守備位置をあてがう */
-      order.slice(0, 9).forEach((pid) => {
-        if (!posOf[pid]) posOf[pid] = freePos(order, pid);
-      });
-      team.lineup = order.slice(0, 9).map((pid) => ({ pid, pos: posOf[pid] }));
+    /** 並びを覚えて、チームに書き戻す（画面は描き直さない） */
+    function commit(next) {
+      if (next) order = next.slice();
+      team.lineup = starters().map((pid) => ({ pid, pos: posOf[pid] }));
+      /* 名簿の並びも、画面の並びに合わせておく */
       const byId = {};
       team.batters.forEach((p) => { byId[p.id] = p; });
-      team.batters = order.map((pid) => byId[pid]).filter(Boolean)
-        .concat(team.batters.filter((p) => order.indexOf(p.id) < 0));
-      refresh();
+      team.batters = batterIds().map((pid) => byId[pid]).filter(Boolean);
     }
+
+    function applyBatters(next) { commit(next); refresh(); }
 
     function refresh() {
       closeModal.back = null;
@@ -701,12 +717,13 @@ const UI = (() => {
         if (next) { team.rotation = next; refresh(); }
       }));
 
-      /* 守備位置を変えるのは、その選手だけ。重なったら決定を止める */
+      /* 守備位置を変えるのは、その選手だけ。
+         「控」を選べば外れ、守備位置を選べばスタメンに入る。
+         重なりや不足は、決定を押したときにまとめて知らせる */
       body.querySelectorAll('.possel').forEach((sel) => sel.addEventListener('change', () => {
         posOf[sel.dataset.pid] = sel.value;
         showBad = false;
-        team.lineup = team.lineup.map((sl) => ({ pid: sl.pid, pos: posOf[sl.pid] }));
-        refresh();
+        applyBatters();
       }));
 
       body.querySelectorAll('.pname').forEach((b) =>
@@ -715,15 +732,22 @@ const UI = (() => {
       const auto = body.querySelector('#lu-auto');
       if (auto) auto.addEventListener('click', () => {
         Team.autoLineup(team);
-        Object.keys(posOf).forEach((k) => { delete posOf[k]; });
+        team.batters.forEach((p) => { posOf[p.id] = BENCH; });
         team.lineup.forEach((sl) => { posOf[sl.pid] = sl.pos; });
+        order = team.lineup.map((sl) => sl.pid)
+          .concat(team.batters.map((p) => p.id).filter((id) => posOf[id] === BENCH));
+        showBad = false;
         refresh();
       });
       const done = body.querySelector('#lu-done');
       if (done) done.addEventListener('click', () => {
-        /* 重なりは、決定を押したときにはじめて知らせる */
-        if (conflicts(batterIds()).length) { showBad = true; tab = 'bat'; refresh(); return; }
+        /* 重なりと不足は、決定を押したときにはじめて知らせる */
+        const prob = problems();
+        if (prob.dup.length || prob.missing.length || prob.count !== 9) {
+          showBad = true; tab = 'bat'; refresh(); return;
+        }
         showBad = false;
+        commit();
         closeModal.back = null; closeModal.after = null; closeModal();
         if (onDone) onDone();
       });

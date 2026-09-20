@@ -681,6 +681,12 @@ const GameScreen = (() => {
       '</div>';
   }
 
+  /** 成長の1行ぶん。守備適性は数字でなく評価で出す */
+  function upText(u) {
+    if (u.apt) return esc(u.label) + ' ' + u.before + '→' + u.after;
+    return esc(u.label) + ' +' + u.amount + (u.unit || '');
+  }
+
   function growthList(report) {
     const awake = report.filter((r) => r.awakened);
     const grew = report.filter((r) => !r.awakened && r.ups.length);
@@ -688,14 +694,14 @@ const GameScreen = (() => {
     if (awake.length) {
       html += '<div class="awakebox"><h4 class="awakebox__title">覚醒</h4>' +
         awake.map((r) => '<p class="awakebox__line"><b>' + esc(r.name) + '</b>（' + r.grade + '年）が覚醒した！　' +
-          r.ups.map((u) => esc(u.label) + ' +' + u.amount + (u.unit || '')).join('　') + '</p>').join('') +
+          r.ups.map(upText).join('　') + '</p>').join('') +
         '</div>';
     }
     if (grew.length) {
       html += '<details class="growthbox"><summary>成長した選手（' + grew.length + '人）</summary>' +
         '<ul class="growthlist">' + grew.map((r) =>
           '<li><b>' + esc(r.name) + '</b><span>' + r.ups.map((u) =>
-            esc(u.label) + ' +' + u.amount + (u.unit || '')).join('　') + '</span></li>').join('') +
+            upText(u)).join('　') + '</span></li>').join('') +
         '</ul></details>';
     }
     return html;
