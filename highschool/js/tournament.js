@@ -4,9 +4,10 @@
    相手校を作り、トーナメントの山を組む。
    ・相手は「大会の強さ（level）」から作る。level をそのまま平均能力に
      使っているので、数字を上げれば相手も強くなる。
-   ・強さは1試合ごとに確率表から引いた幅だけ上がる。表の平均は
-     自軍が1試合で強くなる幅に合わせてあるので、勝ち上がっても
+   ・強さは1試合ごとに確率表から引いた幅だけ上がる。地方大会の表の
+     平均は自軍が1試合で強くなる幅に合わせてあるので、勝ち上がっても
      相手との差がひとりでに開いたり縮んだりしない。
+     全国大会は別の表（NAT_STEP）を使い、自軍の伸びより速く上がる。
    ・表から引くので、低い確率で前の相手より弱いところが当たる
      （そのほうが大会らしい）。
      ただし準々決勝→準決勝→決勝だけは必ず強くなる。
@@ -37,9 +38,14 @@ const Tournament = (() => {
     return t;
   }
 
+  /** その大会で使う確率表 */
+  function stepTable(kind) {
+    return kind === 'national' ? CONFIG.FIELD.NAT_STEP : CONFIG.FIELD.STEP;
+  }
+
   /** 確率表から1つ引く */
-  function rollStep() {
-    const table = CONFIG.FIELD.STEP;
+  function rollStep(kind) {
+    const table = stepTable(kind);
     const total = table.reduce((a, r) => a + r.weight, 0);
     let r = Math.random() * total;
     for (let i = 0; i < table.length; i++) {
@@ -51,14 +57,15 @@ const Tournament = (() => {
   }
 
   /** 期待値を動かさない引き。平均0のぶれだけを返す。
-      地方大会の決勝から全国大会の1回戦へ移るときに使う */
+      地方大会の決勝から全国大会の1回戦へ移るときに使う。
+      地方大会の表を使うので、ぶれ方は大会の中の1試合ぶんと同じになる */
   function rollDrift() {
-    return rollStep() - stepMean();
+    return rollStep('local') - stepMean('local');
   }
 
   /** 表の平均。オフの練習相手の強さなど、めやすが要るところで使う */
-  function stepMean() {
-    const table = CONFIG.FIELD.STEP;
+  function stepMean(kind) {
+    const table = stepTable(kind);
     let w = 0, s = 0;
     table.forEach((r) => { w += r.weight; s += r.weight * (r.add[0] + r.add[1]) / 2; });
     return w ? s / w : 0;
@@ -74,12 +81,12 @@ const Tournament = (() => {
    * from は自軍の強さと関係のない固定値なので、
    * チームが強くなればそのぶん勝ち上がりやすくなる。
    */
-  function strengthLadder(from, rounds, scale) {
+  function strengthLadder(from, rounds, scale, kind) {
     const k = scale || 1;
     const out = [from];
     for (let i = 1; i < rounds.length; i++) {
       const mustRise = rounds[i] === '準々決勝' || rounds[i] === '準決勝' || rounds[i] === '決勝';
-      let add = rollStep();
+      let add = rollStep(kind);
       /* 準々決勝から先は必ず強くなる。引き直さず、下限を入れるだけ */
       if (mustRise && add < 0.6) add = 0.6 + Math.random() * 1.6;
       out.push(out[i - 1] + add * k);
@@ -95,7 +102,7 @@ const Tournament = (() => {
     if (RNG.chance(0.5)) rounds.push('4回戦');
     rounds.push('準々決勝', '準決勝', '決勝');
 
-    const levels = strengthLadder(from, rounds, scale);
+    const levels = strengthLadder(from, rounds, scale, kind);
     /* 同じ大会の中で同じ高校名が出ないようにするだけ。
        年をまたげば同じ名前が出てよい（常連校が何年も出てくるほうが自然） */
     const used = usedNames || new Set();

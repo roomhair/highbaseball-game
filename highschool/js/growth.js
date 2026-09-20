@@ -246,7 +246,7 @@ const Growth = (() => {
      合わせてしまうと、強くなっても通算成績が伸びなくなってしまう */
   function offseasonPractice(team) {
     /* 大会の真ん中あたり（1回戦から3試合ぶん上がったところ）を相手にする */
-    const peer = Math.round(CONFIG.FIELD.local.from + Tournament.stepMean() * 3);
+    const peer = Math.round(CONFIG.FIELD.local.from + Tournament.stepMean('local') * 3);
     Team.all(team).forEach((p) => {
       const games = RNG.range(8, 18);
       if (p.kind === 'pitcher') Player.addStats(p.career, Player.seedPracticePit(p, games, peer));
