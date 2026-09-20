@@ -318,6 +318,21 @@ td.hl { font-weight: 700; }
   letter-spacing: .1em; color: var(--accent);
 }
 .spick__meta { grid-column: 1 / -1; font-size: 10.5px; color: var(--ink-mute); }
+.spick__balls { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
+
+/* 変化球の札（名前＋切れ味） */
+.pball {
+  display: inline-flex; align-items: baseline; gap: 2px;
+  border: 1px solid var(--line); border-radius: 3px; padding: 0 4px;
+  font-size: 10px; color: var(--ink-mute); white-space: nowrap;
+}
+.pball b { font-size: 11px; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* スタメンの下に出す先発の一行 */
+.spmeta { display: block; margin-top: 2px; }
+.spballs { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+.spfat { color: var(--ink-faint); }
+.spfat.is-tired { color: var(--ng); font-weight: 700; }
 .spick__fat { grid-column: 2; font-size: 10.5px; color: var(--ink-faint); white-space: nowrap; }
 .spick__fat.is-tired { color: var(--ng); font-weight: 700; }
 .twocol { display: grid; gap: 14px; }

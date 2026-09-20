@@ -155,10 +155,24 @@ const Screens = (() => {
       '<div class="tablewrap"><table class="lineup">' + head + '<tbody>' + rows + '</tbody></table></div>' +
       (sp ? '<p class="lineupcard__p">先発　' +
         '<button type="button" class="linkbtn pitname" data-pid="' + sp.id + '">' + esc(sp.name) + '</button>' +
-        '（' + sp.grade + '年・' + (sp.throws === 'L' ? '左' : '右') + '・' + sp.velo + 'km/h　制球' + rankOf(sp.control) +
-        '　' + esc(Team.fatigueLabel(sp)) + '　' + sp.pitches.map((q) => esc(q.name)).join('・') + '）</p>' : '') +
+        '<span class="spmeta">' +
+          sp.grade + '年・' + (sp.throws === 'L' ? '左' : '右') +
+          '　球速 <b class="rankval">' + sp.velo + '</b>km/h' +
+          '　制球 ' + UI.rankNum(sp.control) +
+          '　スタミナ ' + UI.rankNum(sp.stamina) +
+          '　<span class="spfat' + (sp.fatigue >= 40 ? ' is-tired' : '') + '">' +
+            esc(Team.fatigueLabel(sp)) + '</span>' +
+        '</span>' +
+        '<span class="spballs">' + pitchText(sp) + '</span></p>' : '') +
       (opts.pickable ? starterPicker(t) : '') +
       '</div>';
+  }
+
+  /** 変化球を「名前＋切れ味」で並べる */
+  function pitchText(p) {
+    if (!p.pitches || !p.pitches.length) return '―';
+    return p.pitches.map((q) =>
+      '<span class="pball">' + esc(q.name) + '<b>' + q.level + '</b></span>').join('');
   }
 
   /** 先発を選ぶ列。試合前の画面だけに出す */
@@ -172,8 +186,10 @@ const Screens = (() => {
           '<span class="spick__nm">' + esc(p.name) + '</span>' +
           '<span class="spick__fat' + (p.fatigue >= 40 ? ' is-tired' : '') + '">' +
             esc(Team.fatigueLabel(p)) + '</span>' +
-          '<span class="spick__meta">' + p.grade + '年・' + (p.throws === 'L' ? '左' : '右') + '・' +
-            p.velo + 'km/h　制球 ' + UI.rankNum(p.control) + '　スタミナ ' + UI.rankNum(p.stamina) + '</span>' +
+          '<span class="spick__meta">' + p.grade + '年・' + (p.throws === 'L' ? '左' : '右') +
+            '　球速 <b class="rankval">' + p.velo + '</b>km/h' +
+            '　制球 ' + UI.rankNum(p.control) + '　スタミナ ' + UI.rankNum(p.stamina) + '</span>' +
+          '<span class="spick__balls">' + pitchText(p) + '</span>' +
         '</button>').join('') +
       '</div></div>';
   }
