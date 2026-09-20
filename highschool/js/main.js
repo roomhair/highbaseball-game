@@ -155,17 +155,16 @@ const Game = (() => {
       const r = RNG.chance(0.5) ? F.weakYear : F.strongYear;
       j = r[0] + Math.random() * (r[1] - r[0]);
     }
-    let from, to;
+    let from;
     if (kind === 'local') {
       from = F.local.from * j;
-      to = F.local.to * j;
       state.localJitter = j;
     } else {
-      /* 全国大会の1回戦は、地方大会の決勝と同じくらいの強さから */
-      from = state.localFinalLevel || F.local.to * (state.localJitter || 1);
-      to = Math.max(from * 1.15, F.national.to * (state.localJitter || 1));
+      /* 全国大会の1回戦は、地方大会の決勝の続きから */
+      j = state.localJitter || 1;
+      from = (state.localFinalLevel || F.local.from * j) + F.national.bonus;
     }
-    state.tour = Tournament.create(kind, from, to, used);
+    state.tour = Tournament.create(kind, from, j, used);
     Growth.resetTour(state.team);
     state.phase = 'opening';
     save();

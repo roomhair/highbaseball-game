@@ -4,8 +4,11 @@
    相手校を作り、トーナメントの山を組む。
    ・相手は「大会の強さ（level）」から作る。level をそのまま平均能力に
      使っているので、数字を上げれば相手も強くなる。
-   ・強さは勝ち上がるほど上がるが、必ずではない。低い確率で
-     前の相手より弱いところが当たる（そのほうが大会らしい）。
+   ・強さは1試合ごとに確率表から引いた幅だけ上がる。表の平均は
+     自軍が1試合で強くなる幅に合わせてあるので、勝ち上がっても
+     相手との差がひとりでに開いたり縮んだりしない。
+   ・表から引くので、低い確率で前の相手より弱いところが当たる
+     （そのほうが大会らしい）。
      ただし準々決勝→準決勝→決勝だけは必ず強くなる。
    ================================================== */
 'use strict';
@@ -34,52 +37,59 @@ const Tournament = (() => {
     return t;
   }
 
+  /** 確率表から1つ引く */
+  function rollStep() {
+    const table = CONFIG.FIELD.STEP;
+    const total = table.reduce((a, r) => a + r.weight, 0);
+    let r = Math.random() * total;
+    for (let i = 0; i < table.length; i++) {
+      r -= table[i].weight;
+      if (r <= 0) return table[i].add[0] + Math.random() * (table[i].add[1] - table[i].add[0]);
+    }
+    const last = table[table.length - 1];
+    return last.add[0] + Math.random() * (last.add[1] - last.add[0]);
+  }
+
+  /** 表の平均。オフの練習相手の強さなど、めやすが要るところで使う */
+  function stepMean() {
+    const table = CONFIG.FIELD.STEP;
+    let w = 0, s = 0;
+    table.forEach((r) => { w += r.weight; s += r.weight * (r.add[0] + r.add[1]) / 2; });
+    return w ? s / w : 0;
+  }
+
   /**
    * 1回戦から決勝までの強さを決める。
-   * from（1回戦）から to（決勝）へ、後半ほど急に上がる形で並べる。
+   * 1回戦の from から、1試合ごとに確率表で引いた幅だけ積み上げる。
+   * 表の平均は自軍が1試合で強くなる幅に合わせてあるので、
+   * 勝ち上がる間の「自分と相手の差」はおおむね保たれる。
    * ・低い確率で、前の相手より弱いところが当たる
    * ・ただし準々決勝から先は必ず強くなる
-   * from と to は自軍の強さと関係のない固定値なので、
+   * from は自軍の強さと関係のない固定値なので、
    * チームが強くなればそのぶん勝ち上がりやすくなる。
    */
-  function strengthLadder(from, to, rounds) {
-    const n = rounds.length;
-    const out = [];
-    for (let i = 0; i < n; i++) {
-      const t = n === 1 ? 1 : i / (n - 1);
-      /* ほぼ一直線に上げる。1回戦から決勝までの幅が広いので、
-         これで1回戦→2回戦→3回戦が1つずつはっきり強くなる。
-         自軍も試合ごとに大きく伸びるので、相手の上がり方が緩いと
-         3回戦あたりから消化試合になってしまう */
-      const curve = Math.pow(t, 1.05);
-      out.push(from + (to - from) * curve);
-    }
-
-    /* ゆらぎを足す。ここで「妙に強い2回戦」や「楽な3回戦」が生まれる */
-    for (let i = 0; i < n; i++) {
+  function strengthLadder(from, rounds, scale) {
+    const k = scale || 1;
+    const out = [from];
+    for (let i = 1; i < rounds.length; i++) {
       const mustRise = rounds[i] === '準々決勝' || rounds[i] === '準決勝' || rounds[i] === '決勝';
-      const jitter = mustRise ? 0.07 : 0.13;
-      out[i] *= 1 + (Math.random() * 2 - 1) * jitter;
-      if (!mustRise && i > 0 && RNG.chance(0.14)) out[i] = Math.min(out[i], out[i - 1] * 0.92);
+      let add = rollStep();
+      /* 準々決勝から先は必ず強くなる。引き直さず、下限を入れるだけ */
+      if (mustRise && add < 0.6) add = 0.6 + Math.random() * 1.6;
+      out.push(out[i - 1] + add * k);
     }
-
-    /* 準々決勝から先は必ず強くなる */
-    for (let i = 1; i < n; i++) {
-      const mustRise = rounds[i] === '準々決勝' || rounds[i] === '準決勝' || rounds[i] === '決勝';
-      if (mustRise && out[i] <= out[i - 1]) out[i] = out[i - 1] * (1 + 0.04 + Math.random() * 0.10);
-    }
-
     return out.map((v) => RNG.clamp(Math.round(v), 6, 96));
   }
 
-  /** 山を組む。kind は 'local'（地方大会）か 'national'（全国大会） */
-  function create(kind, from, to, usedNames) {
+  /** 山を組む。kind は 'local'（地方大会）か 'national'（全国大会）。
+      scale はその年のゆらぎ（1なら平年） */
+  function create(kind, from, scale, usedNames) {
     const rounds = ['1回戦', '2回戦', '3回戦'];
     /* 4回戦があるかどうかは半々。無ければそのまま準々決勝へ */
     if (RNG.chance(0.5)) rounds.push('4回戦');
     rounds.push('準々決勝', '準決勝', '決勝');
 
-    const levels = strengthLadder(from, to, rounds);
+    const levels = strengthLadder(from, rounds, scale);
     /* 同じ大会の中で同じ高校名が出ないようにするだけ。
        年をまたげば同じ名前が出てよい（常連校が何年も出てくるほうが自然） */
     const used = usedNames || new Set();
@@ -115,5 +125,5 @@ const Tournament = (() => {
     };
   }
 
-  return { create, makeTeam, currentRound, buildOpponent, perGame, strengthLadder };
+  return { create, makeTeam, currentRound, buildOpponent, perGame, strengthLadder, stepMean };
 })();
