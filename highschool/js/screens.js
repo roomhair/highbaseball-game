@@ -154,25 +154,35 @@ const Screens = (() => {
 
     const card = st.card;
     if (card) {
-      /* 並びはオーダー順。カードの中で誰が主力なのか分かりやすくする */
+      /* 並びはオーダー順。カードの中で誰が主力なのか分かりやすくする。
+         2種同時のカードでは同じ選手が2行に分かれるので、先にまとめる */
       const order = orderIndex(state.team);
-      const shown = card.targets.slice().sort((a, b) =>
+      const groups = [];
+      const seen = new Map();
+      card.targets.forEach((t) => {
+        if (!seen.has(t.pid)) { const g = { pid: t.pid, ups: [] }; seen.set(t.pid, g); groups.push(g); }
+        seen.get(t.pid).ups.push(t);
+      });
+      groups.sort((a, b) =>
         (order[a.pid] == null ? 99 : order[a.pid]) - (order[b.pid] == null ? 99 : order[b.pid]));
-      const lines = shown.map((t) => {
-        const p = Team.find(state.team, t.pid);
+      const lines = groups.map((g) => {
+        const p = Team.find(state.team, g.pid);
         if (!p) return '';
+        const ups = g.ups.map((t) =>
+          esc(t.label) + ' +' + t.amount + (t.unit ? esc(t.unit) : '')).join('　');
         return '<li class="tcard">' +
           '<div class="tcard__head"><b>' + esc(p.name) + '</b>' +
             '<span>' + p.grade + '年・' + UI.roleText(state.team, p) + '</span>' +
-            '<em class="tcard__up">' + esc(t.label) + ' +' + t.amount + (t.unit ? esc(t.unit) : '') + '</em>' +
+            '<em class="tcard__up">' + ups + '</em>' +
           '</div>' +
-          '<div class="tcard__stats">' + statChips(p, t) + '</div>' +
+          '<div class="tcard__stats">' + statChips(p, g.ups) + '</div>' +
         '</li>';
       }).join('');
       UI.html('train-card',
-        '<div class="traincard traincard--' + card.tier + '">' +
+        '<div class="traincard traincard--' + card.tier + (card.multi ? ' is-multi' : '') + '">' +
           '<p class="traincard__kind">' + esc(card.title) +
-            '<span class="traincard__n">' + card.targets.length + '人</span>' +
+            '<span class="traincard__n">' + groups.length + '人</span>' +
+            (card.multi ? '<span class="traincard__multi">2種同時</span>' : '') +
             (card.tierLabel ? '<span class="traincard__tier">' + esc(card.tierLabel) + '</span>' : '') +
           '</p>' +
           '<ul class="traincard__list">' + lines + '</ul>' +
@@ -201,7 +211,14 @@ const Screens = (() => {
    * 能力をひと通り並べる。上がるものだけ「いま → 上がったあと」で出し、
    * 残りはいまの値をそのまま添える。能力の評価には色を付ける。
    */
-  function statChips(p, t) {
+  /** ups は「この選手が今回上がるぶん」の一覧（2種同時のカードでは2つ入る） */
+  function statChips(p, ups) {
+    const list = Array.isArray(ups) ? ups : [ups];
+    /* その能力が上がるなら上がり幅、上がらないなら null */
+    const amt = (key) => {
+      const t = list.find((x) => x.key === key);
+      return t ? t.amount : null;
+    };
     const chip = (label, key, now, after, unit) => {
       const up = after != null && after !== now;
       const body = up
@@ -217,26 +234,30 @@ const Screens = (() => {
     };
 
     if (p.kind === 'pitcher') {
-      const velo = t.key === 'velo' ? Math.min(168, p.velo + t.amount) : null;
+      const vUp = amt('velo');
       const out = [
-        plain('最速', p.velo, velo, 'km/h'),
-        chip('制球', 'control', p.control, t.key === 'control' ? RNG.stat(p.control + t.amount) : null),
-        chip('スタミナ', 'stamina', p.stamina, t.key === 'stamina' ? RNG.stat(p.stamina + t.amount) : null),
+        plain('最速', p.velo, vUp == null ? null : Math.min(168, p.velo + vUp), 'km/h'),
+        chip('制球', 'control', p.control,
+          amt('control') == null ? null : RNG.stat(p.control + amt('control'))),
+        chip('スタミナ', 'stamina', p.stamina,
+          amt('stamina') == null ? null : RNG.stat(p.stamina + amt('stamina'))),
       ];
       p.pitches.forEach((q) => {
-        const after = (t.key === 'pitch' && t.pitch === q.name) ? Math.min(7, q.level + t.amount) : null;
-        out.push(plain(q.name, q.level, after));
+        const t = list.find((x) => x.key === 'pitch' && x.pitch === q.name);
+        out.push(plain(q.name, q.level, t ? Math.min(7, q.level + t.amount) : null));
       });
-      if (t.key === 'newpitch') out.push('<span class="ts is-up"><i>' + esc(t.pitch) + '</i><b class="rankval">新</b><em>→</em><b class="rankval">' + t.amount + '</b></span>');
+      const np = list.find((x) => x.key === 'newpitch');
+      if (np) out.push('<span class="ts is-up"><i>' + esc(np.pitch) + '</i><b class="rankval">新</b><em>→</em><b class="rankval">' + np.amount + '</b></span>');
       return out.join('');
     }
 
     const stat = (label, key) =>
-      chip(label, key, p[key], t.key === key ? RNG.stat(p[key] + t.amount) : null);
+      chip(label, key, p[key], amt(key) == null ? null : RNG.stat(p[key] + amt(key)));
+    const trUp = amt('traj');
     return [
       stat('ミート', 'meet'), stat('パワー', 'power'), stat('走力', 'speed'),
       stat('肩力', 'arm'), stat('守備', 'field'), stat('捕球', 'catch'),
-      plain('弾道', p.traj, t.key === 'traj' ? Math.min(4, p.traj + t.amount) : null),
+      plain('弾道', p.traj, trUp == null ? null : Math.min(4, p.traj + trUp)),
     ].join('');
   }
 

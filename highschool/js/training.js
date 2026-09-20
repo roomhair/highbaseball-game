@@ -54,6 +54,11 @@ const Training = (() => {
     { key: 'xl', weight: 4,  label: '猛特訓',   stat: [18, 28], velo: [7, 11], pitch: 2, ball: [4, 5] },
   ];
 
+  /* まれに、2種類の能力が同時に上がる。
+     「何の練習か」「何人に効くか」「どれだけ効くか」と同じく独立に引いているので、
+     2種同時と猛特訓が重なったときがいちばんうれしい当たりになる。 */
+  const MULTI_RATE = 0.048;
+
   /* 何の練習か */
   const MENUS = [
     { key: 'bat',     weight: 100, pool: (t) => t.batters },
@@ -121,11 +126,22 @@ const Training = (() => {
     }
 
     const isPit = menu.key === 'pit';
-    const stat = RNG.pick(isPit ? PITCHER_STATS : BATTER_STATS);
-    const amount = range(power.stat);
+    const statPool = isPit ? PITCHER_STATS : BATTER_STATS;
+    /* 2種同時かどうかは、効き目（猛特訓）とは別に引く */
+    const multi = statPool.length >= 2 && RNG.chance(MULTI_RATE);
+    const picked = multi ? RNG.shuffle(statPool.slice()).slice(0, 2) : [RNG.pick(statPool)];
+    /* 上がり幅は能力ごとに引き直す。片方だけ大きく伸びることもある */
+    const amounts = picked.map(() => range(power.stat));
+    const targets = [];
+    chosen.forEach((p) => {
+      picked.forEach((st, i) => {
+        targets.push({ pid: p.id, name: p.name, label: st.label, amount: amounts[i], key: st.key });
+      });
+    });
     return Object.assign(base, {
+      multi,
       title: count.label + (isPit ? '（投手）' : ''),
-      targets: chosen.map((p) => ({ pid: p.id, name: p.name, label: stat.label, amount, key: stat.key })),
+      targets,
     });
   }
 

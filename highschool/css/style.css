@@ -348,6 +348,17 @@ td.hl { font-weight: 700; }
 }
 .traincard--xl .traincard__tier { color: var(--crimson); background: color-mix(in srgb, var(--crimson) 10%, transparent); }
 .traincard--xl .traincard__kind { color: var(--crimson); }
+
+/* 2種同時。猛特訓とは別に引いているので、札も別に出す */
+.traincard__multi {
+  font-size: 11px; font-weight: 800; letter-spacing: .12em;
+  border: 1px solid currentColor; border-radius: 999px; padding: 1px 8px;
+  color: var(--r-s); background: color-mix(in srgb, var(--r-s) 12%, transparent);
+}
+/* 2種同時と猛特訓が重なったときだけ、枠ごと目立たせる */
+.traincard.is-multi.traincard--xl {
+  border-color: var(--r-s); box-shadow: 0 0 0 2px color-mix(in srgb, var(--r-s) 30%, transparent);
+}
 .traincard__list { list-style: none; margin: 0; padding: 0; }
 .cardline {
   display: grid; grid-template-columns: 1fr auto auto; gap: 2px 10px;
