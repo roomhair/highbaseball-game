@@ -113,7 +113,7 @@ npx wrangler deploy
 そのために4つを同時に動かしています。
 
 1. **入部したての部員は弱い**（`js/player.js` の `GRADE_BASE`）
-2. **地方大会の入り口の相手も弱い**（`CONFIG.FIELD.local.from` = 14）
+2. **地方大会の入り口の相手も弱い**（`CONFIG.FIELD.local.from` = 12）
 3. **1試合の伸びを大きく取ってある**（`CONFIG.GROWTH`）
 4. **1回戦→2回戦→3回戦と、相手の上がり方を大きくしてある**（決勝は70）
 
