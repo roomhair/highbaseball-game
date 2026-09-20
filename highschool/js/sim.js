@@ -292,13 +292,23 @@ const Sim = (() => {
    * @param {object} away 先攻チーム
    * @param {object} home 後攻チーム
    */
-  function play(away, home, opt) {
+  /* 試合を1打席ずつ進めるジェネレータ。
+     yield のたびに log に新しい行が積まれている。
+     人が「タイム」をかけられるのは、この yield の位置。 */
+  function* playGen(away, home, opt) {
     const noCold = !!(opt && opt.noCold);
     resetGameStats(away); resetGameStats(home);
 
     const A = sideState(away, false);
     const H = sideState(home, true);
-    const log = [];
+    /* どちらの側を人が操るか。操っている側は自動で投手交代しない */
+    const manual = opt && opt.manual;
+    if (manual === 'away') A.manual = true;
+    if (manual === 'home') H.manual = true;
+    const log = (opt && opt.log) || [];
+    /* 外から今の状況を見られるようにしておく（タイムの画面で使う） */
+    const ctl = (opt && opt.ctl) || {};
+    ctl.log = log; ctl.A = A; ctl.H = H;
 
     const startA = Team.find(away, A.pitcherId), startH = Team.find(home, H.pitcherId);
     if (startA) { startA.game.gs = 1; startA.game.g = 1; }
@@ -323,7 +333,9 @@ const Sim = (() => {
           k: 'half', inning, half, tie, score: [A.runs, H.runs],
           nextOrder: (off.order % 9) + 1,
         });
-        const got = playHalf(off, def, log, inning, half, tie, A, H);
+        ctl.off = off; ctl.def = def; ctl.inning = inning; ctl.half = half;
+        yield;
+        const got = yield* playHalf(off, def, log, inning, half, tie, A, H);
         off.byInning[inning - 1] = got;
 
         if (half === 'bottom' && inning >= CONFIG.GAME.INNINGS && H.runs > A.runs) {
@@ -361,6 +373,57 @@ const Sim = (() => {
     };
   }
 
+  /** 最後まで一気に計算する。練習試合ぶんの成績づくりや、相手同士の試合で使う */
+  function play(away, home, opt) {
+    const it = playGen(away, home, opt);
+    let r = it.next();
+    while (!r.done) r = it.next();
+    return r.value;
+  }
+
+  /**
+   * 「タイム」をかけられる試合。
+   * 1打席ずつ計算しながら進むので、途中で交代したぶんが次の打席から効く。
+   * 画面側は next() で1歩ずつ進め、log に増えたぶんを出していく。
+   */
+  function live(away, home, opt) {
+    const ctl = {};
+    const log = [];
+    const o = Object.assign({}, opt, { log, ctl });
+    const it = playGen(away, home, o);
+    let result = null;
+
+    return {
+      log,
+      get result() { return result; },
+      get done() { return !!result; },
+      /** 次の1歩。もう終わっていれば false */
+      next() {
+        if (result) return false;
+        const r = it.next();
+        if (r.done) { result = r.value; return false; }
+        return true;
+      },
+      /** いまの状況（タイムの画面で使う） */
+      state() {
+        return {
+          inning: ctl.inning, half: ctl.half,
+          off: ctl.off, def: ctl.def, A: ctl.A, H: ctl.H,
+        };
+      },
+      /** 守っている側の投手を代える。side は 'away' か 'home' */
+      changePitcher(side, pid) {
+        const S = side === 'home' ? ctl.H : ctl.A;
+        if (!S) return false;
+        return changePitcher(S, log, ctl.inning || 1, ctl.half || 'top', pid);
+      },
+      /** 交代を記録に残す（打者の交代・守備位置の入れ替え） */
+      note(text) {
+        log.push({ k: 'sub', inning: ctl.inning || 1, half: ctl.half || 'top', text, side: null });
+      },
+    };
+  }
+
   function summary(S) {
     return {
       team: S.team, runs: S.runs, hits: S.hits, errors: S.errors,
@@ -390,7 +453,10 @@ const Sim = (() => {
 
   /* ---------- 半イニング ---------- */
 
-  function playHalf(off, def, log, inning, half, tie, A, H) {
+  /* 半分の回を進める。ジェネレータにしてあるのは、
+     打席と打席のあいだで止めて「タイム」を受け付けられるようにするため。
+     log に積むたびに yield するので、呼ぶ側はそこで止められる。 */
+  function* playHalf(off, def, log, inning, half, tie, A, H) {
     const offTeam = off.team, defTeam = def.team;
     let outs = 0;
     let bases = [null, null, null];
@@ -405,7 +471,7 @@ const Sim = (() => {
 
     while (outs < 3) {
       /* 投手交代の見きわめ */
-      maybeChangePitcher(def, log, inning, half);
+      if (maybeChangePitcher(def, log, inning, half)) yield;
 
       const pit = Team.find(defTeam, def.pitcherId);
       const slotIndex = off.order % 9;
@@ -425,9 +491,11 @@ const Sim = (() => {
           if (ok) {
             bases[1] = runner; bases[0] = null; runner.game.sb++;
             log.push(snap('steal', { text: runner.name + ' 盗塁成功', ok: true }, off, def, inning, half, outs, bases, A, H, bat, pit));
+            yield;
           } else {
             bases[0] = null; outs++;
             log.push(snap('steal', { text: runner.name + ' 盗塁失敗', ok: false }, off, def, inning, half, outs, bases, A, H, bat, pit));
+            yield;
             if (outs >= 3) break;
           }
         }
@@ -473,6 +541,8 @@ const Sim = (() => {
         spot: res.spot || null,
         desc: out.desc || '',
       }, off, def, inning, half, outs, bases, A, H, bat, pit, before, slotIndex));
+      /* ここが「打席と打席のあいだ」。タイムをかけられるのはこの位置 */
+      yield;
 
       /* サヨナラ */
       if (off.isHome && inning >= CONFIG.GAME.INNINGS && off.runs > (off === A ? H.runs : A.runs)) {
@@ -691,26 +761,36 @@ const Sim = (() => {
 
   /* ---------- 投手交代 ---------- */
 
+  /** 自動の投手交代。交代したら true を返す（呼ぶ側はそこで止められる） */
   function maybeChangePitcher(def, log, inning, half) {
-    if (!def.penId.length) return;
+    if (def.manual) return false;      // 人が操っている側は自動で代えない
+    if (!def.penId.length) return false;
     const pit = Team.find(def.team, def.pitcherId);
-    if (!pit) return;
+    if (!pit) return false;
     const cap = capacityOf(pit);
     const tired = def.bf > cap + 12;
     const beaten = def.pitcherRuns >= 7 && def.bf >= 12;
-    if (!tired && !beaten) return;
+    if (!tired && !beaten) return false;
 
     const nextId = def.penId.shift();
+    return changePitcher(def, log, inning, half, nextId);
+  }
+
+  /** 投手を代える。人が「タイム」で代えるときもここを通る */
+  function changePitcher(def, log, inning, half, nextId) {
+    const pit = Team.find(def.team, def.pitcherId);
     const next = Team.find(def.team, nextId);
-    if (!next) return;
+    if (!next || nextId === def.pitcherId) return false;
+    def.penId = def.penId.filter((id) => id !== nextId);
     def.pitcherId = nextId;
     def.usedPitchers.push(nextId);
     def.bf = 0; def.pitcherRuns = 0;
     next.game.g = 1;
     log.push({
-      k: 'sub', inning, half, text: '投手交代　' + pit.name + ' → ' + next.name,
+      k: 'sub', inning, half, text: '投手交代　' + (pit ? pit.name : '') + ' → ' + next.name,
       side: def.isHome ? 'home' : 'away', pitcher: nextId,
     });
+    return true;
   }
 
   /* ---------- 練習試合ぶんの通算成績 ----------
@@ -808,7 +888,7 @@ const Sim = (() => {
   }
 
   return {
-    play, resolvePA, resolveVs, stuffOf, veloScore, defenseOf, capacityOf,
+    play, live, resolvePA, resolveVs, stuffOf, veloScore, defenseOf, capacityOf,
     peerProfile, peerBatter, careerBat, careerPit,
   };
 })();

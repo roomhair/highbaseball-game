@@ -561,6 +561,23 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 }
 .skip:hover { opacity: 1; color: var(--ink); }
 
+/* 試合中のボタン置き場（タイム） */
+.gamebtns { display: flex; justify-content: center; margin: 8px 0 4px; }
+.btn--time {
+  min-width: 132px; letter-spacing: .2em;
+  border-color: var(--accent); color: var(--accent); font-weight: 700;
+}
+.btn--time:hover { background: var(--accent); color: var(--bg); }
+
+/* タイムのふきだし */
+.time__where { margin: 0 0 8px; font-size: 11.5px; letter-spacing: .1em; color: var(--ink-mute); }
+.time__now {
+  margin: 0 0 12px; padding: 8px 10px; border: 1px solid var(--line-soft);
+  border-radius: 4px; background: var(--bg-2); font-size: 12.5px; line-height: 1.9;
+}
+.time__menu { display: flex; flex-direction: column; gap: 6px; }
+.time__empty { margin: 12px 0; font-size: 12.5px; color: var(--ink-mute); }
+
 /* ===== 結果 ===== */
 .result-score {
   margin: 6px 0 14px; font-size: 19px; font-weight: 700; letter-spacing: .04em;

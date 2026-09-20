@@ -190,9 +190,10 @@ const Game = (() => {
     const round = Tournament.currentRound(state.tour);
     /* 全国大会はコールドゲームなし。地方大会も決勝だけは行わない */
     const noCold = state.tour.kind === 'national' || (round && round.name === '決勝');
-    const res = Sim.play(away, home, { noCold });
+    /* 1打席ずつ計算しながら進める。こうしないと途中の交代が効かない */
+    const live = Sim.live(away, home, { noCold, manual: state.mySide });
     state.phase = 'game';
-    GameScreen.start({ away, home }, res, () => afterGame(res));
+    GameScreen.start({ away, home, mySide: state.mySide }, live, () => afterGame(live.result));
   }
 
   function afterGame(res) {

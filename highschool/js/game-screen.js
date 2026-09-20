@@ -150,15 +150,19 @@ const GameScreen = (() => {
 
   /* ---------- 試合の再生 ---------- */
 
-  function start(gs, res, onDone) {
+  function start(gs, live, onDone) {
     const away = gs.away, home = gs.home;
     ctx = {
-      res, onDone, i: 0, done: false,
+      live, onDone, i: 0, done: false,
+      /* 自分が操る側。タイムをかけられるのはこちらだけ */
+      mySide: gs.mySide || 'away',
+      /* この試合で退いた選手。試合ごとに作り直す */
+      retired: new Set(),
       state: {
         awayName: away.name, homeName: home.name,
         awayInn: [], homeInn: [], awayR: 0, homeR: 0,
         awayH: 0, homeH: 0, awayE: 0, homeE: 0,
-        inning: 1, maxInning: Math.max(9, res.innings), half: 'top',
+        inning: 1, maxInning: 9, half: 'top',
       },
       cur: { side: 'away', order: 1, results: {}, awayPitcher: null, homePitcher: null },
       away, home,
@@ -169,6 +173,8 @@ const GameScreen = (() => {
     ctx.cur.homePitcher = home.rotation[0];
 
     UI.el('btn-skip').hidden = false;
+    const bt = UI.el('btn-time');
+    if (bt) bt.hidden = false;
     speed = 1;
     applySpeedButtons();
     UI.show('screen-game');
@@ -302,10 +308,19 @@ const GameScreen = (() => {
     return '';
   }
 
+  /** log にまだ出していない行があるか。無ければ試合を1歩進めて作る */
+  function pull() {
+    const log = ctx.live.log;
+    while (ctx.i >= log.length) {
+      if (!ctx.live.next()) return false;   // 試合が終わった
+    }
+    return true;
+  }
+
   function step() {
-    if (ctx.done) return;
-    if (ctx.i >= ctx.res.log.length) { finish(); return; }
-    const e = ctx.res.log[ctx.i++];
+    if (ctx.done || ctx.paused) return;
+    if (!pull()) { finish(); return; }
+    const e = ctx.live.log[ctx.i++];
     const stage = apply(e);
     render(stage);
     const wait = e.k === 'half' ? 620 : (e.k === 'pa' ? (e.runs ? 1000 : 760) : 700);
@@ -317,7 +332,8 @@ const GameScreen = (() => {
     if (!ctx || ctx.done) return;
     clearTimeout(timer);
     ctx.awaitTap = false;
-    while (ctx.i < ctx.res.log.length) apply(ctx.res.log[ctx.i++]);
+    ctx.paused = false;
+    while (pull()) apply(ctx.live.log[ctx.i++]);
     finish();
   }
 
@@ -327,9 +343,246 @@ const GameScreen = (() => {
     clearTimeout(timer);
     showTapHint(false);
     UI.el('btn-skip').hidden = true;
+    const bt = UI.el('btn-time');
+    if (bt) bt.hidden = true;
     const cb = ctx.onDone;
     ctx = null;
     cb();
+  }
+
+
+  /* ---------- タイム ----------
+     試合を止めて、代打・選手交代・守備位置・投手交代をする。
+     高校野球と同じで、一度退いた選手は戻れない。 */
+
+  /** その試合でもう使えない選手（退いた選手）。
+      チームの側ではなく ctx に持たせてある。チームに付けると
+      次の試合まで残ってしまい、保存データにも紛れ込む。 */
+  function retired() { return ctx.retired; }
+
+  function myTeam() { return ctx.mySide === 'away' ? ctx.away : ctx.home; }
+
+  /** ベンチで待っている、まだ退いていない野手 */
+  function availableBench(t) {
+    const out = retired();
+    return Team.bench(t).filter((p) => !out.has(p.id));
+  }
+
+  /** まだ投げていない、退いていない投手 */
+  function availablePitchers(t) {
+    const out = retired();
+    const nowId = currentPitcherId(t);
+    return t.pitchers.filter((p) => !out.has(p.id) && p.id !== nowId && !p.game.g);
+  }
+
+  function currentPitcherId(t) {
+    return t === ctx.away ? ctx.cur.awayPitcher : ctx.cur.homePitcher;
+  }
+
+  /** いま守っているのはどちらか */
+  function iAmFielding() {
+    return ctx.cur.side !== ctx.mySide;
+  }
+
+  /** 次に打つ打順（1〜9）。代打はここに入れる */
+  function nextOrder() { return ctx.cur.order; }
+
+  function openTime() {
+    if (!ctx || ctx.done) return;
+    clearTimeout(timer);
+    ctx.paused = true;
+    showTapHint(false);
+    timeMenu();
+  }
+
+  function closeTime() {
+    UI.closeModal();
+    if (!ctx || ctx.done) return;
+    ctx.paused = false;
+    render(UI.el('game-stage').innerHTML);
+    step();
+  }
+
+  function timeMenu() {
+    const t = myTeam();
+    const fielding = iAmFielding();
+    const n = nextOrder();
+    const slot = t.lineup[n - 1];
+    const batter = slot ? Team.find(t, slot.pid) : null;
+    const pit = Team.find(t, currentPitcherId(t));
+
+    UI.modal(
+      '<h3 class="modal__title">タイム</h3>' +
+      '<p class="time__where">' + ctx.state.inning + '回' +
+        (ctx.state.half === 'top' ? '表' : '裏') + '　' +
+        (fielding ? '守備中' : '攻撃中') + '</p>' +
+      '<div class="time__now">' +
+        (pit ? '<div>いまの投手　<b>' + esc(pit.name) + '</b>　' +
+          esc(Team.fatigueLabel(pit)) + '</div>' : '') +
+        (batter ? '<div>次の打者　<b>' + n + '番 ' + esc(batter.name) + '</b></div>' : '') +
+      '</div>' +
+      '<div class="time__menu">' +
+        (fielding ? '' :
+          '<button type="button" class="btn btn--wide" id="tm-ph">代打を出す</button>') +
+        '<button type="button" class="btn btn--wide" id="tm-sub">選手を交代する</button>' +
+        '<button type="button" class="btn btn--wide" id="tm-pos">守備位置を変える</button>' +
+        '<button type="button" class="btn btn--wide" id="tm-pit">投手を交代する</button>' +
+      '</div>' +
+      '<div class="actions actions--modal">' +
+        '<button type="button" class="btn btn--primary btn--wide" id="tm-close">試合に戻る</button>' +
+      '</div>',
+      {
+        kind: 'time',
+        onOpen(body) {
+          const on = (id, fn) => { const b = body.querySelector(id); if (b) b.addEventListener('click', fn); };
+          on('#tm-ph', () => pinchHit());
+          on('#tm-sub', () => subPlayer());
+          on('#tm-pos', () => changePos());
+          on('#tm-pit', () => changePitcher());
+          on('#tm-close', closeTime);
+        },
+      }
+    );
+  }
+
+  /** 選手を1人選ばせる共通の画面 */
+  function pickPlayer(title, lead, list, onPick, emptyText) {
+    if (!list.length) {
+      UI.modal(
+        '<h3 class="modal__title">' + esc(title) + '</h3>' +
+        '<p class="time__empty">' + esc(emptyText || '選べる選手がいません。') + '</p>' +
+        '<div class="actions actions--modal">' +
+          '<button type="button" class="btn btn--wide" id="pk-back">戻る</button></div>',
+        { kind: 'time', onOpen(b) { b.querySelector('#pk-back').addEventListener('click', timeMenu); } }
+      );
+      return;
+    }
+    UI.modal(
+      '<h3 class="modal__title">' + esc(title) + '</h3>' +
+      (lead ? '<p class="time__where">' + esc(lead) + '</p>' : '') +
+      '<div class="spick__list">' + list.map((x) =>
+        '<button type="button" class="spick__item" data-pid="' + x.p.id + '">' +
+          '<span class="spick__nm">' + esc(x.p.name) + '</span>' +
+          '<span class="spick__fat">' + esc(x.right || '') + '</span>' +
+          '<span class="spick__meta">' + x.meta + '</span>' +
+        '</button>').join('') + '</div>' +
+      '<div class="actions actions--modal">' +
+        '<button type="button" class="btn btn--wide" id="pk-back">戻る</button></div>',
+      {
+        kind: 'time',
+        onOpen(body) {
+          body.querySelectorAll('.spick__item').forEach((b) =>
+            b.addEventListener('click', () => onPick(b.dataset.pid)));
+          body.querySelector('#pk-back').addEventListener('click', timeMenu);
+        },
+      }
+    );
+  }
+
+  /** その守備位置の適性（DHは守らないので「―」） */
+  function aptAt(p, posKey) {
+    if (posKey === 'DH') return '―';
+    return (p.apt && p.apt[posKey]) || 'G';
+  }
+
+  function batMeta(p) {
+    return p.grade + '年・' + UI.handMark(p) + '　ミート ' + UI.rankNum(p.meet) +
+      '　パワー ' + UI.rankNum(p.power) + '　走力 ' + UI.rankNum(p.speed);
+  }
+
+  /** 代打。次の打者を控えの選手に差し替える */
+  function pinchHit() {
+    const t = myTeam();
+    const n = nextOrder();
+    const slot = t.lineup[n - 1];
+    if (!slot) { timeMenu(); return; }
+    const out = Team.find(t, slot.pid);
+    const list = availableBench(t).map((p) => ({ p, meta: batMeta(p) }));
+    pickPlayer('代打', n + '番 ' + (out ? out.name : '') + ' に代えて',
+      list, (pid) => {
+        const inP = Team.find(t, pid);
+        if (!inP || !out) { timeMenu(); return; }
+        t.lineup[n - 1] = { pid: inP.id, pos: slot.pos };
+        retired().add(out.id);
+        ctx.live.note('代打　' + out.name + ' → ' + inP.name);
+        afterSub();
+      }, '控えに出せる選手がいません。');
+  }
+
+  /** 選手交代。守っている選手を控えと入れ替える */
+  function subPlayer() {
+    const t = myTeam();
+    const list = t.lineup.map((s, i) => {
+      const p = Team.find(t, s.pid);
+      return p ? { p, meta: (i + 1) + '番 ' + posName(s.pos) + '　' + batMeta(p), idx: i } : null;
+    }).filter(Boolean);
+    pickPlayer('選手を交代する', 'まず、退く選手を選んでください', list, (pid) => {
+      const idx = t.lineup.findIndex((s) => s.pid === pid);
+      const out = Team.find(t, pid);
+      if (idx < 0 || !out) { timeMenu(); return; }
+      const bench = availableBench(t).map((p) => ({
+        p, meta: batMeta(p), right: posName(t.lineup[idx].pos) + '適性 ' + aptAt(p, t.lineup[idx].pos),
+      }));
+      pickPlayer('交代で出す選手', out.name + ' に代えて', bench, (pid2) => {
+        const inP = Team.find(t, pid2);
+        if (!inP) { timeMenu(); return; }
+        t.lineup[idx] = { pid: inP.id, pos: t.lineup[idx].pos };
+        retired().add(out.id);
+        ctx.live.note('選手交代　' + out.name + ' → ' + inP.name);
+        afterSub();
+      }, '控えに出せる選手がいません。');
+    });
+  }
+
+  /** 守備位置を入れ替える。2人選んで、その場所を交換する */
+  function changePos() {
+    const t = myTeam();
+    const mk = () => t.lineup.map((s, i) => {
+      const p = Team.find(t, s.pid);
+      return p ? { p, meta: (i + 1) + '番　' + posName(s.pos) + '　適性 ' + aptAt(p, s.pos) } : null;
+    }).filter(Boolean);
+    pickPlayer('守備位置を変える', '入れ替える1人目', mk(), (pidA) => {
+      const a = t.lineup.findIndex((s) => s.pid === pidA);
+      const rest = mk().filter((x) => x.p.id !== pidA);
+      pickPlayer('守備位置を変える', Team.find(t, pidA).name + ' と入れ替える相手', rest, (pidB) => {
+        const b = t.lineup.findIndex((s) => s.pid === pidB);
+        if (a < 0 || b < 0) { timeMenu(); return; }
+        const pa = t.lineup[a].pos, pb = t.lineup[b].pos;
+        t.lineup[a].pos = pb; t.lineup[b].pos = pa;
+        ctx.live.note('守備変更　' + Team.find(t, pidA).name + ' ' + posName(pb) +
+          '／' + Team.find(t, pidB).name + ' ' + posName(pa));
+        afterSub();
+      });
+    });
+  }
+
+  /** 投手交代 */
+  function changePitcher() {
+    const t = myTeam();
+    const now = Team.find(t, currentPitcherId(t));
+    const list = availablePitchers(t).map((p) => ({
+      p, right: Team.fatigueLabel(p),
+      meta: p.grade + '年・' + (p.throws === 'L' ? '左' : '右') + '・' + p.velo + 'km/h　制球 ' +
+        UI.rankNum(p.control) + '　スタミナ ' + UI.rankNum(p.stamina),
+    }));
+    pickPlayer('投手を交代する', now ? now.name + ' に代えて' : '', list, (pid) => {
+      const side = ctx.mySide;
+      if (ctx.live.changePitcher(side, pid)) {
+        if (now) retired().add(now.id);
+      }
+      afterSub();
+    }, 'まだ投げていない投手がいません。');
+  }
+
+  /** 交代したあと。新しく積まれた行を反映してから、タイムの画面に戻る */
+  function afterSub() {
+    Team.repair(myTeam());
+    let stage = null;
+    while (ctx.i < ctx.live.log.length) stage = apply(ctx.live.log[ctx.i++]);
+    /* 「投手交代　A → B」を画面にも残す。ここで描いておかないと、
+       タイムを閉じた瞬間に次の打席で上書きされて見逃してしまう */
+    if (stage != null) render(stage);
+    timeMenu();
   }
 
   /* ---------- 結果画面 ---------- */
@@ -500,8 +753,10 @@ const GameScreen = (() => {
     if (st) st.addEventListener('click', tap);
     const hint = UI.el('game-taphint');
     if (hint) hint.addEventListener('click', tap);
+    const bt = UI.el('btn-time');
+    if (bt) bt.addEventListener('click', openTime);
     applySpeedButtons();
   }
 
-  return { start, skip, result, scoreboard, setSpeed, init };
+  return { start, skip, result, scoreboard, setSpeed, init, openTime };
 })();
