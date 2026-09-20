@@ -331,6 +331,7 @@ const UI = (() => {
         '<div class="pdetail__name" id="pd-name">' + esc(p.name) + '</div>' +
         (opts.rename === false ? '' : '<button type="button" class="linkbtn" id="pd-rename">名前を変える</button>') +
         '<div class="pdetail__meta">' + p.grade + '年　' + (isPit ? '投手' : posName(p.pos)) + '　' + handMark(p) +
+        (opts.team && opts.team.captainId === p.id ? '　<b class="capmark">主将</b>' : '') +
         (p.awakened ? '　<b class="awake">覚醒</b>' : '') + '</div>' +
         (p.from ? '<div class="pdetail__from">' + p.from.year + '年目に ' + esc(p.from.school) + ' から加入</div>' : '') +
       '</div>' +
@@ -741,11 +742,61 @@ const UI = (() => {
     });
   }
 
+
+  /* ---------- キャプテン ----------
+     部を束ねる1人を決める。特訓に進む前に必ず決めてもらう。
+     3年生が引退すると空くので、代替わりのたびに選び直すことになる。 */
+
+  function captainPicker(team, onDone) {
+    const cap = Team.captain(team);
+    /* 学年の高い順。同じ学年なら打順・起用順の早い順 */
+    const order = {};
+    team.lineup.forEach((s, i) => { order[s.pid] = i; });
+    (team.rotation || []).forEach((id, i) => { if (order[id] == null) order[id] = 20 + i; });
+    const list = Team.all(team).slice().sort((a, b) =>
+      (b.grade - a.grade) ||
+      ((order[a.id] == null ? 99 : order[a.id]) - (order[b.id] == null ? 99 : order[b.id])));
+
+    const row = (p) => {
+      const isPit = p.kind === 'pitcher';
+      const meta = isPit
+        ? (p.throws === 'L' ? '左' : '右') + '・' + p.velo + 'km/h　制球 ' + rankNum(p.control) +
+          '　スタミナ ' + rankNum(p.stamina)
+        : roleText(team, p) + '　ミート ' + rankNum(p.meet) + '　パワー ' + rankNum(p.power) +
+          '　走力 ' + rankNum(p.speed);
+      return '<button type="button" class="spick__item' +
+        (cap && cap.id === p.id ? ' is-on' : '') + '" data-pid="' + p.id + '">' +
+        '<span class="spick__nm">' + esc(p.name) + '</span>' +
+        '<span class="spick__fat">' + p.grade + '年</span>' +
+        '<span class="spick__meta">' + meta + '</span>' +
+      '</button>';
+    };
+
+    modal(
+      '<h3 class="modal__title">キャプテンを決める</h3>' +
+      '<p class="time__where">部を束ねる1人を選んでください。' +
+        '3年生が引退すると空くので、代替わりのたびに決め直します。</p>' +
+      '<div class="spick__list capsel">' + list.map(row).join('') + '</div>',
+      {
+        kind: 'captain',
+        onOpen(body) {
+          body.querySelectorAll('.spick__item').forEach((b) =>
+            b.addEventListener('click', () => {
+              team.captainId = b.dataset.pid;
+              closeModal.back = null; closeModal.after = null;
+              closeModal();
+              if (onDone) onDone();
+            }));
+        },
+      }
+    );
+  }
+
   return {
     el, esc, html, show, currentScreen, curtain, modal, closeModal, confirmBox,
     avg, era, ipText, stat, rankSpan, rankNum, aptSpan, pullText, handMark,
     playerRow, rosterTable, rosterPanel, sortPlayers, playerDetail, openPlayer,
-    lineupEditor, roleText, makeSortable, wireRename,
+    lineupEditor, roleText, makeSortable, wireRename, captainPicker,
     careerBatLine, careerPitLine, init,
   };
 })();

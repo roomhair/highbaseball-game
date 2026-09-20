@@ -9,6 +9,11 @@ const Screens = (() => {
 
   const esc = UI.esc;
 
+  /* 進行を保存する合図。main.js が入れる。
+     キャプテンのように画面の中で決まるものは、ここを通して保存する */
+  let onChange = () => {};
+  function setOnChange(fn) { onChange = fn || (() => {}); }
+
   /* ---------- データセット選択 ---------- */
 
   function gradeText(byGrade) {
@@ -61,6 +66,7 @@ const Screens = (() => {
     const html =
       '<p class="section-lead">' + esc(t.name) + '　部員' + Team.all(t).length + '人　' +
         'チーム力 <b>' + Team.strength(t) + '</b></p>' +
+      captainBox(t) +
       lineupCard(t) +
       '<h3 class="sub">野手</h3><div id="ready-bat"></div>' +
       '<h3 class="sub">投手</h3><div id="ready-pit"></div>' +
@@ -72,7 +78,7 @@ const Screens = (() => {
     const body = UI.el('ready-body');
     const open = (pid) => {
       const p = Team.find(t, pid);
-      if (p) UI.openPlayer(p, { onRename: () => ready(state) });
+      if (p) UI.openPlayer(p, { team: t, onRename: () => ready(state) });
     };
     UI.rosterPanel(UI.el('ready-bat'), t.batters, { team: t, onRow: open });
     UI.rosterPanel(UI.el('ready-pit'), t.pitchers, { team: t, onRow: open });
@@ -81,7 +87,41 @@ const Screens = (() => {
       state.settings.poach = e.target.checked;
       Storage.saveSettings(state.settings);
     });
+    wireCaptain(body, t, () => ready(state));
+    gateTraining(t);
     UI.show('screen-ready');
+  }
+
+  /** キャプテンの欄。決まっていなければ、決めるまで先へ進めない */
+  function captainBox(t) {
+    const cap = Team.captain(t);
+    return '<div class="capbox' + (cap ? '' : ' is-empty') + '">' +
+      '<div class="capbox__label">キャプテン</div>' +
+      (cap
+        ? '<div class="capbox__name"><b>' + esc(cap.name) + '</b>' +
+          '<span>' + cap.grade + '年・' + UI.roleText(t, cap) + '</span></div>'
+        : '<div class="capbox__none">まだ決まっていません</div>') +
+      '<button type="button" class="btn btn--small" id="btn-captain">' +
+        (cap ? '決め直す' : 'キャプテンを決める') + '</button>' +
+    '</div>';
+  }
+
+  /** キャプテンの欄のボタンをつなぐ */
+  function wireCaptain(root, team, onDone) {
+    const b = root.querySelector('#btn-captain');
+    if (b) b.addEventListener('click', () => UI.captainPicker(team, () => {
+      onChange();          // 決めた時点で保存する
+      if (onDone) onDone();
+    }));
+  }
+
+  /** キャプテンが決まるまで「特訓へ」を押せなくする */
+  function gateTraining(team) {
+    const btn = UI.el('btn-ready-next');
+    if (!btn) return;
+    const ok = !!Team.captain(team);
+    btn.disabled = !ok;
+    btn.textContent = ok ? '特訓へ' : 'キャプテンを決めてください';
   }
 
   /** スタメン9人と先発投手。opts.pickable なら先発を選べるようにする */
@@ -136,10 +176,19 @@ const Screens = (() => {
   /* ---------- 特訓期間 ---------- */
 
   function trainingIntro(state) {
+    const t = state.team;
+    const cap = Team.captain(t);
     UI.html('trainintro-body',
       '<p class="nextup__eyebrow">' + state.year + '年目</p>' +
       '<h2 class="nextup__title">特訓期間</h2>' +
-      '<p class="nextup__vs">新入生を迎えた' + esc(state.team.name) + 'の、夏までの練習が始まる。</p>');
+      '<p class="nextup__vs">新入生を迎えた' + esc(t.name) + 'の、夏までの練習が始まる。</p>' +
+      captainBox(t) +
+      /* キャプテンが決まるまでは先へ進ませない。
+         画面をタップすると特訓に入るので、注意書きも出す */
+      (cap
+        ? '<p class="taphint taphint--static">タップで特訓へ</p>'
+        : '<p class="capwarn">キャプテンを決めると特訓に進めます</p>'));
+    wireCaptain(UI.el('trainintro-body'), t, () => trainingIntro(state));
     UI.show('screen-trainintro');
   }
 
@@ -328,7 +377,7 @@ const Screens = (() => {
     const body = UI.el('pregame-body');
     const open = (pid) => {
       const p = Team.find(state.team, pid) || Team.find(state.opponent, pid);
-      if (p) UI.openPlayer(p, { rename: !!Team.find(state.team, pid), onRename: () => pregame(state, opts) });
+      if (p) UI.openPlayer(p, { team: state.team, rename: !!Team.find(state.team, pid), onRename: () => pregame(state, opts) });
     };
     bindRows(body, open);
     body.querySelectorAll('.pitname').forEach((b) =>
@@ -596,6 +645,6 @@ const Screens = (() => {
   return {
     pick, ready, training, trainingResult, opening, pregame,
     poachWin, poachRelease, champion, offseason, settings, lineupCard, bindRows,
-    abilityLine, verdict, growth, nextUp, trainingIntro,
+    abilityLine, verdict, growth, nextUp, trainingIntro, setOnChange,
   };
 })();

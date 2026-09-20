@@ -42,6 +42,8 @@ const Game = (() => {
   /* チームが出来る前は保存しない。設定だけ触って戻ったときに
      「続きから」が出てしまうため */
   function save() { if (state && state.team) Storage.save(state); }
+  /* 画面の中で決まるもの（キャプテンなど）も保存できるようにしておく */
+  Screens.setOnChange(save);
 
   function tourLabel() {
     return state.tour && state.tour.kind === 'national'
@@ -105,6 +107,12 @@ const Game = (() => {
   /* ---------- 特訓 ---------- */
 
   function startTraining() {
+    /* キャプテンが決まっていなければ進ませない。
+       画面側でも押せないようにしてあるが、入口はここ1つなので念のため */
+    if (!Team.captain(state.team)) {
+      UI.captainPicker(state.team, () => { save(); startTraining(); });
+      return;
+    }
     state.phase = 'training';
     state.training = Training.start(state.team);
     save();
@@ -559,7 +567,9 @@ const Game = (() => {
     on('btn-result-next', afterResult);
     on('btn-champion-next', toOffseason);
     const intro = UI.el('screen-trainintro');
-    if (intro) intro.addEventListener('click', () => {
+    if (intro) intro.addEventListener('click', (e) => {
+      /* キャプテンを決めるボタンを押したときは、特訓に入らない */
+      if (e.target.closest('#btn-captain')) return;
       if (state && state.phase === 'train-intro') startTraining();
     });
     on('btn-off-next', toNewcomers);

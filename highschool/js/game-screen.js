@@ -236,7 +236,7 @@ const GameScreen = (() => {
     const wrap = UI.el('game-lineups');
     wrap.querySelectorAll('.ll__item').forEach((li) => li.addEventListener('click', () => {
       const p = Team.find(ctx.away, li.dataset.pid) || Team.find(ctx.home, li.dataset.pid);
-      if (p) UI.openPlayer(p, { rename: false });
+      if (p) UI.openPlayer(p, { team: myTeam(), rename: false });
     }));
   }
 
@@ -740,7 +740,7 @@ const GameScreen = (() => {
     const body = UI.el('result-body');
     body.querySelectorAll('tr.prow').forEach((tr) => tr.addEventListener('click', () => {
       const p = Team.find(state.team, tr.dataset.pid) || Team.find(state.opponent, tr.dataset.pid);
-      if (p) UI.openPlayer(p, { rename: !!Team.find(state.team, tr.dataset.pid) });
+      if (p) UI.openPlayer(p, { team: state.team, rename: !!Team.find(state.team, tr.dataset.pid) });
     }));
     UI.show('screen-result');
   }

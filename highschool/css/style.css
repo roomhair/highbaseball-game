@@ -349,6 +349,34 @@ td.hl { font-weight: 700; }
 .traincard--xl .traincard__tier { color: var(--crimson); background: color-mix(in srgb, var(--crimson) 10%, transparent); }
 .traincard--xl .traincard__kind { color: var(--crimson); }
 
+/* 主将の印。選手の詳細に出す */
+.capmark {
+  font-size: 10.5px; font-weight: 800; letter-spacing: .1em;
+  border: 1px solid currentColor; border-radius: 3px; padding: 0 5px;
+  color: var(--accent);
+}
+
+/* キャプテンの欄 */
+.capbox {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 12px 0; padding: 9px 12px;
+  border: 1px solid var(--line); border-radius: 4px; background: var(--panel);
+}
+.capbox.is-empty { border-color: var(--ng); background: color-mix(in srgb, var(--ng) 7%, transparent); }
+.capbox__label { font-size: 10.5px; font-weight: 700; letter-spacing: .18em; color: var(--ink-mute); }
+/* 文字がつぶれないよう最低幅を持たせ、入らなければボタンを次の行へ送る */
+.capbox__name { flex: 1 1 9em; min-width: 0; font-size: 14px; }
+.capbox__name b { font-weight: 800; }
+.capbox__name span { display: block; font-size: 11px; color: var(--ink-mute); }
+.capbox__none { flex: 1 1 9em; font-size: 12.5px; color: var(--ng); }
+.capbox .btn { flex: 0 0 auto; margin-left: auto; }
+.capwarn {
+  margin: 10px 0 0; text-align: center; font-size: 12.5px;
+  letter-spacing: .06em; color: var(--ng); font-weight: 700;
+}
+/* キャプテンを選ぶ一覧は少し詰めて、多くの部員が一度に見えるようにする */
+.capsel { max-height: 58vh; overflow-y: auto; }
+
 /* 「複数」の札。猛特訓とは別に引いているので、並べて出す */
 .traincard__multi {
   font-size: 11px; font-weight: 800; letter-spacing: .12em;

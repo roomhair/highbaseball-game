@@ -18,7 +18,20 @@ const Team = (() => {
       pitchers: [],    // 投手7人
       lineup: [],      // [{pid, pos}] × 9（先頭が1番打者）
       rotation: [],    // 投手の起用順（先頭が先発）
+      captainId: null, // キャプテン。決めないと特訓に進めない
     };
+  }
+
+  /** キャプテン。卒業や引き抜きで居なくなっていたら null を返す */
+  function captain(team) {
+    if (!team || !team.captainId) return null;
+    return find(team, team.captainId);
+  }
+
+  /** キャプテンが部にいなければ、印を外しておく */
+  function checkCaptain(team) {
+    if (team && team.captainId && !find(team, team.captainId)) team.captainId = null;
+    return team;
   }
 
   function all(team) { return team.batters.concat(team.pitchers); }
@@ -221,6 +234,7 @@ const Team = (() => {
 
   /** 打順・守備の並びが壊れていないか直す（引き抜きや卒業のあと） */
   function repair(team) {
+    checkCaptain(team);
     const ids = new Set(team.batters.map((p) => p.id));
     const ok = team.lineup.filter((s) => ids.has(s.pid));
     if (ok.length < 9) { autoLineup(team); return team; }
@@ -235,5 +249,6 @@ const Team = (() => {
     create, all, find, defScore, autoLineup, autoRotation, orderBatters,
     bench, defenders, strength, bestPlayer, repair,
     restPitchers, healPitchers, fatigueLabel,
+    captain, checkCaptain,
   };
 })();

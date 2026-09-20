@@ -46,6 +46,8 @@ const Offseason = (() => {
     team.batters = team.batters.filter((p) => p.grade < 3);
     team.pitchers = team.pitchers.filter((p) => p.grade < 3);
     Team.all(team).forEach((p) => { p.grade++; });
+    /* キャプテンが引退したら印を外す。次の特訓の前に選び直してもらう */
+    Team.checkCaptain(team);
     Team.repair(team);
     return {
       bat: Math.max(0, 13 - team.batters.length),
