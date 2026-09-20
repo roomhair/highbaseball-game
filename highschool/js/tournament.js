@@ -50,6 +50,12 @@ const Tournament = (() => {
     return last.add[0] + Math.random() * (last.add[1] - last.add[0]);
   }
 
+  /** 期待値を動かさない引き。平均0のぶれだけを返す。
+      地方大会の決勝から全国大会の1回戦へ移るときに使う */
+  function rollDrift() {
+    return rollStep() - stepMean();
+  }
+
   /** 表の平均。オフの練習相手の強さなど、めやすが要るところで使う */
   function stepMean() {
     const table = CONFIG.FIELD.STEP;
@@ -125,5 +131,5 @@ const Tournament = (() => {
     };
   }
 
-  return { create, makeTeam, currentRound, buildOpponent, perGame, strengthLadder, stepMean };
+  return { create, makeTeam, currentRound, buildOpponent, perGame, strengthLadder, stepMean, rollDrift };
 })();

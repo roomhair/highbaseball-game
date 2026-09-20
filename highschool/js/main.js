@@ -161,11 +161,12 @@ const Game = (() => {
       state.localJitter = j;
     } else {
       /* 全国大会の1回戦は、地方大会の決勝の続きから。
-         上乗せもその年のゆらぎに乗せる。手薄な年は全国も手薄で、
-         そうでないと、勝ち上がったチームの力が足りない年に
-         全国だけが絶対に届かない壁になってしまう */
+         ここだけは相手の強さの期待値を動かさない（rollDrift は平均0）。
+         決勝より少し楽な初戦になる年も、少し重い年もある。
+         bonus はその上にさらに乗せるぶんで、いまは0 */
       j = state.localJitter || 1;
-      from = (state.localFinalLevel || F.local.from * j) + F.national.bonus * j;
+      from = (state.localFinalLevel || F.local.from * j) +
+             (F.national.bonus + Tournament.rollDrift()) * j;
     }
     state.tour = Tournament.create(kind, from, j, used);
     Growth.resetTour(state.team);
