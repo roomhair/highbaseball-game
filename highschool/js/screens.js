@@ -155,7 +155,7 @@ const Screens = (() => {
     const card = st.card;
     if (card) {
       /* 並びはオーダー順。カードの中で誰が主力なのか分かりやすくする。
-         2種同時のカードでは同じ選手が2行に分かれるので、先にまとめる */
+         複数の能力が上がるカードでは同じ選手が2行に分かれるので、先にまとめる */
       const order = orderIndex(state.team);
       const groups = [];
       const seen = new Map();
@@ -182,7 +182,7 @@ const Screens = (() => {
         '<div class="traincard traincard--' + card.tier + (card.multi ? ' is-multi' : '') + '">' +
           '<p class="traincard__kind">' + esc(card.title) +
             '<span class="traincard__n">' + groups.length + '人</span>' +
-            (card.multi ? '<span class="traincard__multi">2種同時</span>' : '') +
+            (card.multi ? '<span class="traincard__multi">複数</span>' : '') +
             (card.tierLabel ? '<span class="traincard__tier">' + esc(card.tierLabel) + '</span>' : '') +
           '</p>' +
           '<ul class="traincard__list">' + lines + '</ul>' +
@@ -211,7 +211,7 @@ const Screens = (() => {
    * 能力をひと通り並べる。上がるものだけ「いま → 上がったあと」で出し、
    * 残りはいまの値をそのまま添える。能力の評価には色を付ける。
    */
-  /** ups は「この選手が今回上がるぶん」の一覧（2種同時のカードでは2つ入る） */
+  /** ups は「この選手が今回上がるぶん」の一覧（「複数」のカードでは2つ入る） */
   function statChips(p, ups) {
     const list = Array.isArray(ups) ? ups : [ups];
     /* その能力が上がるなら上がり幅、上がらないなら null */

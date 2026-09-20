@@ -56,7 +56,7 @@ const Training = (() => {
 
   /* まれに、2種類の能力が同時に上がる。
      「何の練習か」「何人に効くか」「どれだけ効くか」と同じく独立に引いているので、
-     2種同時と猛特訓が重なったときがいちばんうれしい当たりになる。 */
+     「複数」と「猛特訓」が重なったときがいちばんうれしい当たりになる。 */
   const MULTI_RATE = 0.048;
 
   /* 何の練習か */
@@ -127,7 +127,7 @@ const Training = (() => {
 
     const isPit = menu.key === 'pit';
     const statPool = isPit ? PITCHER_STATS : BATTER_STATS;
-    /* 2種同時かどうかは、効き目（猛特訓）とは別に引く */
+    /* 能力が2つ上がるかどうかは、効き目（猛特訓）とは別に引く */
     const multi = statPool.length >= 2 && RNG.chance(MULTI_RATE);
     const picked = multi ? RNG.shuffle(statPool.slice()).slice(0, 2) : [RNG.pick(statPool)];
     /* 上がり幅は能力ごとに引き直す。片方だけ大きく伸びることもある */
