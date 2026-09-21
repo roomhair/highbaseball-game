@@ -939,9 +939,25 @@ tr.prow.is-picked .rank, tr.prow.is-picked .rankval, tr.prow.is-picked td { colo
 }
 @keyframes glow { from { opacity: .75; transform: scale(.96); } to { opacity: 1; transform: scale(1.03); } }
 @media (prefers-reduced-motion: reduce) { .champ__rays { animation: none; } }
-.champ__stars { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 22px; margin: 20px 0 0; padding: 0; }
+.champ__stars { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 22px; margin: 20px 0 0; padding: 0; }
 .champ__stars li b { display: block; font-size: 15px; }
-.champ__stars li span { font-size: 11px; color: var(--ink-mute); }
+.champ__stars li span { display: block; font-size: 11px; color: var(--ink-mute); }
+.champ__stars li .champ__stat { font-size: 11.5px; color: var(--ink); letter-spacing: .02em; }
+/* 大会の戦いぶりと、ひとこと */
+.champ__record {
+  margin: 10px 0 0; font-size: 12px; letter-spacing: .04em; color: var(--ink-mute); line-height: 1.9;
+}
+.champ__note { margin: 18px 0 0; font-size: 12.5px; color: var(--ink-mute); }
+.champ__note b { color: var(--ink); }
+
+/* 地方大会の優勝は、全国とは色を変えておく（同じ赤だと区別がつかない） */
+.champ--local .champ__title { color: var(--accent); }
+.champ--local .champ__rays {
+  background: radial-gradient(ellipse at 50% 34%,
+    color-mix(in srgb, var(--accent) 16%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 6%, transparent) 38%,
+    transparent 68%);
+}
 
 /* ===== 選手の詳細 ===== */
 .pdetail__head { border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 12px; }

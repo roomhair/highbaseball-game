@@ -577,19 +577,69 @@ const Screens = (() => {
 
   /* ---------- 全国優勝 ---------- */
 
+  /** その大会の戦いぶりを短くまとめる */
+  function tourLine(state) {
+    const t = state.tour;
+    const games = (t && t.games) || 0;
+    const rf = (t && t.runsFor) || 0, ra = (t && t.runsAgainst) || 0;
+    const r = state.lastResult;
+    const parts = [];
+    if (games) parts.push(games + '戦全勝');
+    if (r) parts.push('決勝 ' + r.myRuns + '−' + r.opRuns + '（' + esc(r.oppName) + '）');
+    if (games) parts.push('1試合平均 ' + (rf / games).toFixed(1) + '得点 ' + (ra / games).toFixed(1) + '失点');
+    return parts.join('　');
+  }
+
+  /** 活躍した3人。大会成績の良い順 */
+  function tourStars(t) {
+    const score = (p) => p.kind === 'pitcher'
+      ? (p.tour.outs || 0) / 3 * 1.1 + (p.tour.so || 0) * 0.3 - (p.tour.er || 0) * 0.8
+      : (p.tour.h || 0) * 1.0 + (p.tour.hr || 0) * 2.2 + (p.tour.rbi || 0) * 0.6;
+    return Team.all(t).slice().sort((a, b) => score(b) - score(a)).slice(0, 3);
+  }
+
+  function starList(t) {
+    return '<ul class="champ__stars">' + tourStars(t).map((p) => {
+      const s = p.tour;
+      const line = p.kind === 'pitcher'
+        ? Math.floor((s.outs || 0) / 3) + '回 ' + (s.er || 0) + '失点 ' + (s.so || 0) + '奪三振'
+        : (s.h || 0) + '安打' + (s.hr ? ' ' + s.hr + '本塁打' : '') + ' ' + (s.rbi || 0) + '打点';
+      return '<li><b>' + esc(p.name) + '</b>' +
+        '<span>' + p.grade + '年・' + (p.kind === 'pitcher' ? '投手' : posName(p.pos)) + '</span>' +
+        '<span class="champ__stat">' + line + '</span></li>';
+    }).join('') + '</ul>';
+  }
+
+  /** 地方大会を勝ち切ったとき。ここから全国大会へ進む */
+  function localWin(state) {
+    const t = state.team;
+    UI.html('localwin-body',
+      '<div class="champ champ--local">' +
+        '<p class="champ__eyebrow">' + state.year + '年目</p>' +
+        '<h2 class="champ__title">地方大会 優勝</h2>' +
+        '<p class="champ__school">' + esc(t.name) + '</p>' +
+        '<div class="champ__rays" aria-hidden="true"></div>' +
+        '<p class="champ__record">' + tourLine(state) + '</p>' +
+        '<p class="champ__lead">' + esc(t.name) + 'が県の代表として、' +
+          esc(state.settings.nationalName) + 'へ駒を進めた。</p>' +
+        starList(t) +
+        '<p class="champ__note">大会のあいだが空くので、<b>投手の疲れは抜けました</b>。</p>' +
+      '</div>');
+    UI.show('screen-localwin');
+  }
+
   function champion(state) {
     const t = state.team;
-    const best = Team.all(t).slice().sort((a, b) => Player.rating(b) - Player.rating(a)).slice(0, 3);
     UI.html('champion-body',
       '<div class="champ">' +
         '<p class="champ__eyebrow">' + state.year + '年目</p>' +
         '<h2 class="champ__title">' + esc(state.settings.nationalName) + ' 優勝</h2>' +
         '<p class="champ__school">' + esc(t.name) + '</p>' +
         '<div class="champ__rays" aria-hidden="true"></div>' +
+        '<p class="champ__record">' + tourLine(state) + '</p>' +
         '<p class="champ__lead">深紅の大優勝旗が、' + esc(t.name) + 'へ。</p>' +
-        '<ul class="champ__stars">' + best.map((p) =>
-          '<li><b>' + esc(p.name) + '</b><span>' + p.grade + '年・' +
-          (p.kind === 'pitcher' ? '投手' : posName(p.pos)) + '</span></li>').join('') + '</ul>' +
+        starList(t) +
+        '<p class="champ__note">' + state.year + '年目の夏、日本一。</p>' +
       '</div>');
     UI.show('screen-champion');
   }
@@ -685,5 +735,6 @@ const Screens = (() => {
     pick, ready, training, trainingResult, opening, pregame,
     poachWin, poachRelease, champion, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
+    localWin,
   };
 })();

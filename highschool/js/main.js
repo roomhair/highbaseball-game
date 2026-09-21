@@ -387,7 +387,12 @@ const Game = (() => {
     if (won && state.tour.kind === 'local') {
       state.localFinalLevel = state.tour.finalLevel;
       state.history.push({ year: state.year, tour: 'local', result: '優勝' });
-      startTournament('national');
+      /* 地方大会と全国大会のあいだは日が空くので、投手の疲れは抜ける */
+      Team.healPitchers(state.team);
+      state.phase = 'localwin';
+      save();
+      Screens.localWin(state);
+      UI.curtain('<b>地方大会</b><span>優勝</span>', function () {});
       return;
     }
     if (won && state.tour.kind === 'national') {
@@ -516,6 +521,7 @@ const Game = (() => {
         break;
       case 'nextup': Screens.nextUp(state); break;
       case 'poach': toPoach(); break;
+      case 'localwin': Screens.localWin(state); break;
       case 'champion': Screens.champion(state); break;
       case 'offseason':
         Screens.offseason(state, Offseason.retiring(state.team).map(Offseason.farewell)); break;
@@ -654,6 +660,7 @@ const Game = (() => {
 
     on('btn-skip', () => GameScreen.skip());
     on('btn-result-next', afterResult);
+    on('btn-localwin-next', () => startTournament('national'));
     on('btn-champion-next', toOffseason);
     const intro = UI.el('screen-trainintro');
     if (intro) intro.addEventListener('click', (e) => {
