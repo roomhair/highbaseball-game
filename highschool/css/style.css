@@ -484,9 +484,9 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 /* ===== スコアボード ===== */
 .scoreboard { width: auto; min-width: 100%; }
 .scoreboard th, .scoreboard td {
-  border: 1px solid var(--line); padding: 4px 7px; text-align: center; font-size: 13px;
+  border: 1px solid var(--line); padding: 1px 5px; text-align: center; font-size: 12px; line-height: 1.5;
 }
-.scoreboard .sb-team { text-align: left; font-weight: 700; min-width: 6.5em; background: var(--bg-2); }
+.scoreboard .sb-team { text-align: left; font-weight: 700; min-width: 5.6em; background: var(--bg-2); }
 .scoreboard .sb-tot { font-weight: 800; background: var(--bg-2); }
 .scoreboard thead .is-now { background: var(--accent); color: var(--accent-ink); }
 
@@ -517,16 +517,16 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 
 .stage {
   display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
-  margin: 8px 0; padding: 9px 11px;
+  margin: 4px 0; padding: 5px 9px;
   border: 1px solid var(--line); border-radius: 5px; background: var(--panel);
-  min-height: 96px;
+  min-height: 64px;
 }
 .stage__half, .stage__sub, .stage__end { font-size: 16px; font-weight: 700; letter-spacing: .1em; }
 .stage__sub, .stage__end { color: var(--ink-mute); }
 .stage__play { animation: pop .26s cubic-bezier(.2,.9,.3,1) both; }
 @keyframes pop { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
 .stage__meta { display: block; font-size: 11.5px; color: var(--ink-mute); letter-spacing: .06em; }
-.stage__text { display: block; font-size: 26px; font-weight: 800; letter-spacing: .08em; line-height: 1.3; }
+.stage__text { display: block; font-size: 21px; font-weight: 800; letter-spacing: .08em; line-height: 1.3; }
 .stage__play.is-good .stage__text { color: var(--accent); }
 .stage__play.is-bad .stage__text { color: var(--ink-mute); }
 .stage__play.is-hr .stage__text { color: var(--crimson); animation: flash .5s ease 2; }
@@ -535,8 +535,9 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 
 /* グラウンドの絵。打球が飛んでいくのが見える */
 .fieldview { text-align: center; }
-.fieldview svg { width: 100px; height: 86px; overflow: visible; }
-@media (min-width: 720px) { .fieldview svg { width: 150px; height: 130px; } }
+.fieldview svg { width: 60px; height: 52px; overflow: visible; }
+@media (max-width: 399px) { .fieldview svg { width: 52px; height: 45px; } }
+@media (min-width: 720px) { .fieldview svg { width: 92px; height: 79px; } }
 .fv-grass { fill: color-mix(in srgb, var(--accent) 10%, transparent); stroke: none; }
 .fv-fence { fill: none; stroke: var(--line); stroke-width: 2; }
 .fv-inf { fill: color-mix(in srgb, var(--accent) 16%, transparent); stroke: var(--line); stroke-width: 1.4; }
@@ -583,16 +584,17 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 
 .livelineups { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 @media (min-width: 720px) { .livelineups { gap: 12px; } }
-.ll { border: 1px solid var(--line-soft); border-radius: 4px; padding: 6px 6px; min-width: 0; }
+.ll { border: 1px solid var(--line-soft); border-radius: 4px; padding: 4px 5px; min-width: 0; }
 @media (min-width: 720px) { .ll { padding: 5px 8px; } }
 .ll.is-batting { border-color: var(--accent); }
-.ll__title { margin: 0 0 6px; font-size: 13px; font-weight: 800; letter-spacing: .06em; }
+.ll__title { margin: 0 0 2px; font-size: 13px; font-weight: 800; letter-spacing: .06em; }
 .ll__title i { font-style: normal; margin-left: 8px; font-size: 10.5px; font-weight: 400; color: var(--ink-faint); letter-spacing: .1em; }
 .ll.is-batting .ll__title i { color: var(--accent); }
 .ll__list { list-style: none; margin: 0; padding: 0; }
 .ll__item {
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 4px;
-  padding: 1px 3px; font-size: 11.5px; border-radius: 2px; cursor: pointer; min-width: 0;
+  padding: 1px 3px; font-size: 11.5px; line-height: 1.25;
+  border-radius: 2px; cursor: pointer; min-width: 0;
 }
 @media (min-width: 720px) { .ll__item { font-size: 12.5px; gap: 0 6px; padding: 1px 4px; } }
 .ll__name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -600,10 +602,12 @@ td.role { font-size: 11px; color: var(--ink-mute); }
    （名前 → 能力 → 打席結果の順に読めるようにするため） */
 .ll__res {
   flex: 1 0 100%; display: flex; flex-wrap: wrap; justify-content: flex-start;
-  gap: 2px 3px; margin-top: 1px;
+  gap: 1px 3px; margin-top: 0;
 }
+/* まだ打席が回っていない選手は、結果の行ぶんの余白も出さない */
+.ll__res:empty { display: none; }
 .ll__r {
-  font-style: normal; font-size: 10px; line-height: 1.35; color: var(--ink-mute);
+  font-style: normal; font-size: 9px; line-height: 1.2; color: var(--ink-mute);
   border: 1px solid var(--line-soft); border-radius: 2px; padding: 0 2px; white-space: nowrap;
 }
 .ll__item.is-now .ll__r { color: inherit; border-color: currentColor; opacity: .85; }
@@ -612,7 +616,7 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .ll__no, .ll__pos { color: var(--ink-faint); font-size: 10.5px; flex: none; }
 /* 名前のすぐ下に、打つほうの能力だけ小さく。行を丸ごと折り返して下に置く */
 .ll__ab {
-  flex: 1 0 100%; font-size: 9.5px; line-height: 1.45; letter-spacing: 0;
+  flex: 1 0 100%; font-size: 9px; line-height: 1.25; letter-spacing: 0;
   color: var(--ink-faint); white-space: nowrap;
 }
 .ll__ab b { font-weight: 700; font-style: normal; }
@@ -620,7 +624,7 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .ll__item.is-now .ll__ab b { color: inherit; }
 @media (min-width: 720px) { .ll__ab { font-size: 10px; } }
 .ll__item.is-now .ll__no, .ll__item.is-now .ll__pos { color: inherit; opacity: .8; }
-.ll__p { margin: 6px 0 0; font-size: 11px; color: var(--ink-mute); }
+.ll__p { margin: 2px 0 0; font-size: 11px; color: var(--ink-mute); }
 .ll__title { font-size: 12px; }
 @media (min-width: 720px) { .ll__title { font-size: 13px; } }
 
@@ -629,22 +633,22 @@ td.role { font-size: 11px; color: var(--ink-mute); }
   flex: none; padding: 3px 9px;
   border: 1px solid var(--line); border-radius: 999px;
   background: transparent; color: var(--ink-mute);
-  font: inherit; font-size: 11.5px; letter-spacing: .04em; cursor: pointer;
+  font: inherit; font-size: 11.5px; letter-spacing: 0; cursor: pointer;
 }
+@media (max-width: 399px) { .skip { padding: 3px 7px; } .speedbtn { padding: 3px 6px; } }
 .skip:hover { color: var(--ink); border-color: var(--ink-mute); }
 .skip[hidden] { display: none; }
 
-/* 試合中のボタン置き場（タイム）。
-   ここが太いと、スコアとオーダーの下のほうを同時に見られなくなるので、
-   高さを持たせず、速さの並びと同じくらいの細い1行にしてある */
-.gamebtns { display: flex; justify-content: center; margin: 4px 0 2px; }
+/* タイムは速さの並びの左はし。行を1つ増やさないための置き場所。
+   ここが1行でも増えると、スコアとオーダーを同時に見られなくなる */
 .btn--time {
-  flex: none; min-height: 0; min-width: 104px;
-  padding: 3px 14px; border-radius: 999px; border-width: 1px;
-  font-size: 11.5px; letter-spacing: .18em;
+  flex: none; min-height: 0; min-width: 0;
+  padding: 3px 9px; border-radius: 999px; border-width: 1px;
+  font-size: 11.5px; letter-spacing: .06em;
   border-color: var(--accent); color: var(--accent); font-weight: 700;
 }
 .btn--time:hover { background: var(--accent); color: var(--bg); }
+.btn--time[hidden] { display: none; }
 
 /* タイムのふきだし */
 .time__where { margin: 0 0 8px; font-size: 11.5px; letter-spacing: .1em; color: var(--ink-mute); }
