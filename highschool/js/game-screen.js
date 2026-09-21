@@ -503,6 +503,7 @@ const GameScreen = (() => {
           '<span class="spick__nm">' + esc(x.p.name) + '</span>' +
           '<span class="spick__fat">' + esc(x.right || '') + '</span>' +
           '<span class="spick__meta">' + x.meta + '</span>' +
+          (x.balls ? '<span class="spick__balls">' + x.balls + '</span>' : '') +
         '</button>').join('') + '</div>' +
       '<div class="actions actions--modal">' +
         '<button type="button" class="btn btn--wide" id="pk-back">戻る</button></div>',
@@ -600,8 +601,11 @@ const GameScreen = (() => {
     const now = Team.find(t, currentPitcherId(t));
     const list = availablePitchers(t).map((p) => ({
       p, right: Team.fatigueLabel(p),
-      meta: p.grade + '年・' + (p.throws === 'L' ? '左' : '右') + '・' + p.velo + 'km/h　制球 ' +
-        UI.rankNum(p.control) + '　スタミナ ' + UI.rankNum(p.stamina),
+      meta: p.grade + '年・' + (p.throws === 'L' ? '左' : '右') +
+        '　球速 <b class="rankval">' + p.velo + '</b>km/h' +
+        '　制球 ' + UI.rankNum(p.control) + '　スタミナ ' + UI.rankNum(p.stamina),
+      /* 変化球も出す。試合前に先発を選ぶ画面と同じ並べ方 */
+      balls: Screens.pitchText(p),
     }));
     pickPlayer('投手を交代する', now ? now.name + ' に代えて' : '', list, (pid) => {
       const side = ctx.mySide;

@@ -684,6 +684,6 @@ const Screens = (() => {
   return {
     pick, ready, training, trainingResult, opening, pregame,
     poachWin, poachRelease, champion, offseason, settings, lineupCard, bindRows,
-    abilityLine, verdict, growth, nextUp, trainingIntro, setOnChange,
+    abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
   };
 })();
