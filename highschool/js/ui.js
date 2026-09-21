@@ -633,7 +633,8 @@ const UI = (() => {
         '<p class="note lineup-hint">' + hint + '</p>' +
         warn + list +
         '<div class="actions actions--modal">' +
-        '<button type="button" class="btn" id="lu-auto">おまかせ</button>' +
+        '<button type="button" class="btn" id="lu-auto">' +
+          (tab === 'bat' ? '打線をおまかせ' : '投手をおまかせ') + '</button>' +
         '<button type="button" class="btn btn--primary" id="lu-done">決定</button>' +
         '</div></div>';
     }
@@ -729,14 +730,24 @@ const UI = (() => {
       body.querySelectorAll('.pname').forEach((b) =>
         b.addEventListener('click', () => openDetail(b.dataset.pid)));
 
+      /* おまかせは、いま開いている面だけを組み直す。
+         打線を直したいのに投げる順番まで変わってしまうと、
+         せっかく決めた継投が消えてしまうため */
       const auto = body.querySelector('#lu-auto');
       if (auto) auto.addEventListener('click', () => {
-        Team.autoLineup(team);
-        team.batters.forEach((p) => { posOf[p.id] = BENCH; });
-        team.lineup.forEach((sl) => { posOf[sl.pid] = sl.pos; });
-        order = team.lineup.map((sl) => sl.pid)
-          .concat(team.batters.map((p) => p.id).filter((id) => posOf[id] === BENCH));
-        showBad = false;
+        if (tab === 'pit') {
+          Team.autoRotation(team);
+        } else {
+          /* autoLineup は投げる順番まで組み直すので、そこは戻しておく */
+          const keep = (team.rotation || []).slice();
+          Team.autoLineup(team);
+          if (keep.length) team.rotation = keep;
+          team.batters.forEach((p) => { posOf[p.id] = BENCH; });
+          team.lineup.forEach((sl) => { posOf[sl.pid] = sl.pos; });
+          order = team.lineup.map((sl) => sl.pid)
+            .concat(team.batters.map((p) => p.id).filter((id) => posOf[id] === BENCH));
+          showBad = false;
+        }
         refresh();
       });
       const done = body.querySelector('#lu-done');
