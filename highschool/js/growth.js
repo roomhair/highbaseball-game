@@ -104,12 +104,25 @@ const Growth = (() => {
         }
       }
 
-      /* 投手は球速も少しずつ上がる */
+      /* 投手は球速も少しずつ上がる。打撃の能力より確率を低くしてある */
       if (isPit && played && RNG.chance(CONFIG.GROWTH.VELO_CHANCE)) {
         const before = p.velo;
-        p.velo = Math.min(165, before + RNG.range(1, 2));
+        p.velo = Math.min(165, before + (RNG.chance(0.25) ? 2 : 1));
         if (p.velo > before) {
           ups.push({ key: 'velo', label: '球速', amount: p.velo - before, before, after: p.velo, unit: 'km/h' });
+        }
+      }
+
+      /* 変化球も、まれに切れ味が増す。
+         いま持っている球のどれかが1段よくなるだけで、
+         新しい球種を覚えることはない（それは特訓の「新球習得」の役目） */
+      if (isPit && played && RNG.chance(CONFIG.GROWTH.PITCH_CHANCE)) {
+        const room = (p.pitches || []).filter((q) => q.level < 7);
+        if (room.length) {
+          const q = RNG.pick(room);
+          const before = q.level;
+          q.level = before + 1;
+          ups.push({ key: 'pitch', label: q.name, amount: 1, before, after: q.level });
         }
       }
 
