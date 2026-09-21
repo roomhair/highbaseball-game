@@ -327,6 +327,14 @@ const Sim = (() => {
 
     let inning = 1, over = false, cold = false, walkoff = false;
 
+    /* コールドの判定。決勝と全国大会では行わない。
+       回の途中でも点差がついた時点で成立する */
+    const coldNow = () => {
+      if (noCold) return false;
+      const diff = Math.abs(A.runs - H.runs);
+      return CONFIG.GAME.COLD.some((r) => inning >= r.inning && diff >= r.diff);
+    };
+
     while (!over && inning <= CONFIG.GAME.MAX_INNINGS) {
       for (const half of ['top', 'bottom']) {
         const off = half === 'top' ? A : H;
@@ -346,19 +354,14 @@ const Sim = (() => {
         });
         ctl.off = off; ctl.def = def; ctl.inning = inning; ctl.half = half;
         yield;
-        const got = yield* playHalf(off, def, log, inning, half, tie, A, H);
+        const got = yield* playHalf(off, def, log, inning, half, tie, A, H, coldNow);
         off.byInning[inning - 1] = got;
 
         if (half === 'bottom' && inning >= CONFIG.GAME.INNINGS && H.runs > A.runs) {
           walkoff = true; over = true; break;
         }
-        /* コールドゲーム（決勝では行わない） */
-        if (!noCold && (half === 'bottom' || (half === 'top' && H.runs > A.runs))) {
-          const diff = Math.abs(A.runs - H.runs);
-          for (const rule of CONFIG.GAME.COLD) {
-            if (inning >= rule.inning && diff >= rule.diff) { cold = true; over = true; break; }
-          }
-        }
+        /* コールドゲーム（決勝と全国大会では行わない） */
+        if (coldNow()) { cold = true; over = true; break; }
         if (over) break;
       }
       if (over) break;
@@ -467,7 +470,7 @@ const Sim = (() => {
   /* 半分の回を進める。ジェネレータにしてあるのは、
      打席と打席のあいだで止めて「タイム」を受け付けられるようにするため。
      log に積むたびに yield するので、呼ぶ側はそこで止められる。 */
-  function* playHalf(off, def, log, inning, half, tie, A, H) {
+  function* playHalf(off, def, log, inning, half, tie, A, H, stop) {
     const offTeam = off.team, defTeam = def.team;
     let outs = 0;
     let bases = [null, null, null];
@@ -481,6 +484,10 @@ const Sim = (() => {
     }
 
     while (outs < 3) {
+      /* コールドが成立したら、回の途中でもそこで終わる。
+         回が終わるまで待つと、点差がついた試合があと何人も続いてしまう */
+      if (stop && stop()) break;
+
       /* 投手交代の見きわめ */
       if (maybeChangePitcher(def, log, inning, half)) yield;
 
