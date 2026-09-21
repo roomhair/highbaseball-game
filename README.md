@@ -223,9 +223,8 @@ A以上は1.3%、Sは0.025%（4000回で1回）です。
 
 | | |
 |---|---|
-| `PER_GAME_BAT` 13.5 / `PER_GAME_PIT` 12.5 | その試合の伸びしろの合計。持っている能力ぜんぶに配る |
+| `PER_GAME_BAT` 17.0 / `PER_GAME_PIT` 15.5 | その試合の伸びしろの合計。持っている能力ぜんぶに配る |
 | `MAX_STEP` 6 | 1試合に1つの能力が上がる上限 |
-| `PER_STAT` 6.6 | （特訓など、1つずつ配るときの係数） |
 | `HEAD_SPAN` 35 / `HEAD_CURVE` 1.9 | 頭打ち。100からの残りが35以上あるうちは満額 |
 | `BASE` 0.55 | 出ただけでもらえるぶん |
 | `PERF` 0.32 | その試合の出来にかかる係数 |
@@ -824,7 +823,7 @@ highschool/
 | 試合後の伸び幅 | `js/growth.js` の `gainFor()` と `GRADE_GAIN` |
 | 打撃・投球の確率（三振率・四球率・本塁打率など） | `js/sim.js` の `resolvePA()` |
 | 新入部員の弱さ | `js/player.js` の `GRADE_BASE`（いまは1年15・2年21・3年26）と `rollTalent()`。<br>`GRADE_BASE` は自軍だけに効きます（相手校は `level` から作るため） |
-| **1試合の伸び幅（成長の速さそのもの）** | `js/config.js` の `CONFIG.GROWTH`。`PER_STAT` を上げると速く伸び、<br>`HEAD_SPAN` を下げると早くから頭打ちになります |
+| **1試合の伸び幅（成長の速さそのもの）** | `js/config.js` の `CONFIG.GROWTH`。`PER_GAME_BAT` / `PER_GAME_PIT` を上げると速く伸び、<br>`HEAD_SPAN` を下げると早くから頭打ちになります |
 | 上手に遊んだ差が勝率に出る度合い | `CONFIG.GROWTH` の `HEAD_SPAN`（大きくすると弱い選手ほど速く伸びて差が埋まる）と、<br>`BASE` / `PERF`（`PERF` を大きくするほど、活躍した選手だけが伸びる） |
 | 1回戦ごとの強さの上がり幅 | `js/config.js` の `CONFIG.FIELD.STEP`（確率表。平均を上げるほど急） |
 | 全国大会だけの難しさ | `CONFIG.FIELD.NAT_STEP`（地方の決勝からの上がり幅。ここが全国の重さのすべて） |

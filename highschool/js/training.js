@@ -48,10 +48,10 @@ const Training = (() => {
      抑えてある。出やすさも4%まで下げた。ここを強くしすぎると、
      引けたかどうかだけで年が決まってしまい、他の判断が意味を失う。 */
   const POWER_TIERS = [
-    { key: 's',  weight: 30, label: '',        stat: [4, 7],   velo: [1, 3],  pitch: 1, ball: [1, 2] },
-    { key: 'm',  weight: 40, label: '',        stat: [7, 12],  velo: [3, 5],  pitch: 1, ball: [2, 3] },
-    { key: 'l',  weight: 22, label: 'みっちり', stat: [14, 23], velo: [5, 8],  pitch: 2, ball: [3, 4] },
-    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [18, 28], velo: [7, 11], pitch: 2, ball: [4, 5] },
+    { key: 's',  weight: 30, label: '',        stat: [6, 10],  velo: [2, 4],  pitch: 1, ball: [1, 3] },
+    { key: 'm',  weight: 40, label: '',        stat: [10, 17], velo: [4, 7],  pitch: 1, ball: [3, 4] },
+    { key: 'l',  weight: 22, label: 'みっちり', stat: [20, 32], velo: [7, 11], pitch: 2, ball: [4, 5] },
+    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [25, 39], velo: [10, 15], pitch: 2, ball: [5, 6] },
   ];
 
   /* まれに、2種類の能力が同時に上がる。
