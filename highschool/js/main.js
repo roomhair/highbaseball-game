@@ -195,19 +195,77 @@ const Game = (() => {
     Screens.pregame(state, { onChange: save });
   }
 
+  const clone = (v) => JSON.parse(JSON.stringify(v));
+
   function playGame() {
-    const away = state.mySide === 'away' ? state.team : state.opponent;
-    const home = state.mySide === 'away' ? state.opponent : state.team;
     const round = Tournament.currentRound(state.tour);
     /* 全国大会はコールドゲームなし。地方大会も決勝だけは行わない */
     const noCold = state.tour.kind === 'national' || (round && round.name === '決勝');
-    /* 1打席ずつ計算しながら進める。こうしないと途中の交代が効かない */
-    const live = Sim.live(away, home, { noCold, manual: state.mySide });
+    /* この試合ぶんの乱数の種と、試合開始時点の両チームを控えておく。
+       これが無いと、途中でブラウザを閉じて開き直したときに試合前まで戻り、
+       負けそうな試合を何度でもやり直せてしまう。
+       種を決めておけば、開き直しても同じ試合が同じように進む */
+    state.liveGame = {
+      seed: RNG.newSeed(), noCold, mySide: state.mySide,
+      team: clone(state.team), opponent: clone(state.opponent),
+      subs: [], step: 0,
+    };
     state.phase = 'game';
-    GameScreen.start({ away, home, mySide: state.mySide }, live, () => afterGame(live.result));
+    save();
+    runGame(0);
+  }
+
+  /**
+   * 試合を動かす。skipTo より前は黙って流す（中断から戻ったとき用）。
+   * 交代は記録してあるものを同じところで入れ直すので、同じ試合になる。
+   */
+  function runGame(skipTo) {
+    const g = state.liveGame;
+    const away = g.mySide === 'away' ? state.team : state.opponent;
+    const home = g.mySide === 'away' ? state.opponent : state.team;
+    RNG.seed(g.seed);
+    const live = Sim.live(away, home, { noCold: g.noCold, manual: g.mySide });
+
+    /* 記録してある交代を入れ直しながら、見ていたところまで進める */
+    const subs = (g.subs || []).slice();
+    const target = Math.max(skipTo, subs.length ? subs[subs.length - 1].at : 0);
+    let guard = 0;
+    const catchUp = () => {
+      while (subs.length && subs[0].at <= live.log.length) {
+        GameScreen.replaySub(live, state.team, g.mySide, subs.shift());
+      }
+    };
+    catchUp();
+    while (live.log.length < target && guard++ < 20000) {
+      if (!live.next()) break;
+      catchUp();
+    }
+
+    const out = [];
+    (g.subs || []).forEach((r) => (r.out || []).forEach((id) => out.push(id)));
+    GameScreen.start(
+      { away, home, mySide: g.mySide, skipTo,
+        retired: out,
+        onSub(rec) { g.subs.push(rec); g.step = rec.at; save(); },
+        onProgress(i) { g.step = i; save(); } },
+      live, () => afterGame(live.result));
+  }
+
+  /** 中断したところから試合を続ける */
+  function resumeGame() {
+    const g = state.liveGame;
+    if (!g || !g.team || !g.opponent) { Screens.pregame(state, { onChange: save }); return; }
+    /* 試合は両チームを書き換えながら進むので、開始時点に巻き戻してから流し直す */
+    state.team = clone(g.team);
+    state.opponent = clone(g.opponent);
+    state.mySide = g.mySide;
+    runGame(g.step || 0);
   }
 
   function afterGame(res) {
+    /* 試合が終わったら種を外す。以降はふだんの乱数に戻る */
+    RNG.unseed();
+    state.liveGame = null;
     const my = state.mySide === 'away' ? res.away : res.home;
     const op = state.mySide === 'away' ? res.home : res.away;
     const win = my.runs > op.runs;
@@ -436,6 +494,9 @@ const Game = (() => {
   /* ---------- 再開 ---------- */
 
   function resume(loaded) {
+    /* 前の試合の種が残っていることがあるので、いったん外す。
+       試合を続けるときは runGame が掛け直す */
+    RNG.unseed();
     state = loaded;
     if (!state.settings) state.settings = Storage.loadSettings();
     applySettings();
@@ -446,7 +507,9 @@ const Game = (() => {
       case 'training': Screens.training(state); break;
       case 'training-result': Screens.trainingResult(state, '地方大会へ'); break;
       case 'opening': Screens.opening(state); break;
-      case 'pregame': case 'game': Screens.pregame(state, { onChange: save }); break;
+      case 'pregame': Screens.pregame(state, { onChange: save }); break;
+      /* 試合の途中で閉じたときは、同じ試合の同じところから続ける */
+      case 'game': resumeGame(); break;
       /* 試合の中身は保存していないので、その次の処理から続ける */
       case 'verdict': case 'growth': case 'result':
         if (state.lastResult && state.lastResult.win) toPoach(); else lose();

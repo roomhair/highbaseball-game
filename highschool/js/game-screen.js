@@ -149,8 +149,8 @@ const GameScreen = (() => {
           '<span class="ll__no">' + (i + 1) + '</span>' +
           '<span class="ll__pos">' + posShort(s.pos) + '</span>' +
           '<span class="ll__name">' + esc(p.name) + '</span>' +
-          '<span class="ll__res">' + res + '</span>' +
-          abTiny(p) + '</li>';
+          abTiny(p) +
+          '<span class="ll__res">' + res + '</span></li>';
       }).join('');
       const pit = Team.find(t, cur[key + 'Pitcher']);
       return '<div class="ll' + (cur.side === key ? ' is-batting' : '') + '">' +
@@ -169,8 +169,14 @@ const GameScreen = (() => {
       live, onDone, i: 0, done: false,
       /* 自分が操る側。タイムをかけられるのはこちらだけ */
       mySide: gs.mySide || 'away',
-      /* この試合で退いた選手。試合ごとに作り直す */
-      retired: new Set(),
+      /* 交代を1つずつ外に渡す／どこまで見たかを外に伝える。
+         中断して開き直したときに同じ試合を続けるために使う */
+      onSub: gs.onSub || null,
+      onProgress: gs.onProgress || null,
+      timeAt: 0,
+      /* この試合で退いた選手。試合ごとに作り直す。
+         中断から戻ったときは、そこまでに退いた選手を引き継ぐ */
+      retired: new Set(gs.retired || []),
       state: {
         awayName: away.name, homeName: home.name,
         awayInn: [], homeInn: [], awayR: 0, homeR: 0,
@@ -191,7 +197,10 @@ const GameScreen = (() => {
     speed = 1;
     applySpeedButtons();
     UI.show('screen-game');
-    render('');
+    /* 中断から戻ったときは、見たところまでを黙って流してから続ける */
+    let stage = '';
+    while (ctx.i < (gs.skipTo || 0) && pull()) stage = apply(ctx.live.log[ctx.i++]);
+    render(stage);
     step();
   }
 
@@ -336,6 +345,9 @@ const GameScreen = (() => {
     const e = ctx.live.log[ctx.i++];
     const stage = apply(e);
     render(stage);
+    /* 回の変わり目ごとに、どこまで見たかを記録してもらう。
+       1打席ごとに書くと保存が重いので、この粒度にしてある */
+    if (e.k === 'half' && ctx.onProgress) ctx.onProgress(ctx.i);
     const wait = e.k === 'half' ? 620 : (e.k === 'pa' ? (e.runs ? 1000 : 760) : 700);
     schedule(wait);
   }
@@ -404,6 +416,9 @@ const GameScreen = (() => {
     if (!ctx || ctx.done) return;
     clearTimeout(timer);
     ctx.paused = true;
+    /* この止まった場所を控えておく。中断から戻ったとき、
+       同じところで同じ交代を入れ直すために使う */
+    ctx.timeAt = ctx.live.log.length;
     showTapHint(false);
     /* ふきだしの外を触ったとき、×で閉じたとき、Esc を押したときも
        試合に戻す。どの閉じ方でも止まったままにならないようにしておく。
@@ -527,7 +542,7 @@ const GameScreen = (() => {
         if (!inP || !out) { timeMenu(); return; }
         t.lineup[n - 1] = { pid: inP.id, pos: slot.pos };
         retired().add(out.id);
-        ctx.live.note('代打　' + out.name + ' → ' + inP.name);
+        noteSub('代打　' + out.name + ' → ' + inP.name);
         afterSub();
       }, '控えに出せる選手がいません。');
   }
@@ -551,7 +566,7 @@ const GameScreen = (() => {
         if (!inP) { timeMenu(); return; }
         t.lineup[idx] = { pid: inP.id, pos: t.lineup[idx].pos };
         retired().add(out.id);
-        ctx.live.note('選手交代　' + out.name + ' → ' + inP.name);
+        noteSub('選手交代　' + out.name + ' → ' + inP.name);
         afterSub();
       }, '控えに出せる選手がいません。');
     });
@@ -572,7 +587,7 @@ const GameScreen = (() => {
         if (a < 0 || b < 0) { timeMenu(); return; }
         const pa = t.lineup[a].pos, pb = t.lineup[b].pos;
         t.lineup[a].pos = pb; t.lineup[b].pos = pa;
-        ctx.live.note('守備変更　' + Team.find(t, pidA).name + ' ' + posName(pb) +
+        noteSub('守備変更　' + Team.find(t, pidA).name + ' ' + posName(pb) +
           '／' + Team.find(t, pidB).name + ' ' + posName(pa));
         afterSub();
       });
@@ -592,9 +607,40 @@ const GameScreen = (() => {
       const side = ctx.mySide;
       if (ctx.live.changePitcher(side, pid)) {
         if (now) retired().add(now.id);
+        saveSub({ pitcher: pid });
       }
       afterSub();
     }, 'まだ投げていない投手がいません。');
+  }
+
+  /** 交代を1つ、外（保存する側）に渡す。
+      中断して開き直したときは、ここに渡したものを同じ順番で入れ直す。
+      並びそのものを丸ごと控えるので、代打でも守備変更でも同じ形で戻せる */
+  function saveSub(extra) {
+    if (!ctx || !ctx.onSub) return;
+    const t = myTeam();
+    ctx.onSub(Object.assign({
+      at: ctx.timeAt,
+      lineup: JSON.parse(JSON.stringify(t.lineup || [])),
+      bench: (t.bench || []).slice(),
+      rotation: (t.rotation || []).slice(),
+      out: Array.from(retired()),
+    }, extra));
+  }
+
+  /** 交代の文言を記録に残しつつ、あとで同じ行を積み直せるようにする */
+  function noteSub(text) {
+    ctx.live.note(text);
+    saveSub({ note: text });
+  }
+
+  /** 保存してあった交代を入れ直す（試合の再開に使う） */
+  function replaySub(live, team, side, rec) {
+    if (rec.lineup) team.lineup = JSON.parse(JSON.stringify(rec.lineup));
+    if (rec.bench) team.bench = rec.bench.slice();
+    if (rec.rotation) team.rotation = rec.rotation.slice();
+    if (rec.note) live.note(rec.note);
+    if (rec.pitcher) live.changePitcher(side, rec.pitcher);
   }
 
   /** 交代したあと。新しく積まれた行を反映してから、タイムの画面に戻る */
@@ -787,5 +833,5 @@ const GameScreen = (() => {
     applySpeedButtons();
   }
 
-  return { start, skip, result, scoreboard, setSpeed, init, openTime };
+  return { start, skip, result, scoreboard, setSpeed, init, openTime, replaySub };
 })();

@@ -46,7 +46,7 @@ const Sim = (() => {
 
   function battedType(traj) {
     const mix = BALL_MIX[traj] || BALL_MIX[2];
-    let r = Math.random();
+    let r = RNG.rand();
     if ((r -= mix[0]) < 0) return 'GB';
     if ((r -= mix[1]) < 0) return 'LD';
     if ((r -= mix[2]) < 0) return 'FB';
@@ -62,7 +62,7 @@ const Sim = (() => {
       Math.max(0.04, 0.33 - 0.30 * t),          // 流し
     ];
     const total = w[0] + w[1] + w[2];
-    let r = Math.random() * total;
+    let r = RNG.rand() * total;
     if ((r -= w[0]) < 0) return 'pull';
     if ((r -= w[1]) < 0) return 'center';
     return 'oppo';
@@ -122,7 +122,7 @@ const Sim = (() => {
     const pBB = C(0.082 + 0.17 * (0.5 - ctrl) - 0.03 * (contact - 0.5), 0.015, 0.32);
     const pHBP = C(0.010 + 0.02 * (0.5 - ctrl), 0.002, 0.045);
 
-    let r = Math.random();
+    let r = RNG.rand();
     if ((r -= pK) < 0) {
       return { code: 'K', text: RNG.chance(0.3) ? '見三振' : '空三振', out: 1 };
     }
@@ -175,10 +175,10 @@ const Sim = (() => {
       let kind = '1B';
       const sp = bat.speed / 100;
       if (type === 'FB') {
-        const q = Math.random();
+        const q = RNG.rand();
         kind = q < 0.42 ? '2B' : (q < 0.42 + 0.02 + sp * 0.05 ? '3B' : '1B');
       } else if (type === 'LD') {
-        const q = Math.random();
+        const q = RNG.rand();
         kind = q < 0.22 ? '2B' : (q < 0.22 + 0.01 + sp * 0.025 ? '3B' : '1B');
       } else if (type === 'GB') {
         kind = RNG.chance(0.04 + sp * 0.03) ? '2B' : '1B';
