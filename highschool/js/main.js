@@ -573,11 +573,33 @@ const Game = (() => {
   }
 
   /** トップのボタンの出し方。記録があるかどうかで変わる */
-  function showTopButtons() {
+  function showTopButtons(note) {
     const saved = Storage.load();
     UI.el('btn-continue').hidden = !saved;
     UI.el('btn-start').textContent = saved ? 'はじめから' : 'はじめる';
-    UI.el('top-note').textContent = saved ? '前回の続きが残っています。' : '';
+    UI.el('top-note').textContent =
+      note || (saved ? '前回の続きが残っています。' : '');
+  }
+
+  /**
+   * 公開版では、ブラウザの保存が勝手に捨てられることがある
+   * （枠の中で動いているため）。消えない場所に置いた控えを探して、
+   * 見つかったら書き戻してからトップを出し直す。
+   * 本番サイトでは Cloud が何も返さないので、そのまま素通りする。
+   */
+  function restoreFromCloud() {
+    if (typeof Cloud === 'undefined') return;
+    let done = false;
+    const finish = (found) => {
+      if (done) return;
+      done = true;
+      if (found) showTopButtons('別の場所に残っていた記録を戻しました。');
+      else showTopButtons();
+    };
+    /* 待たせすぎない。枠の外なら数秒で null が返る */
+    const timer = setTimeout(() => finish(false), 4000);
+    Cloud.restore().then((found) => { clearTimeout(timer); finish(found); })
+      .catch(() => { clearTimeout(timer); finish(false); });
   }
 
   /* ---------- 起動 ---------- */
@@ -588,6 +610,7 @@ const Game = (() => {
     state = fresh();
     applySettings();
     showTopButtons();
+    restoreFromCloud();
 
     const on = (id, fn) => { const n = UI.el(id); if (n) n.addEventListener('click', fn); };
 

@@ -12,11 +12,16 @@ const Storage = {
 
   save(state) {
     try {
-      localStorage.setItem(CONFIG.SAVE_KEY, JSON.stringify({
+      const raw = JSON.stringify({
         v: CONFIG.SAVE_VERSION,
         seq: Player.currentSeq(),
+        at: Date.now(),          // どちらが新しいかを見分けるため
         d: state,
-      }));
+      });
+      localStorage.setItem(CONFIG.SAVE_KEY, raw);
+      /* 公開版では、消えない場所にも同じ中身を置いておく。
+         本番サイトでは Cloud が何もしないので、ここは素通りする */
+      if (typeof Cloud !== 'undefined') Cloud.push(raw);
       return true;
     } catch (e) {
       console.warn('保存できませんでした', e);
@@ -40,6 +45,7 @@ const Storage = {
 
   clear() {
     try { localStorage.removeItem(CONFIG.SAVE_KEY); } catch (e) { /* 何もしない */ }
+    if (typeof Cloud !== 'undefined') Cloud.wipe();
   },
 
   loadSettings() {
