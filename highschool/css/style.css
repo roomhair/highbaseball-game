@@ -236,6 +236,17 @@ thead th {
 }
 td.c, th.c { text-align: center; }
 td.nm, th.nm { text-align: left; min-width: 5.6em; }
+/* 細い画面では余白を詰める。詰めないと打撃成績の右はし（盗塁・通算打率）が
+   画面の外に出てしまい、横に送らないと読めなくなる */
+@media (max-width: 439px) {
+  .box th, .box td { padding: 5px 3px; }
+  .box td.nm, .box th.nm { min-width: 4.6em; }
+}
+@media (max-width: 379px) {
+  .box th, .box td { padding: 5px 1px; font-size: 11.5px; }
+  .box thead th { font-size: 10px; }
+  .box td.nm, .box th.nm { min-width: 4.2em; }
+}
 td.hl { font-weight: 700; }
 .roster tbody tr, .box tbody tr, .lineup tbody tr { cursor: pointer; }
 .roster tbody tr:hover, .box tbody tr:hover, .lineup tbody tr:hover { background: var(--bg-2); }
@@ -918,7 +929,9 @@ tr.prow.is-picked .rank, tr.prow.is-picked .rankval, tr.prow.is-picked td { colo
 .pitchlist b { font-weight: 800; }
 .pitchlist .bar { display: block; height: 5px; background: var(--bg-2); border-radius: 3px; overflow: hidden; }
 .pitchlist .bar i { display: block; height: 100%; background: var(--accent); }
-.statline th, .statline td { text-align: center; font-size: 12px; }
+.statline th, .statline td { text-align: center; font-size: 12px; padding: 5px 4px; }
+/* 通算成績も細い画面でははみ出すので、そこだけ詰める */
+@media (max-width: 439px) { .statline th, .statline td { padding: 5px 2px; font-size: 11.5px; } }
 .statline td.hl { font-weight: 800; font-size: 13.5px; }
 
 /* ===== ふきだし ===== */

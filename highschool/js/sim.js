@@ -480,14 +480,18 @@ const Sim = (() => {
       off.order = (off.order + 1) % 9;
       if (!bat || !pit) { outs = 3; break; }
 
-      /* 盗塁。一塁だけが埋まっているときに、足のある選手がしかける */
-      if (bases[0] && !bases[1] && outs < 2) {
+      /* 盗塁。一塁だけが埋まっているときに、足のある選手がしかける。
+         2死からもしかけるが、そこは慎重になる。
+         走力45以下がまず出ない式にしていたころは、120試合で5個しか
+         出ず、通算成績にも並ばなかった。高校野球では見慣れた攻めなので、
+         走力なりにきちんと出るようにしてある */
+      if (bases[0] && !bases[1] && outs < 3) {
         const runner = bases[0];
-        const pAttempt = C((runner.speed - 45) / 200, 0, 0.30);
+        const pAttempt = C((runner.speed - 12) / 95, 0.03, 0.60) * (outs === 2 ? 0.6 : 1);
         if (RNG.chance(pAttempt)) {
           const cat = Team.defenders(defTeam, def.pitcherId).C;
           const arm = cat ? (cat.arm * 0.6 + cat.catch * 0.4) : 40;
-          const ok = RNG.chance(C(0.50 + (runner.speed - arm) / 130, 0.20, 0.93));
+          const ok = RNG.chance(C(0.58 + (runner.speed - arm) / 120, 0.25, 0.95));
           if (ok) {
             bases[1] = runner; bases[0] = null; runner.game.sb++;
             log.push(snap('steal', { text: runner.name + ' 盗塁成功', ok: true }, off, def, inning, half, outs, bases, A, H, bat, pit));
@@ -859,7 +863,11 @@ const Sim = (() => {
     /* 打点と得点は前後の打者しだい。実際の試合で出ている割合から見積もる */
     s.rbi = Math.round(single * 0.26 + s.d2 * 0.43 + s.d3 * 0.58 + s.hr * 1.60 + s.sf);
     s.r = Math.round((s.h + s.bb - s.hr) * 0.303 + s.hr);
-    s.sb = Math.round(pa * C((bat.speed - 40) / 100 * 0.016, 0, 0.05));
+    /* 盗塁。試合のほうと同じくらいの割合になるようにしてある。
+       Math.round だと 0.4 個が丸ごと消えてしまうので、
+       端数は確率で足す（走力のある選手ほど通算に並ぶ） */
+    const sbExp = pa * C((bat.speed - 12) / 100 * 0.095, 0, 0.15);
+    s.sb = Math.floor(sbExp) + (RNG.chance(sbExp % 1) ? 1 : 0);
     return s;
   }
 
