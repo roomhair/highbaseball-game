@@ -328,7 +328,11 @@ const Sim = (() => {
     });
   }
 
-  function capacityOf(p) { return 14 + p.stamina * 0.55; }
+  /* 息が上がりはじめるまでに受けられる打者の数。
+     ここを大きく取りすぎると、スタミナ50の投手でも9回まで
+     限界に届かず、スタミナがほとんど効かなくなる。
+     いまは スタミナ20 で4回、50 で7回、85 なら9回もつくらい */
+  function capacityOf(p) { return 8 + p.stamina * 0.45; }
 
   /**
    * 試合を最後まで計算する。
@@ -540,12 +544,14 @@ const Sim = (() => {
         /* 2点以上を追っているときは、アウトになると痛いので滅多にしかけない。
            1つの塁より、続く打者の一打のほうが要る場面 */
         const behind = (off.runs - (off === A ? H.runs : A.runs)) <= -2;
-        const pAttempt = C((runner.speed - 12) / 95, 0.03, 0.60) *
+        /* やたらとしかけないように、企てる回数は絞ってある。
+           そのかわり、行くと決めたときは決まりやすい */
+        const pAttempt = C((runner.speed - 25) / 125, 0.02, 0.40) *
           (outs === 2 ? 0.6 : 1) * (behind ? 0.12 : 1);
         if (RNG.chance(pAttempt)) {
           const cat = Team.defenders(defTeam, def.pitcherId).C;
           const arm = cat ? (cat.arm * 0.6 + cat.catch * 0.4) : 40;
-          const ok = RNG.chance(C(0.58 + (runner.speed - arm) / 120, 0.25, 0.95));
+          const ok = RNG.chance(C(0.70 + (runner.speed - arm) / 115, 0.36, 0.95));
           if (ok) {
             bases[1] = runner; bases[0] = null; runner.game.sb++;
             log.push(snap('steal', { text: runner.name + ' 盗塁成功', ok: true }, off, def, inning, half, outs, bases, A, H, bat, pit));
@@ -761,14 +767,22 @@ const Sim = (() => {
             if (RNG.chance(pDP)) {
               outs += 2;
               bases[0] = null;
-              if (outs < 3 && bases[1]) { bases[2] = bases[1]; bases[1] = null; }
+              if (outs < 3) {
+                /* 併殺の間に三塁走者が還る。三つめのアウトにならなければ点は入る */
+                if (bases[2] && RNG.chance(0.80)) { score(bases[2]); rbi++; bases[2] = null; }
+                if (bases[1] && !bases[2]) { bases[2] = bases[1]; bases[1] = null; }
+              }
               res.text = posShort(res.spot) + '併';
               break;
             }
           }
           outs++;
           if (outs < 3) {
-            if (bases[2] && RNG.chance(0.35)) { score(bases[2]); rbi++; bases[2] = null; }
+            /* 三塁走者は、内野ゴロの間に還ることがある。
+               足があるほど、また前進守備でなければ還りやすい */
+            if (bases[2] && RNG.chance(C(0.46 + (bases[2].speed - 45) * 0.003, 0.28, 0.66))) {
+              score(bases[2]); rbi++; bases[2] = null;
+            }
             if (bases[1] && !bases[2] && RNG.chance(0.45)) { bases[2] = bases[1]; bases[1] = null; }
             if (bases[0] && !bases[1]) { bases[1] = bases[0]; bases[0] = null; }
           }
