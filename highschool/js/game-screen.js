@@ -156,7 +156,9 @@ const GameScreen = (() => {
       return '<div class="ll' + (cur.side === key ? ' is-batting' : '') + '">' +
         '<h4 class="ll__title">' + esc(t.name) + '<i>' + (cur.side === key ? '攻撃' : '守備') + '</i></h4>' +
         '<ol class="ll__list">' + rows + '</ol>' +
-        (pit ? '<p class="ll__p">投手　' + esc(pit.name) + '</p>' : '') + '</div>';
+        (pit ? '<p class="ll__p">投手　' +
+          '<button type="button" class="linkbtn llpit" data-pid="' + pit.id + '">' +
+          esc(pit.name) + '</button></p>' : '') + '</div>';
     };
     return side(away, 'away') + side(home, 'home');
   }
@@ -256,10 +258,15 @@ const GameScreen = (() => {
     UI.html('game-stage', stageHtml);
     UI.html('game-lineups', liveLineups(ctx.away, ctx.home, ctx.cur));
     const wrap = UI.el('game-lineups');
-    wrap.querySelectorAll('.ll__item').forEach((li) => li.addEventListener('click', () => {
-      const p = Team.find(ctx.away, li.dataset.pid) || Team.find(ctx.home, li.dataset.pid);
+    const open = (pid) => {
+      const p = Team.find(ctx.away, pid) || Team.find(ctx.home, pid);
       if (p) UI.openPlayer(p, { team: myTeam(), rename: false });
-    }));
+    };
+    wrap.querySelectorAll('.ll__item').forEach((li) =>
+      li.addEventListener('click', () => open(li.dataset.pid)));
+    /* 投手の名前も押せるようにする。打者と同じで、両チームとも見られる */
+    wrap.querySelectorAll('.llpit').forEach((b) =>
+      b.addEventListener('click', (e) => { e.stopPropagation(); open(b.dataset.pid); }));
   }
 
   function halfLabel(e) { return e.inning + '回' + (e.half === 'top' ? '表' : '裏'); }

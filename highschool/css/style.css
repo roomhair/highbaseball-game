@@ -636,6 +636,8 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 @media (min-width: 720px) { .ll__ab { font-size: 10px; } }
 .ll__item.is-now .ll__no, .ll__item.is-now .ll__pos { color: inherit; opacity: .8; }
 .ll__p { margin: 2px 0 0; font-size: 11px; color: var(--ink-mute); }
+/* 投手の名前は押せる。打者の行と同じで、押すと選手の詳細が開く */
+.ll__p .llpit { font-size: 11px; }
 .ll__title { font-size: 12px; }
 @media (min-width: 720px) { .ll__title { font-size: 13px; } }
 
