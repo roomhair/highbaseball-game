@@ -537,6 +537,9 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .stage__play { animation: pop .26s cubic-bezier(.2,.9,.3,1) both; }
 @keyframes pop { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
 .stage__meta { display: block; font-size: 11.5px; color: var(--ink-mute); letter-spacing: .06em; }
+/* 何を投げたか。打席結果のすぐ上に小さく */
+.stage__ball { display: block; font-size: 11px; color: var(--ink-faint); letter-spacing: .04em; }
+.stage__ball b { font-weight: 700; color: var(--ink-mute); }
 .stage__text { display: block; font-size: 21px; font-weight: 800; letter-spacing: .08em; line-height: 1.3; }
 .stage__play.is-good .stage__text { color: var(--accent); }
 .stage__play.is-bad .stage__text { color: var(--ink-mute); }
@@ -662,6 +665,19 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 /* 投手の名前は押せる。打者の行と同じで、押すと選手の詳細が開く */
 .ll__p .llpit { font-size: 11px; }
 .ll__p .ll__ab { display: block; }
+/* 投手の余力。受けた打者が増えるほど減り、
+   色が変わったところから球威と制球が落ちていく */
+.ll__sta { display: block; margin-top: 2px; }
+.ll__bar {
+  display: block; height: 4px; border-radius: 2px;
+  background: var(--bg-2); border: 1px solid var(--line-soft); overflow: hidden;
+}
+.ll__bar b { display: block; height: 100%; background: var(--accent); }
+.ll__sta.is-mid .ll__bar b { background: var(--r-d); }
+.ll__sta.is-low .ll__bar b { background: var(--crimson); }
+.ll__stanum { display: block; font-size: 9px; line-height: 1.4; color: var(--ink-faint); }
+.ll__sta.is-mid .ll__stanum { color: var(--r-d); }
+.ll__sta.is-low .ll__stanum { color: var(--crimson); }
 .ll__balls { display: flex; flex-wrap: wrap; gap: 1px 3px; margin-top: 1px; }
 .ll__ball {
   font-style: normal; font-size: 9px; line-height: 1.2; color: var(--ink-mute);

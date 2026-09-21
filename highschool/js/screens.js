@@ -623,7 +623,6 @@ const Screens = (() => {
         '<p class="champ__lead">' + esc(t.name) + 'が県の代表として、' +
           esc(state.settings.nationalName) + 'へ駒を進めた。</p>' +
         starList(t) +
-        '<p class="champ__note">大会のあいだが空くので、<b>投手の疲れは抜けました</b>。</p>' +
       '</div>');
     UI.show('screen-localwin');
   }

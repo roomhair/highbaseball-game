@@ -78,6 +78,9 @@ const Sim = (() => {
   };
   const OF_BY_ZONE = { pull: 'LF', center: 'CF', oppo: 'RF' };
 
+  /* 内野の守備位置。内野安打かどうかの判定に使う */
+  const INF_POS = ['P', 'C', '1B', '2B', '3B', 'SS'];
+
   function mirror(posKey) {
     return { '1B': '3B', '3B': '1B', SS: '2B', '2B': 'SS', LF: 'RF', RF: 'LF' }[posKey] || posKey;
   }
@@ -103,6 +106,33 @@ const Sim = (() => {
    * 練習試合ぶんの通算成績も resolveVs を通して作るので、
    * 「通算成績の割に打たない」ということが起きない。
    */
+  /* 変化球ごとの、直球からの球速差のめやす。
+     ここに無い球種は -10km/h 前後にしておく */
+  const PITCH_DROP = {
+    'ツーシーム': 2, 'カットボール': 4, 'シュート': 5, 'スプリット': 8,
+    'シンカー': 10, 'スライダー': 10, 'フォーク': 13, 'スクリュー': 13,
+    'チェンジアップ': 15, 'パーム': 17, 'カーブ': 19, 'ナックルカーブ': 20,
+    'ナックル': 22, 'スローカーブ': 28,
+  };
+
+  /**
+   * この打席で投げた球を1つ決める。見せるためだけのもので、
+   * 打席の結果そのものには効かせていない（結果は球威と制球で決まる）。
+   * 切れ味のいい変化球ほど投げやすい。疲れてくると球速は落ちる。
+   */
+  function pickPitch(pit, fatigue) {
+    const arms = (pit.pitches || []).filter((q) => q.level > 0);
+    const w = [{ name: 'ストレート', weight: 52 }].concat(
+      arms.map((q) => ({ name: q.name, weight: 12 + q.level * 7 })));
+    const got = RNG.weighted(w);
+    const drop = got.name === 'ストレート' ? 0 : (PITCH_DROP[got.name] || 10);
+    /* 疲れてくると球速が落ちる。力を入れた球は少し速い */
+    const tired = Math.min(9, (fatigue || 0) * 7);
+    const speed = Math.max(95, Math.round(
+      pit.velo - drop - tired - RNG.range(0, 4) + (got.name === 'ストレート' ? 1 : 0)));
+    return { name: got.name, speed };
+  }
+
   function resolvePA(bat, pit, defTeam, defRating, fatigue, defenders, offForm, defForm) {
     const d = 1 - (defForm || 0) / 130;
     const stuff = C(stuffOf(pit) * (1 - 0.22 * fatigue) * d, 0, 1);
@@ -187,7 +217,9 @@ const Sim = (() => {
       const ofKey = bat.bats === 'L' ? mirror(OF_BY_ZONE[zone]) : OF_BY_ZONE[zone];
       const mark = kind === '1B' ? '安' : (kind === '2B' ? '二' : '三');
       const where = kind === '1B' ? spot : ofKey;
-      return { code: kind, text: posShort(where) + mark, out: 0, spot: where };
+      /* 内野を抜けていない当たりかどうか。走者の進み方が変わる */
+      const infieldHit = kind === '1B' && INF_POS.indexOf(where) >= 0;
+      return { code: kind, text: posShort(where) + mark, out: 0, spot: where, infieldHit };
     }
 
     /* アウト。どういうアウトだったかを文字にする */
@@ -505,7 +537,11 @@ const Sim = (() => {
          走力なりにきちんと出るようにしてある */
       if (bases[0] && !bases[1] && outs < 3) {
         const runner = bases[0];
-        const pAttempt = C((runner.speed - 12) / 95, 0.03, 0.60) * (outs === 2 ? 0.6 : 1);
+        /* 2点以上を追っているときは、アウトになると痛いので滅多にしかけない。
+           1つの塁より、続く打者の一打のほうが要る場面 */
+        const behind = (off.runs - (off === A ? H.runs : A.runs)) <= -2;
+        const pAttempt = C((runner.speed - 12) / 95, 0.03, 0.60) *
+          (outs === 2 ? 0.6 : 1) * (behind ? 0.12 : 1);
         if (RNG.chance(pAttempt)) {
           const cat = Team.defenders(defTeam, def.pitcherId).C;
           const arm = cat ? (cat.arm * 0.6 + cat.catch * 0.4) : 40;
@@ -531,6 +567,8 @@ const Sim = (() => {
       /* まず作戦を考える。出さなければ、ふつうに打つ */
       const lead = off.runs - (off === A ? H.runs : A.runs);
       const tactic = chooseTactic(bat, slotIndex, outs, bases, inning, lead);
+      /* 投げた球。見せるためのもので、結果そのものには効かせていない */
+      const ball = pickPitch(pit, fatigue);
       const res = tactic
         ? resolveTactic(tactic, bat, pit, defRating)
         : resolvePA(bat, pit, defTeam, defRating, fatigue, defenders,
@@ -561,6 +599,9 @@ const Sim = (() => {
         text: res.text, code: res.code, rbi: out.rbi, runs: out.runs,
         /* 打球がどこへ飛んだか。試合中の画面で打球の絵に使う */
         spot: res.spot || null,
+        /* 何を投げたか。画面に「スライダー 128km/h」と出す */
+        pitch: ball ? ball.name : null,
+        pitchSpeed: ball ? ball.speed : null,
         desc: out.desc || '',
       }, off, def, inning, half, outs, bases, A, H, bat, pit, before, slotIndex));
       /* ここが「打席と打席のあいだ」。タイムをかけられるのはこの位置 */
@@ -620,16 +661,25 @@ const Sim = (() => {
       }
 
       case '1B': {
-        if (bases[2]) { score(bases[2]); rbi++; bases[2] = null; }
-        if (bases[1]) {
-          if (RNG.chance(0.50 + sp(bases[1]) * 0.35)) { score(bases[1]); rbi++; }
-          else bases[2] = bases[1];
-          bases[1] = null;
+        /* 内野安打は打球が内野で止まっているので、走者はひとつずつしか進めない。
+           二塁から還るのは、よほど足があって外野へ抜けかけたときだけ */
+        const inf = !!res.infieldHit;
+        /* 三塁走者。内野安打でも多くは還れるが、前進守備に突き刺されば止まる */
+        if (bases[2] && (!inf || RNG.chance(0.72 + sp(bases[2]) * 0.18))) {
+          score(bases[2]); rbi++; bases[2] = null;
         }
+        /* 二塁走者。外野へ抜けた当たりなら還れるが、
+           内野安打なら三塁で止まるのがふつう */
+        if (bases[1]) {
+          const q = inf ? 0.03 + sp(bases[1]) * 0.07 : 0.50 + sp(bases[1]) * 0.35;
+          if (RNG.chance(q)) { score(bases[1]); rbi++; bases[1] = null; }
+          else if (!bases[2]) { bases[2] = bases[1]; bases[1] = null; }
+        }
+        /* 一塁走者。内野安打から三塁まで行けることはまずない */
         if (bases[0]) {
-          if (!bases[2] && RNG.chance(0.20 + sp(bases[0]) * 0.30)) bases[2] = bases[0];
-          else bases[1] = bases[0];
-          bases[0] = null;
+          const q3 = inf ? 0.02 : 0.20 + sp(bases[0]) * 0.30;
+          if (!bases[2] && RNG.chance(q3)) { bases[2] = bases[0]; bases[0] = null; }
+          else if (!bases[1]) { bases[1] = bases[0]; bases[0] = null; }
         }
         bases[0] = bat;
         break;

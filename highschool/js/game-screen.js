@@ -135,13 +135,21 @@ const GameScreen = (() => {
       ' ミート' + r(p.meet) + ' パワー' + r(p.power) + ' 走力' + r(p.speed) + '</span>';
   }
 
-  /** 投手の欄。名前のあとに、投げるほうの能力と変化球を小さく出す */
-  function pitBlock(p) {
+  /** 投手の欄。名前のあとに、投げるほうの能力と変化球、いまの余力を出す。
+      bf は「いまの投手が受けた打者の数」。交代すると0に戻る */
+  function pitBlock(p, bf) {
     if (!p) return '';
     const r = (v) => {
       const g = rankOf(v);
       return '<b class="rank-' + g + '">' + g + '</b>';
     };
+    /* 余力。打者を受けるほど減り、限界を超えると球威と制球が落ちていく。
+       色が変わるところが、その落ちはじめ */
+    const cap = Sim.capacityOf(p);
+    const limit = cap + 18;
+    const faced = Math.max(0, bf || 0);
+    const left = Math.max(0, Math.min(1, 1 - faced / limit));
+    const worn = faced > cap + 9 ? ' is-low' : (faced > cap ? ' is-mid' : '');
     return '<div class="ll__p">' +
       '<span class="ll__pname">投手　' +
         '<button type="button" class="linkbtn llpit" data-pid="' + p.id + '">' +
@@ -149,6 +157,10 @@ const GameScreen = (() => {
         '<span class="ll__gr">' + p.grade + '年</span></span>' +
       '<span class="ll__ab">球速' + p.velo + ' 制球' + r(p.control) +
         ' スタミナ' + r(p.stamina) + '</span>' +
+      '<span class="ll__sta' + worn + '">' +
+        '<i class="ll__bar"><b style="width:' + Math.round(left * 100) + '%"></b></i>' +
+        '<span class="ll__stanum">余力' + Math.round(left * 100) + '%' +
+        (worn ? '（球威が落ちています）' : '') + '</span></span>' +
       '<span class="ll__balls">' + (p.pitches || []).map((q) =>
         '<i class="ll__ball">' + esc(q.name) + '<b>' + q.level + '</b></i>').join('') + '</span>' +
     '</div>';
@@ -176,7 +188,7 @@ const GameScreen = (() => {
       return '<div class="ll' + (cur.side === key ? ' is-batting' : '') + '">' +
         '<h4 class="ll__title">' + esc(t.name) + '<i>' + (cur.side === key ? '攻撃' : '守備') + '</i></h4>' +
         '<ol class="ll__list">' + rows + '</ol>' +
-        pitBlock(pit) + '</div>';
+        pitBlock(pit, cur[key + 'Bf']) + '</div>';
     };
     return side(away, 'away') + side(home, 'home');
   }
@@ -214,7 +226,9 @@ const GameScreen = (() => {
     UI.el('btn-skip').hidden = false;
     const bt = UI.el('btn-time');
     if (bt) bt.hidden = false;
-    speed = 1;
+    /* はじめは「1打席ずつ」。まず1打席ぶんを読んでもらってから、
+       速くしたい人が速さを上げる */
+    speed = 0;
     applySpeedButtons();
     UI.show('screen-game');
     /* 中断から戻ったときは、見たところまでを黙って流してから続ける */
@@ -272,6 +286,10 @@ const GameScreen = (() => {
   }
 
   function render(stageHtml) {
+    /* いまの投手がどれだけ投げたかを拾っておく（余力の表示に使う） */
+    const live = ctx.live.state ? ctx.live.state() : null;
+    ctx.cur.awayBf = live && live.A ? live.A.bf : 0;
+    ctx.cur.homeBf = live && live.H ? live.H.bf : 0;
     UI.html('game-scoreboard', liveScoreboard(ctx.state));
     UI.html('game-stage', stageHtml);
     UI.html('game-lineups', liveLineups(ctx.away, ctx.home, ctx.cur));
@@ -340,8 +358,14 @@ const GameScreen = (() => {
       if (e.code === 'E') { if (off === 'away') st.homeE++; else st.awayE++; }
 
       const good = ['1B', '2B', '3B', 'HR', 'BB', 'HBP', 'E'].indexOf(e.code) >= 0;
+      /* 何を投げたか。球種と球速を打席結果の上に添える */
+      const ball = e.pitch
+        ? '<span class="stage__ball">' + esc(e.pitch) +
+          (e.pitchSpeed ? ' <b>' + e.pitchSpeed + '</b>km/h' : '') + '</span>'
+        : '';
       return '<div class="stage__play' + (e.code === 'HR' ? ' is-hr' : (good ? ' is-good' : '')) + '">' +
         '<span class="stage__meta">' + halfLabel(e) + '　' + e.order + '番 ' + esc(e.batterName) + '</span>' +
+        ball +
         '<span class="stage__text">' + esc(e.text) +
           (e.runs ? '<b class="stage__runs">+' + e.runs + '点</b>' : '') + '</span>' +
         '</div>' + fieldView(e.bases.map(Boolean), e.outs, e);
