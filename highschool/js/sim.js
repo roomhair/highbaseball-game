@@ -214,8 +214,13 @@ const Sim = (() => {
     const pw = bat.power / 100;
     const close = Math.abs(lead) <= 3;
 
+    /* 追っている点差（勝っていれば負の値）。
+       終盤に2点以上を追っているときは、アウトを1つ差し出すと
+       必要な点に届かなくなるので、送りもスクイズも出さない */
+    const chasing = -lead;
+
     /* スクイズ。三塁に走者がいる competitive な場面 */
-    if (bases[2] && inning >= 5 && close && lead <= 2) {
+    if (bases[2] && inning >= 5 && close && lead <= 2 && !(inning >= 8 && chasing >= 2)) {
       let q = 0.10 + (0.50 - pw) * 0.16;
       if (outs === 1) q *= 0.55;
       if (bases[0] && bases[1]) q *= 0.5;      /* 満塁では出しにくい */
@@ -230,9 +235,15 @@ const Sim = (() => {
     if (bases[1]) p *= 0.55;
     /* 長打のある打者は打たせる。ただし打順の決まりごとのほうが強い */
     p *= 1 - C((pw - 0.55) * 0.8, 0, 0.45);
-    if (inning >= 7 && close) p += 0.14;
-    if (inning >= 9 && close) p += 0.10;
     if (lead < -3) p *= 0.35;                  /* 大きく負けていれば送らない */
+    /* 終盤は場面で大きく変わる。
+       同点か1点差なら、走者を進めれば追いつける・勝てるので送りやすい。
+       2点以上を追っている終盤に送るのは、1つアウトをあげたうえで
+       まだ2点要る形になるので、しない */
+    if (inning >= 7) {
+      if (chasing >= 2) p *= (inning >= 8 ? 0.05 : 0.25);
+      else if (close) p += (inning >= 9 ? 0.24 : 0.14);
+    }
     if (outs === 1) p *= 0.42;
     return RNG.chance(C(p, 0, 0.78)) ? 'bunt' : null;
   }
