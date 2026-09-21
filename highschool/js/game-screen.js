@@ -419,6 +419,10 @@ const GameScreen = (() => {
     /* この止まった場所を控えておく。中断から戻ったとき、
        同じところで同じ交代を入れ直すために使う */
     ctx.timeAt = ctx.live.log.length;
+    /* 「1打席ずつ」でタップ待ちだったかを覚えておく。
+       覚えずに戻すと、タイムを閉じた拍子に1打席ぶん進んでしまう */
+    ctx.wasWaiting = !!ctx.awaitTap;
+    ctx.awaitTap = false;
     showTapHint(false);
     /* ふきだしの外を触ったとき、×で閉じたとき、Esc を押したときも
        試合に戻す。どの閉じ方でも止まったままにならないようにしておく。
@@ -433,6 +437,14 @@ const GameScreen = (() => {
     if (!ctx || ctx.done || !ctx.paused) return;
     ctx.paused = false;
     render(UI.el('game-stage').innerHTML);
+    /* 「1打席ずつ」なら、閉じたあともタップを待つところへ戻す。
+       ここで step() を呼ぶと、タイムをかけただけで1打席進んでしまう */
+    if (speed === 0 || ctx.wasWaiting) {
+      ctx.wasWaiting = false;
+      ctx.awaitTap = true;
+      showTapHint(true);
+      return;
+    }
     step();
   }
 
