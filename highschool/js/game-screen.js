@@ -135,6 +135,25 @@ const GameScreen = (() => {
       ' ミート' + r(p.meet) + ' パワー' + r(p.power) + ' 走力' + r(p.speed) + '</span>';
   }
 
+  /** 投手の欄。名前のあとに、投げるほうの能力と変化球を小さく出す */
+  function pitBlock(p) {
+    if (!p) return '';
+    const r = (v) => {
+      const g = rankOf(v);
+      return '<b class="rank-' + g + '">' + g + '</b>';
+    };
+    return '<div class="ll__p">' +
+      '<span class="ll__pname">投手　' +
+        '<button type="button" class="linkbtn llpit" data-pid="' + p.id + '">' +
+        esc(p.name) + '</button>' +
+        '<span class="ll__gr">' + p.grade + '年</span></span>' +
+      '<span class="ll__ab">球速' + p.velo + ' 制球' + r(p.control) +
+        ' スタミナ' + r(p.stamina) + '</span>' +
+      '<span class="ll__balls">' + (p.pitches || []).map((q) =>
+        '<i class="ll__ball">' + esc(q.name) + '<b>' + q.level + '</b></i>').join('') + '</span>' +
+    '</div>';
+  }
+
   function liveLineups(away, home, cur) {
     const side = (t, key) => {
       const rows = t.lineup.map((s, i) => {
@@ -149,6 +168,7 @@ const GameScreen = (() => {
           '<span class="ll__no">' + (i + 1) + '</span>' +
           '<span class="ll__pos">' + posShort(s.pos) + '</span>' +
           '<span class="ll__name">' + esc(p.name) + '</span>' +
+          '<span class="ll__gr">' + p.grade + '年</span>' +
           abTiny(p) +
           '<span class="ll__res">' + res + '</span></li>';
       }).join('');
@@ -156,9 +176,7 @@ const GameScreen = (() => {
       return '<div class="ll' + (cur.side === key ? ' is-batting' : '') + '">' +
         '<h4 class="ll__title">' + esc(t.name) + '<i>' + (cur.side === key ? '攻撃' : '守備') + '</i></h4>' +
         '<ol class="ll__list">' + rows + '</ol>' +
-        (pit ? '<p class="ll__p">投手　' +
-          '<button type="button" class="linkbtn llpit" data-pid="' + pit.id + '">' +
-          esc(pit.name) + '</button></p>' : '') + '</div>';
+        pitBlock(pit) + '</div>';
     };
     return side(away, 'away') + side(home, 'home');
   }
