@@ -645,7 +645,9 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 /* いちばん細い画面だけ、もう一段詰める。
    投手の能力と変化球を足したぶん、終盤に画面からはみ出すため */
 @media (max-width: 379px) {
-  .ll__ab { font-size: 8.5px; }
+  .ll__ab { font-size: 8.5px; line-height: 1.15; }
+  .ll__ball { line-height: 1.1; }
+  .ll__stanum { font-size: 8.5px; line-height: 1.2; }
   .ll__r { font-size: 8.5px; }
   .ll__ball { font-size: 8.5px; }
   .ll__p { padding-top: 2px; }
@@ -653,12 +655,12 @@ td.role { font-size: 11px; color: var(--ink-mute); }
   .ll { padding: 3px 4px; }
   .scoreboard th, .scoreboard td { font-size: 11.5px; }
   .fieldview svg { width: 46px; height: 40px; }
-  .stage { min-height: 56px; margin: 3px 0; padding: 4px 8px; }
+  .stage { min-height: 50px; margin: 3px 0; padding: 4px 8px; }
 }
 .ll__item.is-now .ll__no, .ll__item.is-now .ll__pos { color: inherit; opacity: .8; }
 /* 投手の欄。名前・能力・変化球を、打者の行と同じ3段にそろえる */
 .ll__p {
-  margin: 2px 0 0; padding-top: 3px; font-size: 11px; color: var(--ink-mute);
+  margin: 2px 0 0; padding-top: 2px; font-size: 11px; color: var(--ink-mute);
   border-top: 1px solid var(--line-soft);
 }
 .ll__pname { display: block; line-height: 1.25; }
@@ -667,15 +669,16 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .ll__p .ll__ab { display: block; }
 /* 投手の余力。受けた打者が増えるほど減り、
    色が変わったところから球威と制球が落ちていく */
-.ll__sta { display: block; margin-top: 2px; }
+/* 余力は「余力◯% ▮▮▮▮」の1行。行を増やすと打順が画面から出てしまう */
+.ll__sta { display: flex; align-items: center; gap: 4px; margin-top: 1px; }
 .ll__bar {
-  display: block; height: 4px; border-radius: 2px;
+  flex: 1 1 auto; min-width: 24px; height: 4px; border-radius: 2px;
   background: var(--bg-2); border: 1px solid var(--line-soft); overflow: hidden;
 }
 .ll__bar b { display: block; height: 100%; background: var(--accent); }
 .ll__sta.is-mid .ll__bar b { background: var(--r-d); }
 .ll__sta.is-low .ll__bar b { background: var(--crimson); }
-.ll__stanum { display: block; font-size: 9px; line-height: 1.4; color: var(--ink-faint); }
+.ll__stanum { flex: none; font-size: 9px; line-height: 1.4; color: var(--ink-faint); white-space: nowrap; }
 .ll__sta.is-mid .ll__stanum { color: var(--r-d); }
 .ll__sta.is-low .ll__stanum { color: var(--crimson); }
 .ll__balls { display: flex; flex-wrap: wrap; gap: 1px 3px; margin-top: 1px; }

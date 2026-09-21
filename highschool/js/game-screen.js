@@ -158,9 +158,10 @@ const GameScreen = (() => {
       '<span class="ll__ab">球速' + p.velo + ' 制球' + r(p.control) +
         ' スタミナ' + r(p.stamina) + '</span>' +
       '<span class="ll__sta' + worn + '">' +
-        '<i class="ll__bar"><b style="width:' + Math.round(left * 100) + '%"></b></i>' +
         '<span class="ll__stanum">余力' + Math.round(left * 100) + '%' +
-        (worn ? '（球威が落ちています）' : '') + '</span></span>' +
+          (worn ? '↓' : '') + '</span>' +
+        '<i class="ll__bar"><b style="width:' + Math.round(left * 100) + '%"></b></i>' +
+      '</span>' +
       '<span class="ll__balls">' + (p.pitches || []).map((q) =>
         '<i class="ll__ball">' + esc(q.name) + '<b>' + q.level + '</b></i>').join('') + '</span>' +
     '</div>';
