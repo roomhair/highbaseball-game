@@ -64,6 +64,12 @@ const UI = (() => {
     m.hidden = false;
     m.dataset.kind = (opts && opts.kind) || '';
     document.body.classList.add('is-modal');
+    /* いちばん上から出す。閉じたときの位置が残っていると、
+       オーダー変更を開き直したときに途中から始まってしまう。
+       描き直し（refresh）はここを通らないので、
+       並べ替えの最中に飛ばされることはない */
+    const panel = m.querySelector('.modal__panel');
+    if (panel) panel.scrollTop = 0;
     if (opts && opts.onOpen) opts.onOpen(el('modal-body'));
   }
 
