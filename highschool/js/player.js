@@ -38,9 +38,14 @@ const Player = (() => {
     return t;
   }
 
-  /** 能力1つ。bias はその選手の中での得意不得意 */
+  /** 能力1つ。bias はその選手の中での得意不得意。
+      talent の効きを弱めに、そのぶんの独立したばらつきを強めにしてある
+      （能力の散らばりの幅そのものは変えていない）。talent をそのまま強く
+      効かせると、同じ選手のどの能力も「talent」という1つの数字に
+      引っ張られてしまい、才能が悪いと全部の能力が最低値に張り付く、
+      という選手ばかりになってしまっていたため */
   function makeStat(base, talent, bias) {
-    return RNG.stat(base + talent * 9 + RNG.norm(0, 7) + (bias || 0));
+    return RNG.stat(base + talent * 4 + RNG.norm(0, 11.4) + (bias || 0));
   }
 
   /* ---------- 守備適性 ---------- */
@@ -278,7 +283,7 @@ const Player = (() => {
          そこに才能とその日ごとのばらつきが乗るだけ。
          結果として148km/hも149km/hも、それぞれの確率で出てくる。 */
       velo: Math.round(RNG.clamp(
-        123 + (GRADE_VELO[grade] || 0) + talent * 5.6 + levelShift * 0.26 + RNG.norm(0, 5), 100, 166)),
+        123 + (GRADE_VELO[grade] || 0) + talent * 2.5 + levelShift * 0.26 + RNG.norm(0, 7.5), 100, 166)),
       control: makeStat(base, talent, 0),
       stamina: makeStat(base, talent, 0),
       pitches: rollPitches(talent, grade, levelShift / 12),
