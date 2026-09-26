@@ -131,9 +131,10 @@ const Training = (() => {
     const multi = statPool.length >= 2 && RNG.chance(MULTI_RATE);
     const picked = multi ? RNG.shuffle(statPool.slice()).slice(0, 2) : [RNG.pick(statPool)];
     /* 上がり幅は能力ごとに引き直す。片方だけ大きく伸びることもある。
-       投手は持ち場が制球・スタミナの2つしか無く、打者の6つに比べて
-       同じカードでも1つあたりに集中してしまうので、額面を控えめにしてある */
-    const amounts = picked.map(() => Math.max(1, Math.round(range(power.stat) * (isPit ? 0.55 : 1))));
+       投手は持ち場が制球・スタミナの2つしか無いぶん、同じ額面でも
+       打者より集中して伸びやすいが、そこは上の headroom（頭打ち）が
+       効いて抑える形にしてあり、額面そのものは打者と揃えてある */
+    const amounts = picked.map(() => range(power.stat));
     const targets = [];
     chosen.forEach((p) => {
       picked.forEach((st, i) => {
