@@ -665,7 +665,7 @@ const UI = (() => {
         warn + list +
         '<div class="actions actions--modal">' +
         '<button type="button" class="btn" id="lu-auto">' +
-          (tab === 'bat' ? '打線をおまかせ' : '投手をおまかせ') + '</button>' +
+          (tab === 'bat' ? '野手をおまかせ' : '投手をおまかせ') + '</button>' +
         '<button type="button" class="btn btn--primary" id="lu-done">決定</button>' +
         '</div></div>';
     }
