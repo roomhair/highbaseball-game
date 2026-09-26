@@ -126,10 +126,11 @@ const Sim = (() => {
       arms.map((q) => ({ name: q.name, weight: 12 + q.level * 7 })));
     const got = RNG.weighted(w);
     const drop = got.name === 'ストレート' ? 0 : (PITCH_DROP[got.name] || 10);
-    /* 疲れてくると球速が落ちる。力を入れた球は少し速い */
+    /* 疲れてくると球速が落ちる。力を入れた球は少し速いが、
+       その選手の最速（pit.velo）は超えない */
     const tired = Math.min(9, (fatigue || 0) * 7);
-    const speed = Math.max(95, Math.round(
-      pit.velo - drop - tired - RNG.range(0, 4) + (got.name === 'ストレート' ? 1 : 0)));
+    const speed = Math.min(pit.velo, Math.max(95, Math.round(
+      pit.velo - drop - tired - RNG.range(0, 4) + (got.name === 'ストレート' ? 1 : 0))));
     return { name: got.name, speed };
   }
 

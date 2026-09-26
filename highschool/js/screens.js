@@ -379,7 +379,7 @@ const Screens = (() => {
     UI.el('opening-title').textContent = name + ' 開幕';
     UI.el('opening-lead').textContent = isNational
       ? '全国の頂点まであと7つ。' + esc(state.team.name) + '、初戦へ。'
-      : esc(state.team.name) + '、夏の地方大会へ。勝ち上がれば' + state.settings.nationalName + '。';
+      : esc(state.team.name) + '、夏の地方大会へ。';
     UI.show('screen-opening');
   }
 
