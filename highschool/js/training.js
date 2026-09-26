@@ -130,8 +130,10 @@ const Training = (() => {
     /* 能力が2つ上がるかどうかは、効き目（猛特訓）とは別に引く */
     const multi = statPool.length >= 2 && RNG.chance(MULTI_RATE);
     const picked = multi ? RNG.shuffle(statPool.slice()).slice(0, 2) : [RNG.pick(statPool)];
-    /* 上がり幅は能力ごとに引き直す。片方だけ大きく伸びることもある */
-    const amounts = picked.map(() => range(power.stat));
+    /* 上がり幅は能力ごとに引き直す。片方だけ大きく伸びることもある。
+       投手は持ち場が制球・スタミナの2つしか無く、打者の6つに比べて
+       同じカードでも1つあたりに集中してしまうので、額面を控えめにしてある */
+    const amounts = picked.map(() => Math.max(1, Math.round(range(power.stat) * (isPit ? 0.55 : 1))));
     const targets = [];
     chosen.forEach((p) => {
       picked.forEach((st, i) => {
