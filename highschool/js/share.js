@@ -83,15 +83,27 @@ const Share = (() => {
     return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
   }
 
-  /** 画像として保存する */
+  /** 画像として保存する。
+      Artifact（claude.aiのサンドボックス）内では直接のダウンロードができないので、
+      window.claude の downloads 機能があればそちらを使う。
+      本番サイトなど普通のブラウザではリンクのクリックで保存する。 */
   async function saveImage(state) {
     const canvas = draw(state);
     const blob = await toBlob(canvas);
     if (!blob) return;
+    const filename = '強奪高校野球.png';
+
+    if (window.claude && window.claude.use) {
+      try {
+        const downloads = await window.claude.use('downloads');
+        if (downloads) { await downloads.save({ filename, data: blob }); return; }
+      } catch (e) { /* 断られた・使えない環境ではリンク方式にフォールバック */ }
+    }
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = '強奪高校野球.png';
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -115,9 +127,10 @@ const Share = (() => {
     if (navigator.share) {
       try { await navigator.share({ text }); return; } catch (e) { return; }
     }
-    /* Web Share が無い環境（主にPC）は、Xの投稿画面を新しいタブで開く */
+    /* Web Share が無い環境（主にPC）は、Xの投稿画面を新しいタブで開く。
+       サンドボックスされた埋め込み先などでは window.open 自体が失敗することもある */
     const url = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text);
-    window.open(url, '_blank', 'noopener');
+    try { window.open(url, '_blank', 'noopener'); } catch (e) { /* 開けない環境では諦める */ }
   }
 
   return { saveImage, shareResult };
