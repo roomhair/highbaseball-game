@@ -499,6 +499,13 @@ const Sim = (() => {
       w.game.cg = 1;
       if (lose.runs === 0) w.game.sho = 1;
     }
+    /* セーブ。細かい規則までは追わず、勝ち投手ではない最後の投手が、
+       僅差（3点差以内）のまま試合を締めたときに付ける */
+    const lastId = win.usedPitchers[win.usedPitchers.length - 1];
+    const closer = lastId != null ? Team.find(win.team, lastId) : null;
+    if (closer && w && closer !== w && closer.game.outs > 0 && win.runs - lose.runs <= 3) {
+      closer.game.sv = 1;
+    }
   }
 
   /* ---------- 半イニング ---------- */

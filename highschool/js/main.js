@@ -296,11 +296,31 @@ const Game = (() => {
     state.tour.games++;
     state.tour.runsFor += my.runs;
     state.tour.runsAgainst += op.runs;
+
+    /* 勝敗投手・セーブ・本塁打を、上のほうにまとめて出す */
+    const findPit = (key) => {
+      let found = null;
+      [state.team, state.opponent].forEach((team) => {
+        Team.all(team).forEach((p) => {
+          if (p.kind === 'pitcher' && p.game[key]) found = { name: p.name, mine: team === state.team };
+        });
+      });
+      return found;
+    };
+    const homers = [];
+    [state.team, state.opponent].forEach((team) => {
+      Team.all(team).forEach((p) => {
+        if (p.game && p.game.hr) homers.push({ name: p.name, hr: p.game.hr, mine: team === state.team });
+      });
+    });
+
     state.lastResult = {
       win, myRuns: my.runs, opRuns: op.runs, round: round.name,
       oppName: state.opponent.name, tourName: tourLabel(),
       cold: res.cold, walkoff: ctx.walkoff,
       last: state.tour.index >= state.tour.rounds.length - 1,
+      winPitcher: findPit('w'), losePitcher: findPit('l'), savePitcher: findPit('sv'),
+      homers,
     };
     state.lastReport = report;
 
@@ -651,6 +671,8 @@ const Game = (() => {
 
     on('btn-play', playGame);
     on('btn-verdict-next', toGrowth);
+    on('btn-verdict-share', () => Share.shareResult(state));
+    on('btn-verdict-save', () => Share.saveImage(state));
     on('btn-growth-next', toResult);
     const nextup = UI.el('screen-nextup');
     if (nextup) nextup.addEventListener('click', () => {

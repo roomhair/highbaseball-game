@@ -49,8 +49,76 @@ const Growth = (() => {
       points * headroom(value) * RNG.clamp(RNG.norm(1, 0.35), 0.2, 1.9)));
   }
 
+  /* 制球・スタミナだけが毎試合まとまった予算をもらい、球速・変化球は
+     別枠の低確率抽選だった。結果、投手は制球・スタミナばかり上がり
+     球速・変化球がほとんど伸びない、という偏りが起きていた。
+     そこで球速・変化球（野手は弾道）も同じ予算の分け先に混ぜ、
+     頭打ちも他の能力と同じ式で受けるようにしてある（virtual: true）。 */
   function statListFor(p) {
-    return p.kind === 'pitcher' ? PITCHER_STATS : BATTER_STATS;
+    if (p.kind === 'pitcher') return PITCHER_STATS.concat(VIRTUAL_PIT_STATS);
+    return BATTER_STATS.concat(VIRTUAL_BAT_STATS);
+  }
+
+  const VIRTUAL_PIT_STATS = [
+    { key: 'velo', label: '球速', virtual: true },
+    { key: 'pitch', label: '変化球', virtual: true },
+  ];
+  const VIRTUAL_BAT_STATS = [
+    { key: 'traj', label: '弾道', virtual: true },
+  ];
+
+  /* 球速・変化球・弾道は0〜100の目盛りではないので、headroom/gainFor に
+     渡す前に0〜100へ正規化し、伸びたぶんを実際の単位へ戻す。
+     端数は選手ごとに溜めておき、貯まったら1つ繰り上げる
+     （そうしないと1試合ぶんの伸びが端数のまま消えてしまう）。 */
+  function growVelo(p, points, ups) {
+    const normBefore = RNG.clamp((p.velo - 108) / 52, 0, 1) * 100;
+    const gain = gainFor(normBefore, points);
+    if (gain <= 0) return;
+    p._veloAcc = (p._veloAcc || 0) + gain * 52 / 100;
+    const whole = Math.floor(p._veloAcc);
+    if (whole <= 0) return;
+    p._veloAcc -= whole;
+    const before = p.velo;
+    p.velo = Math.min(166, before + whole);
+    if (p.velo > before) {
+      ups.push({ key: 'velo', label: '球速', amount: p.velo - before, before, after: p.velo, unit: 'km/h' });
+    }
+  }
+
+  function growPitch(p, points, ups) {
+    const room = (p.pitches || []).filter((q) => q.level < 7);
+    if (!room.length) return;
+    const best = Math.max(...p.pitches.map((q) => q.level));
+    const gain = gainFor(best / 7 * 100, points);
+    if (gain <= 0) return;
+    p._pitchAcc = (p._pitchAcc || 0) + gain * 7 / 100;
+    let whole = Math.floor(p._pitchAcc);
+    if (whole <= 0) return;
+    p._pitchAcc -= whole;
+    while (whole-- > 0) {
+      const rm = p.pitches.filter((q) => q.level < 7);
+      if (!rm.length) break;
+      const q = RNG.pick(rm);
+      const before = q.level;
+      q.level = Math.min(7, before + 1);
+      ups.push({ key: 'pitch', label: q.name, amount: q.level - before, before, after: q.level });
+    }
+  }
+
+  function growTraj(p, points, ups) {
+    if (p.traj >= 4) return;
+    const gain = gainFor((p.traj - 1) / 3 * 100, points);
+    if (gain <= 0) return;
+    p._trajAcc = (p._trajAcc || 0) + gain * 3 / 100;
+    const whole = Math.floor(p._trajAcc);
+    if (whole <= 0) return;
+    p._trajAcc -= whole;
+    const before = p.traj;
+    p.traj = Math.min(4, before + whole);
+    if (p.traj > before) {
+      ups.push({ key: 'traj', label: '弾道', amount: p.traj - before, before, after: p.traj });
+    }
   }
 
   /**
@@ -83,8 +151,12 @@ const Growth = (() => {
       const w = picked.map(() => 0.45 + Math.random());
       const wsum = w.reduce((a, b) => a + b, 0) || 1;
       picked.forEach((st, i) => {
+        const share = budget * w[i] / wsum;
+        if (st.key === 'velo') { growVelo(p, share, ups); return; }
+        if (st.key === 'pitch') { growPitch(p, share, ups); return; }
+        if (st.key === 'traj') { growTraj(p, share, ups); return; }
         const before = p[st.key];
-        const add = Math.min(G.MAX_STEP, gainFor(before, budget * w[i] / wsum));
+        const add = Math.min(G.MAX_STEP, gainFor(before, share));
         if (add > 0) {
           p[st.key] = RNG.stat(before + add);
           if (p[st.key] > before) {
@@ -104,28 +176,6 @@ const Growth = (() => {
         }
       }
 
-      /* 投手は球速も少しずつ上がる。打撃の能力より確率を低くしてある */
-      if (isPit && played && RNG.chance(CONFIG.GROWTH.VELO_CHANCE)) {
-        const before = p.velo;
-        p.velo = Math.min(165, before + (RNG.chance(0.25) ? 2 : 1));
-        if (p.velo > before) {
-          ups.push({ key: 'velo', label: '球速', amount: p.velo - before, before, after: p.velo, unit: 'km/h' });
-        }
-      }
-
-      /* 変化球も、まれに切れ味が増す。
-         いま持っている球のどれかが1段よくなるだけで、
-         新しい球種を覚えることはない（それは特訓の「新球習得」の役目） */
-      if (isPit && played && RNG.chance(CONFIG.GROWTH.PITCH_CHANCE)) {
-        const room = (p.pitches || []).filter((q) => q.level < 7);
-        if (room.length) {
-          const q = RNG.pick(room);
-          const before = q.level;
-          q.level = before + 1;
-          ups.push({ key: 'pitch', label: q.name, amount: 1, before, after: q.level });
-        }
-      }
-
       /* ---- 覚醒 ---- */
       let awakened = false;
       if (!p.awakened && played) {
@@ -138,7 +188,9 @@ const Growth = (() => {
              通常の成長と同じ能力に乗ることがあるので（mergeUps でまとまる）、
              ここを絞らないと合わせて +24 になってしまっていた */
           const per = isPit ? [4, 9] : [3, 8];
-          stats.forEach((st) => {
+          /* 球速・変化球・弾道は0〜100の目盛りではないので、ここでは対象にしない
+             （velo/pitch はこのすぐ下、traj はさらにその下で別枠として扱う） */
+          stats.filter((st) => !st.virtual).forEach((st) => {
             const before = p[st.key];
             p[st.key] = RNG.stat(before + RNG.range(per[0], per[1]));
             ups.push({ key: st.key, label: st.label, amount: p[st.key] - before, before, after: p[st.key], awake: true });

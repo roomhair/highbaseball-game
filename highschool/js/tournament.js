@@ -22,6 +22,14 @@ const Tournament = (() => {
     return r < 0.50 ? 3 : (r < 0.83 ? 2 : 1);
   }
 
+  /* 投手だけは1年生の比率を上げてある。どんな強豪校でも、
+     決勝までの見せ場は3年生中心でも、数年後に向けて1年生の投手を
+     育てておかないとチームが続かないため */
+  function rollPitcherGrade() {
+    const r = Math.random();
+    return r < 0.40 ? 3 : (r < 0.68 ? 2 : 1);
+  }
+
   /** level の強さの相手校を1つ作る */
   function makeTeam(name, level) {
     const t = Team.create(name);
@@ -32,7 +40,7 @@ const Tournament = (() => {
       t.batters.push(Player.newBatter({ grade: rollGrade(), pos, level, practice: true }));
     });
     for (let i = 0; i < 7; i++) {
-      t.pitchers.push(Player.newPitcher({ grade: rollGrade(), level, practice: true }));
+      t.pitchers.push(Player.newPitcher({ grade: rollPitcherGrade(), level, practice: true }));
     }
     Team.autoLineup(t);
     return t;

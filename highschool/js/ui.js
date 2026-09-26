@@ -21,6 +21,20 @@ const UI = (() => {
 
   function html(id, s) { const n = el(id); if (n) n.innerHTML = s; return n; }
 
+  /** 勝敗投手・セーブ・本塁打を1行ずつ。verdict/result 両方の画面で使う */
+  function decisionLines(r) {
+    const who = (d) => esc(d.name) + (d.mine ? '' : '（相手）');
+    const lines = [];
+    if (r.winPitcher) lines.push('<span class="verdict__dec">勝投手　' + who(r.winPitcher) + '</span>');
+    if (r.losePitcher) lines.push('<span class="verdict__dec">敗投手　' + who(r.losePitcher) + '</span>');
+    if (r.savePitcher) lines.push('<span class="verdict__dec">セーブ　' + who(r.savePitcher) + '</span>');
+    if (r.homers && r.homers.length) {
+      lines.push('<span class="verdict__dec">本塁打　' + r.homers.map((h) =>
+        who(h) + (h.hr > 1 ? '×' + h.hr : '')).join('　') + '</span>');
+    }
+    return lines.length ? '<div class="verdict__decisions">' + lines.join('') + '</div>' : '';
+  }
+
   /* ---------- 画面の切り替え ---------- */
 
   let current = 'screen-top';
@@ -130,12 +144,14 @@ const UI = (() => {
 
   /* ---------- 選手の部品 ---------- */
 
-  /** 能力ひとつ（S〜G と数字） */
-  function stat(label, value, unit) {
+  /** 能力ひとつ（S〜G と数字）。initial を渡すと「獲得時」の値も添える */
+  function stat(label, value, unit, initial) {
     const r = rankOf(value);
+    const init = (initial != null && initial !== value)
+      ? '<span class="stat__init">獲得時 ' + initial + (unit ? esc(unit) : '') + '</span>' : '';
     return '<div class="stat"><span class="stat__label">' + esc(label) + '</span>' +
       '<span class="stat__rank rank-' + r + '">' + r + '</span>' +
-      '<span class="stat__num">' + value + (unit ? esc(unit) : '') + '</span></div>';
+      '<span class="stat__num">' + value + (unit ? esc(unit) : '') + '</span>' + init + '</div>';
   }
 
   function rankSpan(value) {
@@ -304,22 +320,31 @@ const UI = (() => {
     opts = opts || {};
     const isPit = p.kind === 'pitcher';
 
+    const init = p.initial || {};
     let abilities = '<div class="stats">';
     if (isPit) {
-      abilities += '<div class="stat"><span class="stat__label">最速</span><span class="stat__num stat__num--wide">' + p.velo + ' km/h</span></div>';
-      abilities += stat('制球', p.control) + stat('スタミナ', p.stamina);
+      const veloInit = (init.velo != null && init.velo !== p.velo)
+        ? '<span class="stat__init">獲得時 ' + init.velo + ' km/h</span>' : '';
+      abilities += '<div class="stat"><span class="stat__label">最速</span><span class="stat__num stat__num--wide">' + p.velo + ' km/h</span>' + veloInit + '</div>';
+      abilities += stat('制球', p.control, null, init.control) + stat('スタミナ', p.stamina, null, init.stamina);
       abilities += '<div class="stat"><span class="stat__label">疲労</span>' +
         '<span class="stat__num stat__num--wide lufat lufat--' +
         ((p.fatigue || 0) >= 70 ? 'hi' : ((p.fatigue || 0) >= 40 ? 'mid' : 'lo')) + '">' +
         esc(Team.fatigueLabel(p)) + '</span></div>';
       abilities += '</div><h4 class="sub">変化球</h4><ul class="pitchlist">' +
-        p.pitches.map((q) => '<li><span>' + esc(q.name) + '</span><b>' + q.level + '</b>' +
-          '<i class="bar"><i style="width:' + (q.level / 7 * 100) + '%"></i></i></li>').join('') + '</ul>';
+        p.pitches.map((q) => {
+          const iq = (init.pitches || []).find((x) => x.name === q.name);
+          const initNote = (iq && iq.level !== q.level) ? '<span class="stat__init">獲得時 ' + iq.level + '</span>' : '';
+          return '<li><span>' + esc(q.name) + '</span><b>' + q.level + '</b>' +
+            '<i class="bar"><i style="width:' + (q.level / 7 * 100) + '%"></i></i>' + initNote + '</li>';
+        }).join('') + '</ul>';
     } else {
-      abilities += stat('ミート', p.meet) + stat('パワー', p.power) + stat('走力', p.speed) +
-        stat('肩力', p.arm) + stat('守備', p.field) + stat('捕球', p.catch);
+      abilities += stat('ミート', p.meet, null, init.meet) + stat('パワー', p.power, null, init.power) +
+        stat('走力', p.speed, null, init.speed) + stat('肩力', p.arm, null, init.arm) +
+        stat('守備', p.field, null, init.field) + stat('捕球', p.catch, null, init.catch);
       abilities += '</div>';
-      abilities += '<div class="minor"><span>弾道 <b>' + p.traj + '</b>（' + TRAJ_LABEL[p.traj] + '）</span>' +
+      abilities += '<div class="minor"><span>弾道 <b>' + p.traj + '</b>（' + TRAJ_LABEL[p.traj] + '）' +
+        (init.traj != null && init.traj !== p.traj ? '　獲得時 ' + init.traj + '（' + TRAJ_LABEL[init.traj] + '）' : '') + '</span>' +
         '<span>打球方向 <b>' + pullText(p.pull) + '</b>（' + (p.pull > 0 ? '+' : '') + p.pull + '）</span></div>';
       abilities += '<h4 class="sub">守備適性</h4><div class="aptrow">' +
         FIELD_POSITIONS.map((k) => '<span class="apt"><i>' + posShort(k) + '</i>' + aptSpan(p.apt[k]) + '</span>').join('') +
@@ -839,7 +864,7 @@ const UI = (() => {
   }
 
   return {
-    el, esc, html, show, currentScreen, curtain, modal, closeModal, confirmBox,
+    el, esc, html, show, currentScreen, curtain, modal, closeModal, confirmBox, decisionLines,
     avg, era, ipText, stat, rankSpan, rankNum, aptSpan, pullText, handMark,
     playerRow, rosterTable, rosterPanel, sortPlayers, playerDetail, openPlayer,
     lineupEditor, roleText, makeSortable, wireRename, captainPicker,

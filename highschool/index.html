@@ -158,9 +158,9 @@
         <button type="button" class="btn btn--time" id="btn-time" hidden>タイム</button>
         <span class="speedbar__label">速さ</span>
         <button type="button" class="speedbtn" data-sp="0">1打席</button>
-        <button type="button" class="speedbtn is-on" data-sp="1">通常</button>
-        <button type="button" class="speedbtn" data-sp="2">2倍</button>
-        <button type="button" class="speedbtn" data-sp="3">3倍</button>
+        <button type="button" class="speedbtn is-on" data-sp="1">オート</button>
+        <button type="button" class="speedbtn" data-sp="2">×2</button>
+        <button type="button" class="speedbtn" data-sp="3">×3</button>
         <button type="button" class="skip" id="btn-skip">スキップ ▶</button>
       </div>
       <div id="game-stage" class="stage"></div>
@@ -174,6 +174,8 @@
     <div class="container">
       <div class="verdict" id="verdict-body"></div>
       <div class="actions">
+        <button type="button" class="btn" id="btn-verdict-share">SNSに共有</button>
+        <button type="button" class="btn" id="btn-verdict-save">画像を保存</button>
         <button type="button" class="btn btn--primary btn--wide" id="btn-verdict-next">成長画面</button>
       </div>
     </div>
@@ -343,6 +345,7 @@
 <script src="js/ui.js"></script>
 <script src="js/screens.js"></script>
 <script src="js/game-screen.js"></script>
+<script src="js/share.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

@@ -146,7 +146,7 @@ const Player = (() => {
     return { g: 0, pa: 0, ab: 0, h: 0, d2: 0, d3: 0, hr: 0, rbi: 0, r: 0, bb: 0, so: 0, sb: 0, sf: 0, sh: 0 };
   }
   function emptyPit() {
-    return { g: 0, gs: 0, w: 0, l: 0, outs: 0, bf: 0, h: 0, hr: 0, bb: 0, so: 0, r: 0, er: 0, cg: 0, sho: 0 };
+    return { g: 0, gs: 0, w: 0, l: 0, sv: 0, outs: 0, bf: 0, h: 0, hr: 0, bb: 0, so: 0, r: 0, er: 0, cg: 0, sho: 0 };
   }
   function addStats(dst, src) {
     for (const k in src) dst[k] = (dst[k] || 0) + src[k];
@@ -252,6 +252,8 @@ const Player = (() => {
     if (opt.practice !== false) {
       addStats(p.career, seedPracticeBat(p, practiceGames(grade), opt.level));
     }
+    /* 選手詳細で「獲得時」の能力と見比べられるように、素の能力を残しておく */
+    p.initial = { meet: p.meet, power: p.power, speed: p.speed, arm: p.arm, field: p.field, catch: p.catch, traj: p.traj };
     return p;
   }
 
@@ -303,6 +305,11 @@ const Player = (() => {
     if (opt.practice !== false) {
       addStats(p.career, seedPracticePit(p, practiceGames(grade), opt.level));
     }
+    /* 選手詳細で「獲得時」の能力と見比べられるように、素の能力を残しておく */
+    p.initial = {
+      velo: p.velo, control: p.control, stamina: p.stamina,
+      pitches: p.pitches.map((q) => ({ name: q.name, level: q.level })),
+    };
     return p;
   }
 

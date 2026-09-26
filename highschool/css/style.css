@@ -853,6 +853,11 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .verdict__score b { font-size: 26px; margin: 0 3px; }
 .verdict__note { margin: 6px 0 0; font-size: 12px; color: var(--ink-mute); letter-spacing: .1em; }
 .verdict__lead { margin: 14px 0 0; font-size: 13px; color: var(--ink-mute); }
+.verdict__decisions {
+  margin: 12px 0 0; padding: 8px 0 0; border-top: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px;
+}
+.verdict__dec { font-size: 12px; color: var(--ink-mute); }
 
 /* ===== 試合後の成長 ===== */
 .grlist { display: grid; gap: 10px; }
@@ -989,6 +994,8 @@ tr.prow.is-picked .rank, tr.prow.is-picked .rankval, tr.prow.is-picked td { colo
 .stat__rank { font-size: 17px; }
 .stat__num { font-size: 13px; color: var(--ink-mute); min-width: 2.2em; text-align: right; }
 .stat__num--wide { font-size: 16px; font-weight: 700; color: var(--ink); }
+.stat__init { flex: 1 0 100%; font-size: 10.5px; color: var(--ink-faint); }
+.pitchlist .stat__init { grid-column: 1 / -1; }
 .minor { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; font-size: 12px; color: var(--ink-mute); }
 .minor b { color: var(--ink); }
 .aptrow { display: flex; flex-wrap: wrap; gap: 4px 10px; }

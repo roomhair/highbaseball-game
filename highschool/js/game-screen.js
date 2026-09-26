@@ -191,7 +191,8 @@ const GameScreen = (() => {
         '<ol class="ll__list">' + rows + '</ol>' +
         pitBlock(pit, cur[key + 'Bf']) + '</div>';
     };
-    return side(away, 'away') + side(home, 'home');
+    /* 先攻（away）を右、後攻（home）を左に出す */
+    return side(home, 'home') + side(away, 'away');
   }
 
   /* ---------- 試合の再生 ---------- */
@@ -855,6 +856,7 @@ const GameScreen = (() => {
       '<p class="result-score' + (win ? ' is-win' : ' is-lose') + '">' +
         esc(state.team.name) + ' <b>' + my.runs + '</b> - <b>' + op.runs + '</b> ' + esc(state.opponent.name) +
         (res.cold ? '<i>（コールド）</i>' : (res.walkoff ? '<i>（サヨナラ）</i>' : '')) + '</p>' +
+      UI.decisionLines(state.lastResult || {}) +
       scoreboard(res, res.away.team.name, res.home.team.name) +
       growthList(meta.report) +
       '<div class="boxes">' +

@@ -430,6 +430,7 @@ const Screens = (() => {
         '<h2 class="verdict__word">' + (win ? '勝利' : '敗戦') + '</h2>' +
         '<p class="verdict__score">' + esc(state.team.name) + ' <b>' + r.myRuns + '</b>' +
           ' - <b>' + r.opRuns + '</b> ' + esc(r.oppName) + '</p>' +
+        UI.decisionLines(r) +
         (r.cold ? '<p class="verdict__note">コールドゲーム</p>' :
           (r.walkoff ? '<p class="verdict__note">サヨナラ</p>' : '')) +
         (win
@@ -454,6 +455,10 @@ const Screens = (() => {
       return '<span class="gr__from">' + u.before + '</span>→<span class="gr__to">' + u.after + '</span>';
     }
     if (u.key === 'pitch') {
+      return '<span class="gr__from">' + u.before + '</span>→<span class="gr__to">' + u.after + '</span>';
+    }
+    if (u.apt) {
+      /* 守備適性は数値ではなく、もともと評価の文字（G〜A）で入っている */
       return '<span class="gr__from">' + u.before + '</span>→<span class="gr__to">' + u.after + '</span>';
     }
     return '<span class="gr__from">' + rankOf(u.before) + ' ' + u.before + '</span>→' +
