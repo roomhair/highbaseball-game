@@ -3,9 +3,13 @@
 
    試合結果をSNSに共有するための画像づくり。
    外部ライブラリは使わず、<canvas> に直接描く。
-   ・「画像を保存」は toBlob からダウンロードリンクを作るだけ。
-   ・「SNSに共有」は Web Share API（navigator.share）が使えれば画像ごと渡し、
-     使えない環境（PCのブラウザなど）では X の投稿画面を開くだけにする。
+   ・「画像を保存」は、スマホでは端末の共有シート（Web Share API）経由で
+     「画像を保存」を選んでもらう形にしてある。ブラウザのファイル
+     ダウンロード（勝手にダウンロードフォルダへ落ちる形）は使わない。
+     Artifact（claude.aiのサンドボックス）内では window.claude の
+     downloads 機能を、PCなど共有シートの無い環境では画像を新しいタブに
+     開くだけにする（勝手に保存はされない）。
+   ・「SNSに共有」も同じ共有シートを使うが、文章（スコアなど）も添える。
    ================================================== */
 'use strict';
 
@@ -84,9 +88,9 @@ const Share = (() => {
   }
 
   /** 画像として保存する。
-      Artifact（claude.aiのサンドボックス）内では直接のダウンロードができないので、
-      window.claude の downloads 機能があればそちらを使う。
-      本番サイトなど普通のブラウザではリンクのクリックで保存する。 */
+      スマホでは共有シートを開き、そこから「画像を保存」（写真アプリへの保存）を
+      選んでもらう。ファイルダウンロードという形にはしない。
+      Artifact内では window.claude の downloads 機能（端末への保存）を優先する。 */
   async function saveImage(state) {
     const canvas = draw(state);
     const blob = await toBlob(canvas);
@@ -97,17 +101,21 @@ const Share = (() => {
       try {
         const downloads = await window.claude.use('downloads');
         if (downloads) { await downloads.save({ filename, data: blob }); return; }
-      } catch (e) { /* 断られた・使えない環境ではリンク方式にフォールバック */ }
+      } catch (e) { /* 断られた・使えない環境では下のフォールバックへ */ }
     }
 
+    if (navigator.canShare && navigator.share) {
+      const file = new File([blob], filename, { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file] }); return; } catch (e) { /* キャンセルはそのまま */ return; }
+      }
+    }
+
+    /* 共有シートが無い環境（主にPC）は、画像を新しいタブに開くだけにする。
+       ここで <a download> は使わない（それがまさに「ファイルダウンロード」なので） */
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
   }
 
   /** SNSに共有する。画像ごと渡せる環境ではそれを、無理なら文章だけ */
