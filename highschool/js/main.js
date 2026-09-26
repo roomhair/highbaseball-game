@@ -307,9 +307,11 @@ const Game = (() => {
       });
       return found;
     };
+    /* 本塁打は野手だけを見る。投手の game.hr は「被本塁打」の数なので、
+       投手も含めてしまうと本塁打を打っていない投手まで出てきてしまう */
     const homers = [];
     [state.team, state.opponent].forEach((team) => {
-      Team.all(team).forEach((p) => {
+      (team.batters || []).forEach((p) => {
         if (p.game && p.game.hr) homers.push({ name: p.name, hr: p.game.hr, mine: team === state.team });
       });
     });

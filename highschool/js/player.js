@@ -38,6 +38,17 @@ const Player = (() => {
     return t;
   }
 
+  /** 1〜100からのはみ出しを、境目にべったり張り付かせず、
+      G（またはS）の中に散らす。RNG.stat の単純な切り捨てだけだと、
+      1未満になった時点でどれだけ下にはみ出していても一律「1」に
+      落ちてしまい、「Gの中はほぼ1」のように境目に確率が積もって見えていた。
+      はみ出した分だけ、1〜14（Sなら87〜100）の範囲に一様にばらけさせる */
+  function softClamp(v) {
+    if (v < 1) return 1 + RNG.rand() * Math.min(13, 1 - v);
+    if (v > 100) return 100 - RNG.rand() * Math.min(13, v - 100);
+    return v;
+  }
+
   /** 能力1つ。bias はその選手の中での得意不得意。
       talent の効きを弱めに、そのぶんの独立したばらつきを強めにしてある
       （能力の散らばりの幅そのものは変えていない）。talent をそのまま強く
@@ -45,7 +56,7 @@ const Player = (() => {
       引っ張られてしまい、才能が悪いと全部の能力が最低値に張り付く、
       という選手ばかりになってしまっていたため */
   function makeStat(base, talent, bias) {
-    return RNG.stat(base + talent * 4 + RNG.norm(0, 11.4) + (bias || 0));
+    return RNG.stat(softClamp(base + talent * 4 + RNG.norm(0, 11.4) + (bias || 0)));
   }
 
   /* ---------- 守備適性 ---------- */
