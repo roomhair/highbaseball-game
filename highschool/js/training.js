@@ -156,6 +156,17 @@ const Training = (() => {
   }
 
   /** カードを選ぶ。能力を実際に上げて、次のカードを引く */
+  /** 能力は上に行くほど伸びにくい（growth.js の headroom と同じ考え方）。
+      特訓はこれまでこの頭打ちを受けずに額面どおり足していたため、
+      投手は制球・スタミナの2つしか持ち場が無いぶん、
+      特訓を何度も引くだけで100に張り付いてしまっていた。
+      試合の成長と同じ頭打ちを、特訓にもかけておく。 */
+  function headroom(value) {
+    const G = CONFIG.GROWTH;
+    const left = RNG.clamp(Math.max(0, 100 - value) / G.HEAD_SPAN, 0, 1);
+    return RNG.clamp(Math.pow(left, G.HEAD_CURVE), 0.04, 1);
+  }
+
   function choose(state, team) {
     if (state.done) return state;
     const applied = [];
@@ -178,7 +189,12 @@ const Training = (() => {
         p.pitches.sort((a, b) => b.level - a.level);
         before = 0; after = t.amount;
       } else {
-        before = p[t.key]; p[t.key] = RNG.stat(p[t.key] + t.amount); after = p[t.key];
+        /* meet/power/speed/arm/field/catch と、投手の制球・スタミナがここ。
+           カードの額面（t.amount）に、いまの能力に応じた頭打ちをかける */
+        before = p[t.key];
+        const add = Math.max(0, Math.round(t.amount * headroom(before)));
+        p[t.key] = RNG.stat(before + add);
+        after = p[t.key];
       }
       applied.push({
         pid: p.id, name: p.name, grade: p.grade, kind: p.kind,
