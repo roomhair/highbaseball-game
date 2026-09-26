@@ -151,9 +151,15 @@ const POSITIONS = [
   { key: 'DH', short: '指', name: '指名打者' },
 ];
 
-/* 野手データセットに一人ずつ入れる守備位置（捕一二三遊左中右DH） */
+/* 野手データセットに一人ずつ入れる守備位置（捕一二三遊左中右）。
+   DHは入れない。指名打者は生まれつきの持ち場ではなく、
+   守れる位置を持った野手の中から毎回選ぶ「役割」にしてある */
 const FIELD_POSITIONS = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'];
-const DATASET_POSITIONS = FIELD_POSITIONS.concat(['DH']);
+const DATASET_POSITIONS = FIELD_POSITIONS.slice();
+/* オーダーで選べる9枠（守備位置8つ＋DH）。選手の生まれつきの持ち場である
+   DATASET_POSITIONS とは別にしてある：DHは誰でも選べる「役割」であって、
+   持ち場ではないため */
+const LINEUP_POSITIONS = FIELD_POSITIONS.concat(['DH']);
 
 const POS = {};
 POSITIONS.forEach((p) => { POS[p.key] = p; });

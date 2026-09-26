@@ -570,7 +570,7 @@ const UI = (() => {
         const k = posOf[id];
         if (used[k]) { if (dup.indexOf(k) < 0) dup.push(k); } else used[k] = true;
       });
-      const missing = DATASET_POSITIONS.filter((k) => !used[k]);
+      const missing = LINEUP_POSITIONS.filter((k) => !used[k]);
       return { dup, missing, count: st.length };
     }
 
@@ -586,7 +586,7 @@ const UI = (() => {
       const bench = pos === BENCH;
       /* どの選手も同じ選び方。「控」を選べば外れ、守備位置を選べば入る */
       const options = ['<option value="' + BENCH + '"' + (bench ? ' selected' : '') + '>控</option>']
-        .concat(DATASET_POSITIONS.map((k) =>
+        .concat(LINEUP_POSITIONS.map((k) =>
           '<option value="' + k + '"' + (k === pos ? ' selected' : '') + '>' + posShort(k) + '</option>')).join('');
       const bad = showBad && !bench && prob.dup.indexOf(pos) >= 0;
       return '<li class="lurow' + (bench ? ' is-bench' : '') + (bad ? ' is-bad' : '') + '" data-pid="' + p.id + '">' +

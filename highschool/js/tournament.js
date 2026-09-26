@@ -33,9 +33,9 @@ const Tournament = (() => {
   /** level の強さの相手校を1つ作る */
   function makeTeam(name, level) {
     const t = Team.create(name);
-    /* 野手13人。守る場所が9つぶん揃うように配る */
+    /* 野手13人。守る場所が8つぶん揃うように配る（DHは持ち場にしない） */
     const posList = DATASET_POSITIONS.slice();
-    for (let i = 0; i < 4; i++) posList.push(RNG.pick(FIELD_POSITIONS));
+    for (let i = 0; i < 5; i++) posList.push(RNG.pick(FIELD_POSITIONS));
     posList.forEach((pos) => {
       t.batters.push(Player.newBatter({ grade: rollGrade(), pos, level, practice: true }));
     });

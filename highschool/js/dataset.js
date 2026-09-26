@@ -25,9 +25,10 @@ const Dataset = (() => {
   /** 野手13人のセットを1つ作る */
   function batterSet() {
     const grades = RNG.shuffle(splitGrades([4, 4, 5]));   // 13人ぶんの学年
-    const posList = DATASET_POSITIONS.slice();            // 9人ぶんの守備位置
-    /* 控え4人は守る場所が重なってもよい */
-    for (let i = 0; i < 4; i++) posList.push(RNG.pick(FIELD_POSITIONS));
+    const posList = DATASET_POSITIONS.slice();            // 8人ぶんの守備位置（DHは含めない）
+    /* 残り5人は控え。守る場所が重なってもよい。
+       指名打者はここから毎回選ぶ役割で、生まれつきの持ち場にはしない */
+    for (let i = 0; i < 5; i++) posList.push(RNG.pick(FIELD_POSITIONS));
 
     const players = posList.map((pos, i) =>
       Player.newBatter({ grade: grades[i], pos }));
@@ -51,8 +52,8 @@ const Dataset = (() => {
   function freshmanSet(kind, n) {
     const players = [];
     if (kind === 'batter') {
-      /* 守る場所がばらけるように配る */
-      const pool = RNG.shuffle(FIELD_POSITIONS.slice().concat(['DH']));
+      /* 守る場所がばらけるように配る。DHは持ち場にしない（役割は毎回選ぶ） */
+      const pool = RNG.shuffle(FIELD_POSITIONS.slice());
       for (let i = 0; i < n; i++) {
         players.push(Player.newBatter({ grade: 1, pos: pool[i % pool.length] }));
       }
