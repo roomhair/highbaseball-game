@@ -436,7 +436,7 @@ const Screens = (() => {
         (win
           ? (r.last ? '<p class="verdict__lead">' + esc(r.tourName) + '　優勝。</p>'
                     : '<p class="verdict__lead">次の試合へ進む。</p>')
-          : '<p class="verdict__lead">ここで終わり。オフシーズンへ。</p>') +
+          : '<p class="verdict__lead">オフシーズンへ。</p>') +
       '</div>');
     UI.show('screen-verdict');
   }

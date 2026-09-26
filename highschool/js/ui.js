@@ -26,7 +26,7 @@ const UI = (() => {
       色つきの短いラベルを頭に置く形にしてある。全部を1行に詰め込むと
       どのラベルの名前か分からなくなるので、1行1項目の左寄せにした。 */
   function decisionLines(r) {
-    const who = (d) => esc(d.name) + (d.mine ? '' : '（相手）');
+    const who = (d) => esc(d.name);
     const row = (cls, badge, text) =>
       '<div class="decisions__row"><b class="decisions__badge decisions__badge--' + cls + '">' + badge + '</b>' +
       '<span class="decisions__name">' + text + '</span></div>';

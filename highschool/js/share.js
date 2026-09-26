@@ -57,7 +57,7 @@ const Share = (() => {
     const accent = isNational ? '#8f2233' : '#1d5c3a';
     const ink = '#16181a', mute = '#6b7076', faint = '#979ba1';
 
-    const who = (d) => d ? d.name + (d.mine ? '' : '（相手）') : null;
+    const who = (d) => d ? d.name : null;
     const decisions = [];
     if (r.winPitcher) decisions.push('勝投手　' + who(r.winPitcher));
     if (r.losePitcher) decisions.push('敗投手　' + who(r.losePitcher));
