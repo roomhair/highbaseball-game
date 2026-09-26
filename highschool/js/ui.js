@@ -21,18 +21,24 @@ const UI = (() => {
 
   function html(id, s) { const n = el(id); if (n) n.innerHTML = s; return n; }
 
-  /** 勝敗投手・セーブ・本塁打を1行ずつ。verdict/result 両方の画面で使う */
+  /** 勝敗投手・セーブ・本塁打。verdict/result 両方の画面で使う。
+      スポーツニュースの速報でよく見る「[勝]投手名」のような、
+      色つきの短いラベルを頭に置く形にしてある。全部を1行に詰め込むと
+      どのラベルの名前か分からなくなるので、1行1項目の左寄せにした。 */
   function decisionLines(r) {
     const who = (d) => esc(d.name) + (d.mine ? '' : '（相手）');
-    const lines = [];
-    if (r.winPitcher) lines.push('<span class="verdict__dec">勝投手　' + who(r.winPitcher) + '</span>');
-    if (r.losePitcher) lines.push('<span class="verdict__dec">敗投手　' + who(r.losePitcher) + '</span>');
-    if (r.savePitcher) lines.push('<span class="verdict__dec">セーブ　' + who(r.savePitcher) + '</span>');
+    const row = (cls, badge, text) =>
+      '<div class="decisions__row"><b class="decisions__badge decisions__badge--' + cls + '">' + badge + '</b>' +
+      '<span class="decisions__name">' + text + '</span></div>';
+    const rows = [];
+    if (r.winPitcher) rows.push(row('win', '勝', who(r.winPitcher)));
+    if (r.losePitcher) rows.push(row('lose', '敗', who(r.losePitcher)));
+    if (r.savePitcher) rows.push(row('save', 'S', who(r.savePitcher)));
     if (r.homers && r.homers.length) {
-      lines.push('<span class="verdict__dec">本塁打　' + r.homers.map((h) =>
-        who(h) + (h.hr > 1 ? '×' + h.hr : '')).join('　') + '</span>');
+      rows.push(row('hr', '本', r.homers.map((h) =>
+        who(h) + (h.hr > 1 ? '×' + h.hr : '')).join('、')));
     }
-    return lines.length ? '<div class="verdict__decisions">' + lines.join('') + '</div>' : '';
+    return rows.length ? '<div class="decisions">' + rows.join('') + '</div>' : '';
   }
 
   /* ---------- 画面の切り替え ---------- */
