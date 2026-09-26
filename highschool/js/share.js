@@ -3,12 +3,13 @@
 
    試合結果をSNSに共有するための画像づくり。
    外部ライブラリは使わず、<canvas> に直接描く。
-   ・「画像を保存」は、スマホでは端末の共有シート（Web Share API）経由で
-     「画像を保存」を選んでもらう形にしてある。ブラウザのファイル
-     ダウンロード（勝手にダウンロードフォルダへ落ちる形）は使わない。
-     Artifact（claude.aiのサンドボックス）内では window.claude の
-     downloads 機能を、PCなど共有シートの無い環境では画像を新しいタブに
-     開くだけにする（勝手に保存はされない）。
+   ・「画像を保存」は、まず端末の共有シート（Web Share API）を試す。
+     iOS/Androidとも、画像だけを渡すと共有シートに「画像を保存」
+     （写真・カメラロールへ直接保存）が出るので、それを選んでもらう。
+     ファイルダウンロード（ダウンロードフォルダへ落ちる形）にはしない。
+     共有シートが使えない環境（claude.aiのArtifact埋め込みなど）だけ、
+     window.claude の downloads 機能にフォールバックする
+     （それも無理ならPCのように新しいタブに開くだけにする）。
    ・「SNSに共有」も同じ共有シートを使うが、文章（スコアなど）も添える。
    ================================================== */
 'use strict';
@@ -88,21 +89,17 @@ const Share = (() => {
   }
 
   /** 画像として保存する。
-      スマホでは共有シートを開き、そこから「画像を保存」（写真アプリへの保存）を
-      選んでもらう。ファイルダウンロードという形にはしない。
-      Artifact内では window.claude の downloads 機能（端末への保存）を優先する。 */
+      共有シート（Web Share API）を最優先で試す。iOS/Androidとも、
+      画像だけを渡すと共有シートに「画像を保存」＝カメラロールへの
+      直接保存が出てくるので、ファイルダウンロードよりもこちらが素直。
+      共有シートが使えない環境（Artifact埋め込みなど）だけ、
+      window.claude の downloads 機能、それも無理ならPCのように
+      新しいタブに開くだけ、の順にフォールバックする。 */
   async function saveImage(state) {
     const canvas = draw(state);
     const blob = await toBlob(canvas);
     if (!blob) return;
     const filename = '強奪高校野球.png';
-
-    if (window.claude && window.claude.use) {
-      try {
-        const downloads = await window.claude.use('downloads');
-        if (downloads) { await downloads.save({ filename, data: blob }); return; }
-      } catch (e) { /* 断られた・使えない環境では下のフォールバックへ */ }
-    }
 
     if (navigator.canShare && navigator.share) {
       const file = new File([blob], filename, { type: 'image/png' });
@@ -111,8 +108,16 @@ const Share = (() => {
       }
     }
 
-    /* 共有シートが無い環境（主にPC）は、画像を新しいタブに開くだけにする。
-       ここで <a download> は使わない（それがまさに「ファイルダウンロード」なので） */
+    if (window.claude && window.claude.use) {
+      try {
+        const downloads = await window.claude.use('downloads');
+        if (downloads) { await downloads.save({ filename, data: blob }); return; }
+      } catch (e) { /* 断られた・使えない環境では下のフォールバックへ */ }
+    }
+
+    /* 共有シートも downloads も無い環境（主にPC）は、画像を新しいタブに
+       開くだけにする。ここで <a download> は使わない
+       （それがまさに「ファイルダウンロード」なので） */
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
     setTimeout(() => URL.revokeObjectURL(url), 30000);
