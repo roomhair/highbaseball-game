@@ -46,14 +46,19 @@ const Tournament = (() => {
     return t;
   }
 
-  /** その大会で使う確率表 */
-  function stepTable(kind) {
-    return kind === 'national' ? CONFIG.FIELD.NAT_STEP : CONFIG.FIELD.STEP;
+  /* 全国大会の1〜3回戦は「早い」表（地方大会の決勝とほぼ同じ強さ）、
+     4回戦（無ければ準々決勝）から先は「遅い」表（一気に強くなる）を使う */
+  const NAT_LATE_FROM = ['4回戦', '準々決勝', '準決勝', '決勝'];
+
+  /** その大会・その回で使う確率表。roundName は「これから当たる回」の名前 */
+  function stepTable(kind, roundName) {
+    if (kind !== 'national') return CONFIG.FIELD.STEP;
+    return NAT_LATE_FROM.indexOf(roundName) >= 0 ? CONFIG.FIELD.NAT_STEP_LATE : CONFIG.FIELD.NAT_STEP_EARLY;
   }
 
   /** 確率表から1つ引く */
-  function rollStep(kind) {
-    const table = stepTable(kind);
+  function rollStep(kind, roundName) {
+    const table = stepTable(kind, roundName);
     const total = table.reduce((a, r) => a + r.weight, 0);
     let r = Math.random() * total;
     for (let i = 0; i < table.length; i++) {
@@ -72,8 +77,8 @@ const Tournament = (() => {
   }
 
   /** 表の平均。オフの練習相手の強さなど、めやすが要るところで使う */
-  function stepMean(kind) {
-    const table = stepTable(kind);
+  function stepMean(kind, roundName) {
+    const table = stepTable(kind, roundName);
     let w = 0, s = 0;
     table.forEach((r) => { w += r.weight; s += r.weight * (r.add[0] + r.add[1]) / 2; });
     return w ? s / w : 0;
@@ -94,7 +99,7 @@ const Tournament = (() => {
     const out = [from];
     for (let i = 1; i < rounds.length; i++) {
       const mustRise = rounds[i] === '準々決勝' || rounds[i] === '準決勝' || rounds[i] === '決勝';
-      let add = rollStep(kind);
+      let add = rollStep(kind, rounds[i]);
       /* 準々決勝から先は必ず強くなる。引き直さず、下限を入れるだけ */
       if (mustRise && add < 0.6) add = 0.6 + Math.random() * 1.6;
       out.push(out[i - 1] + add * k);
