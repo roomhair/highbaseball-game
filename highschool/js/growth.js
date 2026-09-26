@@ -75,7 +75,9 @@ const Growth = (() => {
     const normBefore = RNG.clamp((p.velo - 108) / 52, 0, 1) * 100;
     const gain = gainFor(normBefore, points);
     if (gain <= 0) return;
-    p._veloAcc = (p._veloAcc || 0) + gain * 52 / 100;
+    /* 0〜100の伸びをkm/hに戻す換算。52/100だと1試合で数km/hも
+       伸びてしまっていたので、半分の26/100に弱めてある */
+    p._veloAcc = (p._veloAcc || 0) + gain * 26 / 100;
     const whole = Math.floor(p._veloAcc);
     if (whole <= 0) return;
     p._veloAcc -= whole;
