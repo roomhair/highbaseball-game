@@ -333,10 +333,9 @@ const UI = (() => {
         ? '<span class="stat__init">獲得時 ' + init.velo + ' km/h</span>' : '';
       abilities += '<div class="stat"><span class="stat__label">最速</span><span class="stat__num stat__num--wide">' + p.velo + ' km/h</span>' + veloInit + '</div>';
       abilities += stat('制球', p.control, null, init.control) + stat('スタミナ', p.stamina, null, init.stamina);
-      abilities += '<div class="stat"><span class="stat__label">疲労</span>' +
-        '<span class="stat__num stat__num--wide lufat lufat--' +
-        ((p.fatigue || 0) >= 70 ? 'hi' : ((p.fatigue || 0) >= 40 ? 'mid' : 'lo')) + '">' +
-        esc(Team.fatigueLabel(p)) + '</span></div>';
+      abilities += '<div class="stat"><span class="stat__label">回復</span>' +
+        '<span class="stat__num stat__num--wide lufat lufat--' + Team.staminaTier(p) + '">' +
+        esc(Team.staminaLabel(p)) + '</span></div>';
       abilities += '</div><h4 class="sub">変化球</h4><ul class="pitchlist">' +
         p.pitches.map((q) => {
           const iq = (init.pitches || []).find((x) => x.name === q.name);
@@ -620,7 +619,6 @@ const UI = (() => {
     function pitRow(pid, i) {
       const p = Team.find(team, pid);
       if (!p) return '';
-      const f = p.fatigue || 0;
       return '<li class="lurow" data-pid="' + p.id + '">' +
         '<span class="lugrip" aria-hidden="true"><i></i><i></i><i></i></span>' +
         '<span class="luno luno--wide">' + (i === 0 ? '先発' : (i + 1) + '番手') + '</span>' +
@@ -630,8 +628,8 @@ const UI = (() => {
         '</span>' +
         '<span class="lustats">最速<b class="rankval">' + p.velo + '</b>　制' + rankNum(p.control) +
           '　ス' + rankNum(p.stamina) +
-          '　<span class="lufat lufat--' + (f >= 70 ? 'hi' : (f >= 40 ? 'mid' : 'lo')) + '">' +
-          esc(Team.fatigueLabel(p)) + '</span></span>' +
+          '　<span class="lufat lufat--' + Team.staminaTier(p) + '">' +
+          esc(Team.staminaLabel(p)) + '</span></span>' +
         '<span class="luapts lupitch">' + p.pitches.map((q) =>
           '<span class="luball">' + esc(q.name) + '<b>' + q.level + '</b></span>').join('') + '</span>' +
         '<span class="luarrow">' +

@@ -143,11 +143,12 @@ const GameScreen = (() => {
       const g = rankOf(v);
       return '<b class="rank-' + g + '">' + g + '</b>';
     };
-    /* 余力。打者を受けるほど減り、限界を超えると球威と制球が落ちていく。
-       色が変わるところが、その落ちはじめ */
+    /* スタミナ。打者を受けるほど減り、限界を超えると球威と制球が落ちていく。
+       色が変わるところが、その落ちはじめ。前の試合から抜けきっていない
+       ぶん（staminaCarry）があれば、今日はそこから始まる */
     const cap = Sim.capacityOf(p);
     const limit = cap + 18;
-    const faced = Math.max(0, bf || 0);
+    const faced = Math.max(0, (p.staminaCarry || 0) + (bf || 0));
     const left = Math.max(0, Math.min(1, 1 - faced / limit));
     const worn = faced > cap + 9 ? ' is-low' : (faced > cap ? ' is-mid' : '');
     return '<div class="ll__p">' +
@@ -525,7 +526,7 @@ const GameScreen = (() => {
         (fielding ? '守備中' : '攻撃中') + '</p>' +
       '<div class="time__now">' +
         (pit ? '<div>いまの投手　<b>' + esc(pit.name) + '</b>　' +
-          esc(Team.fatigueLabel(pit)) + '</div>' : '') +
+          esc(Team.staminaLabel(pit)) + '</div>' : '') +
         (batter ? '<div>次の打者　<b>' + n + '番 ' + esc(batter.name) + '</b></div>' : '') +
       '</div>' +
       '<div class="time__menu">' +
@@ -669,7 +670,7 @@ const GameScreen = (() => {
     const t = myTeam();
     const now = Team.find(t, currentPitcherId(t));
     const list = availablePitchers(t).map((p) => ({
-      p, right: Team.fatigueLabel(p),
+      p, right: Team.staminaLabel(p),
       meta: p.grade + '年・' + (p.throws === 'L' ? '左' : '右') +
         '　球速 <b class="rankval">' + p.velo + '</b>km/h' +
         '　制球 ' + UI.rankNum(p.control) + '　スタミナ ' + UI.rankNum(p.stamina),

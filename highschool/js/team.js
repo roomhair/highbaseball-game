@@ -201,29 +201,54 @@ const Team = (() => {
   }
 
   /**
-   * 試合が終わったあとの投手の疲れ。
-   * たくさん投げた日は溜まり、少しだけの日はほぼ変わらず、
-   * まったく投げなかった日はしっかり抜ける。
+   * 試合が終わったあとの、投手のスタミナの持ち越し。
+   * 「疲労」という別の数字は持たず、次の試合のスタミナの目盛りが
+   * どれだけ低いところから始まるかを、そのまま「バッター何人ぶん」で
+   * 持ち越す。たくさん投げた試合のあとは大きく残り、
+   * 投げなかった日はしっかり抜ける（が、めいっぱい投げた翌日は
+   * それでも回復しきらないことがある）。
    */
   function restPitchers(team) {
     team.pitchers.forEach((p) => {
       const outs = (p.game && p.game.outs) || 0;
-      const rest = outs === 0 ? 34 : 6;
-      p.fatigue = Math.max(0, Math.min(100, Math.round((p.fatigue || 0) + outs * 1.4 - rest)));
+      const bf = (p.game && p.game.bf) || 0;
+      const before = p.staminaCarry || 0;
+      if (outs === 0) {
+        p.staminaCarry = before * 0.45;   // 投げなかった日はよく抜けるが、一晩で全部ではない
+      } else {
+        /* スタミナの目盛りが赤信号（is-low）に入るあたりから先だけ、
+           次の試合への持ち越しとして積み増す。そこまでの範囲で投げたぶんは
+           一晩でだいたい抜ける */
+        const cap = Sim.capacityOf(p);
+        const over = Math.max(0, bf - (cap + 9));
+        p.staminaCarry = before * 0.4 + over * 0.6;
+      }
     });
   }
 
   /** 大会と大会のあいだ、オフシーズンでは抜けきる */
   function healPitchers(team) {
-    team.pitchers.forEach((p) => { p.fatigue = 0; });
+    team.pitchers.forEach((p) => { p.staminaCarry = 0; });
   }
 
-  /** 疲れの見せ方 */
-  function fatigueLabel(p) {
-    const f = p.fatigue || 0;
-    if (f >= 70) return '疲労大';
-    if (f >= 40) return 'やや疲労';
-    if (f >= 18) return '軽い疲れ';
+  /** 持ち越したスタミナの消耗が、今日の試合の目盛りの何割にあたるか */
+  function staminaCarryFrac(p) {
+    const limit = Sim.capacityOf(p) + 18;
+    return limit > 0 ? (p.staminaCarry || 0) / limit : 0;
+  }
+
+  /** スタミナの残り具合の色分け（3段階） */
+  function staminaTier(p) {
+    const f = staminaCarryFrac(p);
+    return f >= 0.70 ? 'hi' : (f >= 0.40 ? 'mid' : 'lo');
+  }
+
+  /** スタミナの残り具合の見せ方（4段階） */
+  function staminaLabel(p) {
+    const f = staminaCarryFrac(p);
+    if (f >= 0.70) return '消耗大';
+    if (f >= 0.40) return 'やや消耗';
+    if (f >= 0.18) return '軽い消耗';
     return '万全';
   }
 
@@ -248,7 +273,7 @@ const Team = (() => {
   return {
     create, all, find, defScore, autoLineup, autoRotation, orderBatters,
     bench, defenders, strength, bestPlayer, repair,
-    restPitchers, healPitchers, fatigueLabel,
+    restPitchers, healPitchers, staminaLabel, staminaTier,
     captain, checkCaptain,
   };
 })();

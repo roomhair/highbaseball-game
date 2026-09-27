@@ -584,9 +584,10 @@ const Sim = (() => {
       slot = offTeam.lineup[slotIndex] || slot;
       bat = Team.find(offTeam, slot.pid) || bat;
 
-      /* この試合の球数ぶんの疲れに、前の試合から残っている疲労を足す */
-      const carried = (pit.fatigue || 0) / 100;
-      const fatigue = Math.max(0, (def.bf - capacityOf(pit)) / 18) + carried * 0.85;
+      /* 前の試合から抜けきっていないスタミナの持ち越しを、
+         今日すでに受けた打者の数に足しておく。これで「持ち越しが
+         多い投手は今日のスタミナも早く減る」がそのまま成り立つ */
+      const fatigue = Math.max(0, (def.bf + (pit.staminaCarry || 0) - capacityOf(pit)) / 18);
       const defenders = Team.defenders(defTeam, def.pitcherId);
       const defRating = defenseOf(defTeam, def.pitcherId);
       /* まず作戦を考える。出さなければ、ふつうに打つ */
@@ -881,7 +882,7 @@ const Sim = (() => {
     const pit = Team.find(def.team, def.pitcherId);
     if (!pit) return false;
     const cap = capacityOf(pit);
-    const tired = def.bf > cap + 12;
+    const tired = (def.bf + (pit.staminaCarry || 0)) > cap + 12;
     const beaten = def.pitcherRuns >= 7 && def.bf >= 12;
     if (!tired && !beaten) return false;
 

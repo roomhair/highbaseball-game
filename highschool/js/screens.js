@@ -160,8 +160,8 @@ const Screens = (() => {
           '　球速 <b class="rankval">' + sp.velo + '</b>km/h' +
           '　制球 ' + UI.rankNum(sp.control) +
           '　スタミナ ' + UI.rankNum(sp.stamina) +
-          '　<span class="spfat' + (sp.fatigue >= 40 ? ' is-tired' : '') + '">' +
-            esc(Team.fatigueLabel(sp)) + '</span>' +
+          '　<span class="spfat' + (Team.staminaTier(sp) !== 'lo' ? ' is-tired' : '') + '">' +
+            esc(Team.staminaLabel(sp)) + '</span>' +
         '</span>' +
         '<span class="spballs">' + pitchText(sp) + '</span></p>' : '') +
       (opts.pickable ? starterPicker(t) : '') +
@@ -184,8 +184,8 @@ const Screens = (() => {
       '<div class="spick__list">' + rot.map((p, i) =>
         '<button type="button" class="spick__item' + (i === 0 ? ' is-on' : '') + '" data-pid="' + p.id + '">' +
           '<span class="spick__nm">' + esc(p.name) + '</span>' +
-          '<span class="spick__fat' + (p.fatigue >= 40 ? ' is-tired' : '') + '">' +
-            esc(Team.fatigueLabel(p)) + '</span>' +
+          '<span class="spick__fat' + (Team.staminaTier(p) !== 'lo' ? ' is-tired' : '') + '">' +
+            esc(Team.staminaLabel(p)) + '</span>' +
           '<span class="spick__meta">' + p.grade + '年・' + (p.throws === 'L' ? '左' : '右') +
             '　球速 <b class="rankval">' + p.velo + '</b>km/h' +
             '　制球 ' + UI.rankNum(p.control) + '　スタミナ ' + UI.rankNum(p.stamina) + '</span>' +

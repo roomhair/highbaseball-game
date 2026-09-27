@@ -312,7 +312,10 @@ const Player = (() => {
       traj: RNG.clamp(Math.round(RNG.norm(1.4, 0.6)), 1, 4),
       pull: Math.round(RNG.clamp(RNG.norm(15, 40), -100, 100)),
       apt: aptitudeFor(RNG.pick(FIELD_POSITIONS), hd.throws),
-      fatigue: 0,      // 投げるほど溜まる。休むと抜ける
+      /* スタミナの持ち越し（「バッター何人ぶん」ですでに消耗しているか）。
+         今日の試合でめいっぱい投げると溜まり、休んだ日ほど抜ける。
+         オフシーズンで完全に抜けきる */
+      staminaCarry: 0,
       awakened: false,
       hl: [],
     };
