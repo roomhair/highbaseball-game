@@ -211,6 +211,9 @@ table, .stat__num, .result-score, .scoreboard { font-variant-numeric: tabular-nu
   background: var(--panel); color: var(--ink);
   font: inherit; font-size: 15px; font-weight: 700; letter-spacing: .08em;
   cursor: pointer; transition: background .12s, color .12s;
+  /* すばやく連打したときにダブルタップのズームと誤認されて
+     タップが取りこぼされることがあるので、ここでは単発タップだけを見る */
+  touch-action: manipulation;
 }
 .btn:hover:not(:disabled) { background: var(--bg-2); }
 .btn:disabled { opacity: .38; cursor: not-allowed; }
@@ -514,12 +517,14 @@ td.role { font-size: 11px; color: var(--ink-mute); }
   border: 1px solid var(--line); border-radius: 999px; background: transparent;
   color: var(--ink-mute); font: inherit; font-size: 11.5px; letter-spacing: .04em;
   padding: 3px 8px; cursor: pointer;
+  touch-action: manipulation;
 }
 .speedbtn:hover { color: var(--ink); border-color: var(--ink-mute); }
 .speedbtn.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .taphint {
   margin: -6px 0 10px; text-align: center; font-size: 11.5px; letter-spacing: .1em;
   color: var(--accent); cursor: pointer; animation: blink 1.6s ease-in-out infinite;
+  touch-action: manipulation;
 }
 .taphint[hidden] { display: none; }
 @keyframes blink { 50% { opacity: .35; } }
@@ -531,6 +536,9 @@ td.role { font-size: 11px; color: var(--ink-mute); }
   margin: 4px 0; padding: 5px 9px;
   border: 1px solid var(--line); border-radius: 5px; background: var(--panel);
   min-height: 64px;
+  /* 1打席ずつのときにタップで進めるが、連打がダブルタップズームと
+     誤認されるとタップが1回分消えてしまうので、単発タップだけを見る */
+  touch-action: manipulation;
 }
 .stage__half, .stage__sub, .stage__end { font-size: 16px; font-weight: 700; letter-spacing: .1em; }
 .stage__sub, .stage__end { color: var(--ink-mute); }
