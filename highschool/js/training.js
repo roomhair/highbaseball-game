@@ -47,11 +47,15 @@ const Training = (() => {
      「猛特訓」は当たりではあるが、1枚で代が決まるほどではない、くらいに
      抑えてある。出やすさも4%まで下げた。ここを強くしすぎると、
      引けたかどうかだけで年が決まってしまい、他の判断が意味を失う。 */
+  /* ゲーム全体の難易度調整で、成長幅をもとの1.4倍に引き上げてある
+     （試合後の成長は config.js の GROWTH 側で同じ倍率をかけてある）。
+     相手の強さ（CONFIG.FIELD）やステータスと勝率の関係（sim.js）は
+     いっさい変えていない。 */
   const POWER_TIERS = [
-    { key: 's',  weight: 30, label: '',        stat: [4, 7],   velo: [1, 3], pitch: 1, ball: [1, 2] },
-    { key: 'm',  weight: 40, label: '',        stat: [7, 11],  velo: [3, 5], pitch: 1, ball: [2, 3] },
-    { key: 'l',  weight: 22, label: 'みっちり', stat: [13, 21], velo: [5, 7], pitch: 1, ball: [3, 4] },
-    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [16, 25], velo: [6, 10], pitch: 2, ball: [4, 5] },
+    { key: 's',  weight: 30, label: '',        stat: [6, 10],  velo: [1, 4],  pitch: 1, ball: [1, 3] },
+    { key: 'm',  weight: 40, label: '',        stat: [10, 15], velo: [4, 7],  pitch: 1, ball: [3, 4] },
+    { key: 'l',  weight: 22, label: 'みっちり', stat: [18, 29], velo: [7, 10], pitch: 1, ball: [4, 6] },
+    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [22, 35], velo: [8, 14], pitch: 3, ball: [6, 7] },
   ];
 
   /* まれに、2種類の能力が同時に上がる。
