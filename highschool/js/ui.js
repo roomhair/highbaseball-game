@@ -226,9 +226,12 @@ const UI = (() => {
          '<td class="c">' + rankNum(p.catch) + '</td>'].join('');
     /* 自分のチームを渡されたときは、打順・守備位置（控えなら「控え」）も出す */
     const role = opts.team ? '<td class="c role">' + roleText(opts.team, p) + '</td>' : '';
+    const nm = opts.nameLink
+      ? '<button type="button" class="linkbtn nmlink" data-pid="' + p.id + '">' + esc(p.name) + '</button>'
+      : esc(p.name);
     return '<tr data-pid="' + p.id + '" class="prow' + (opts.mark ? ' is-' + opts.mark : '') + '">' +
       '<td class="c g' + p.grade + '">' + p.grade + '</td>' +
-      '<td class="nm">' + esc(p.name) + (p.awakened ? '<em class="awake-dot" title="覚醒">◆</em>' : '') + '</td>' +
+      '<td class="nm">' + nm + (p.awakened ? '<em class="awake-dot" title="覚醒">◆</em>' : '') + '</td>' +
       role +
       /* 投手の一覧に「位置」の列はいらない（全員 投） */
       (isPit ? '' : '<td class="c">' + posShort(p.pos) + '</td>') +
@@ -303,6 +306,15 @@ const UI = (() => {
       if (opts.onRow) {
         root.querySelectorAll('tr.prow').forEach((tr) =>
           tr.addEventListener('click', () => opts.onRow(tr.dataset.pid, tr, root)));
+      }
+      /* 選手名だけは、行の本来のクリック（選ぶ・放出するなど）とは別に、
+         ステータスを見られるようにしておく */
+      if (opts.nameLink) {
+        root.querySelectorAll('.nmlink').forEach((btn) => btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const p = players.find((x) => x.id === btn.dataset.pid);
+          if (p) openPlayer(p, { team: opts.team, rename: opts.nameLinkRename });
+        }));
       }
     }
     draw();
