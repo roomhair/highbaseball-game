@@ -217,7 +217,9 @@ const Screens = (() => {
 
   function training(state) {
     const st = state.training;
-    UI.el('train-picks').textContent = st.picks;
+    /* 「いま何回目か」を1始まりで見せる。最初のカードで1/5、
+       最後のカードでも（使い切った6/5にならないよう）5/5のまま */
+    UI.el('train-picks').textContent = Math.min(st.picks + 1, CONFIG.TRAINING.PICKS);
     UI.el('train-picks-max').textContent = CONFIG.TRAINING.PICKS;
     UI.el('train-passes').textContent = st.passes;
     UI.el('train-passes-max').textContent = CONFIG.TRAINING.PASSES;
