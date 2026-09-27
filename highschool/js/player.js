@@ -135,6 +135,10 @@ const Player = (() => {
 
   function rollPitches(talent, grade, levelShift) {
     const boost = (levelShift || 0);
+    /* 自軍の入部時（新入生・チーム作成）は levelShift を渡さないので boost が
+       ちょうど0になる。相手校（大会の強さぶんの levelShift が乗る）には
+       効かせず、入部したての投手の決め球だけ控えめにするための引き算 */
+    const rookiePenalty = boost === 0 ? 0.5 : 0;
     /* 球種の数。才能と学年が上がるほど引き出しが増える。
        高校生なので、いくつも決め球を持っている投手はそう多くない */
     let n = 2;
@@ -148,7 +152,7 @@ const Player = (() => {
       const picked = RNG.weighted(pool);
       pool.splice(pool.indexOf(picked), 1);
       /* 切れ味は1〜7。才能が高いほど良い球を持ちやすい */
-      let lv = Math.round(RNG.clamp(RNG.norm(1.20 + talent * 0.58 + (grade - 1) * 0.22 + boost * 0.70, 0.85), 1, 7));
+      let lv = Math.round(RNG.clamp(RNG.norm(1.20 + talent * 0.58 + (grade - 1) * 0.22 + boost * 0.70 - rookiePenalty, 0.85), 1, 7));
       out.push({ name: picked.name, level: lv });
     }
     /* 一番いい球を先頭に置く（詳細画面で決め球が上に来る） */
