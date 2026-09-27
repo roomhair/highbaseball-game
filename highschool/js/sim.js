@@ -290,9 +290,12 @@ const Sim = (() => {
         ? { code: 'SQ', text: 'スクイズ', out: 1 }
         : { code: 'SQF', text: 'スクイズ失敗', out: 1 };
     }
-    return RNG.chance(skill)
-      ? { code: 'SH', text: '犠打', out: 1 }
-      : { code: 'BF', text: RNG.chance(0.5) ? '投前失' : 'バント失敗', out: 1 };
+    if (RNG.chance(skill)) return { code: 'SH', text: '犠打', out: 1 };
+    /* 投前失＝投手（または前に出た内野手）の失策。打者は生きて走者も進む。
+       バント失敗は普通に打者アウト */
+    return RNG.chance(0.5)
+      ? { code: 'BE', text: '投前失', out: 0, by: pit.id }
+      : { code: 'BF', text: 'バント失敗', out: 1 };
   }
 
   /* ---------- 試合を組み立てる ---------- */
@@ -535,11 +538,11 @@ const Sim = (() => {
       /* 投手交代の見きわめ */
       if (maybeChangePitcher(def, log, inning, half)) yield;
 
-      const pit = Team.find(defTeam, def.pitcherId);
       const slotIndex = off.order % 9;
-      const slot = offTeam.lineup[slotIndex];
-      const bat = Team.find(offTeam, slot.pid);
       off.order = (off.order + 1) % 9;
+      let pit = Team.find(defTeam, def.pitcherId);
+      let slot = offTeam.lineup[slotIndex];
+      let bat = slot && Team.find(offTeam, slot.pid);
       if (!bat || !pit) { outs = 3; break; }
 
       /* 盗塁。一塁だけが埋まっているときに、足のある選手がしかける。
@@ -573,6 +576,14 @@ const Sim = (() => {
         }
       }
 
+      /* ここまでの盗塁で「タイム」が入っていたら、代打・投手交代が
+         この打席から反映されるように、打者と投手を取り直す
+         （盗塁より前で一度取った bat/pit をそのまま使うと、そのあいだに
+         代打を出しても今の打席には間に合わず、退いた選手が打ってしまう） */
+      pit = Team.find(defTeam, def.pitcherId) || pit;
+      slot = offTeam.lineup[slotIndex] || slot;
+      bat = Team.find(offTeam, slot.pid) || bat;
+
       /* この試合の球数ぶんの疲れに、前の試合から残っている疲労を足す */
       const carried = (pit.fatigue || 0) / 100;
       const fatigue = Math.max(0, (def.bf - capacityOf(pit)) / 18) + carried * 0.85;
@@ -602,7 +613,7 @@ const Sim = (() => {
 
       recordBat(bat, res, out);
       recordPit(pit, res, out);
-      if (res.code === 'E' && res.by) {
+      if ((res.code === 'E' || res.code === 'BE') && res.by) {
         const fl = Team.find(defTeam, res.by);
         if (fl) { fl.game.e = (fl.game.e || 0) + 1; }
         def.errors++;
@@ -767,6 +778,14 @@ const Sim = (() => {
         break;
       }
 
+      case 'BE': {          /* 投前失。バントの処理を失策。打者は生きて、走者はひとつ進む */
+        if (bases[2]) { score(bases[2]); bases[2] = null; }
+        if (bases[1]) { bases[2] = bases[1]; bases[1] = null; }
+        if (bases[0]) { bases[1] = bases[0]; bases[0] = null; }
+        bases[0] = bat;
+        break;
+      }
+
       case 'OUT': {
         if (res.bbType === 'GB') {
           /* 併殺の目 */
@@ -830,7 +849,7 @@ const Sim = (() => {
       case '2B': s.ab++; s.h++; s.d2++; break;
       case '3B': s.ab++; s.h++; s.d3++; break;
       case 'HR': s.ab++; s.h++; s.hr++; break;
-      case 'E': s.ab++; break;
+      case 'E': case 'BE': s.ab++; break;
       case 'SH': case 'SQ': s.sh++; break;      /* 犠打は打数に入らない */
       case 'SQF': case 'BF': s.ab++; break;
       default:

@@ -158,7 +158,7 @@ const GameScreen = (() => {
       '<span class="ll__ab">球速' + p.velo + ' 制球' + r(p.control) +
         ' スタミナ' + r(p.stamina) + '</span>' +
       '<span class="ll__sta' + worn + '">' +
-        '<span class="ll__stanum">余力' + Math.round(left * 100) + '%' +
+        '<span class="ll__stanum">スタミナ' + Math.round(left * 100) + '%' +
           (worn ? '↓' : '') + '</span>' +
         '<i class="ll__bar"><b style="width:' + Math.round(left * 100) + '%"></b></i>' +
       '</span>' +
@@ -217,7 +217,7 @@ const GameScreen = (() => {
         awayH: 0, homeH: 0, awayE: 0, homeE: 0,
         inning: 1, maxInning: 9, half: 'top',
       },
-      cur: { side: 'away', order: 1, results: {}, awayPitcher: null, homePitcher: null },
+      cur: { side: 'away', order: 1, nextOrder: 1, results: {}, awayPitcher: null, homePitcher: null },
       away, home,
     };
 
@@ -325,7 +325,7 @@ const GameScreen = (() => {
       st.maxInning = Math.max(st.maxInning, e.inning);
       cur.side = e.half === 'top' ? 'away' : 'home';
       /* 回のはじめに、次の打者へ表示を合わせる */
-      if (e.nextOrder) cur.order = e.nextOrder;
+      if (e.nextOrder) { cur.order = e.nextOrder; cur.nextOrder = e.nextOrder; }
       /* 前の半分の回を締める。攻撃中は空欄のままで、
          回が終わってはじめて 0 を入れる */
       closeHalf(st);
@@ -349,6 +349,12 @@ const GameScreen = (() => {
     if (e.k === 'pa') {
       const off = e.half === 'top' ? 'away' : 'home';
       cur.side = off; cur.order = e.order;
+      /* cur.order は「いま打った打順」（打者の見せ方に使う）。
+         代打はまだ打っていない次の打者に出すので、別に「次の打者」を持っておく。
+         盗塁など打席の外の出来事をはさんで止めても、ここは動かないので
+         ずれない（cur.order をそのまま代打に使うと、1人前の打者に
+         代打が出てしまうことがあった） */
+      cur.nextOrder = (e.order % 9) + 1;
       (cur.results[e.batter] = cur.results[e.batter] || []).push(e.text);
       const arr = off === 'away' ? st.awayInn : st.homeInn;
       /* 点が入ったときだけ数字を置く。入らないうちは空欄のまま */
@@ -357,9 +363,9 @@ const GameScreen = (() => {
       if (['1B', '2B', '3B', 'HR'].indexOf(e.code) >= 0) {
         if (off === 'away') st.awayH++; else st.homeH++;
       }
-      if (e.code === 'E') { if (off === 'away') st.homeE++; else st.awayE++; }
+      if (e.code === 'E' || e.code === 'BE') { if (off === 'away') st.homeE++; else st.awayE++; }
 
-      const good = ['1B', '2B', '3B', 'HR', 'BB', 'HBP', 'E'].indexOf(e.code) >= 0;
+      const good = ['1B', '2B', '3B', 'HR', 'BB', 'HBP', 'E', 'BE'].indexOf(e.code) >= 0;
       /* 何を投げたか。球種と球速を打席結果の上に添える */
       const ball = e.pitch
         ? '<span class="stage__ball">' + esc(e.pitch) +
@@ -461,7 +467,7 @@ const GameScreen = (() => {
   }
 
   /** 次に打つ打順（1〜9）。代打はここに入れる */
-  function nextOrder() { return ctx.cur.order; }
+  function nextOrder() { return ctx.cur.nextOrder; }
 
   function openTime() {
     if (!ctx || ctx.done) return;
