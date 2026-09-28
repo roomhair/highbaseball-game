@@ -345,11 +345,19 @@ const Game = (() => {
     save();
     const r = state.lastResult;
     const btn = UI.el('btn-result-next');
-    btn.textContent = r.win
-      ? (r.last
-          ? (state.tour.kind === 'local' ? state.settings.nationalName + 'へ' : '優勝！')
-          : '引き抜きへ')
-      : 'オフシーズンへ';
+    /* このボタンは（決勝でも）まず引き抜き画面へ進むだけなので、
+       「甲子園へ」「優勝！」のような先の展開を言い切る文言にはしない。
+       大会優勝そのものの演出は、結果画面へ進むこの瞬間に出す
+       （引き抜きのあとまで待たない）。実際に次の大会へ進む操作は、
+       引き抜きのあとに出る専用の画面（地方大会優勝／全国大会優勝）で行う */
+    btn.textContent = r.win ? '引き抜きへ' : 'オフシーズンへ';
+    if (r.win && r.last) {
+      if (state.tour.kind === 'local') {
+        UI.curtain('<b>地方大会</b><span>優勝</span>', function () {});
+      } else if (state.tour.kind === 'national') {
+        UI.curtain('<b>' + UI.esc(state.settings.nationalName) + '</b><span>優勝</span>', function () {});
+      }
+    }
     GameScreen.result(state, lastSim.res, lastSim.meta);
   }
 
@@ -406,6 +414,9 @@ const Game = (() => {
   /* ---------- 大会の終わり ---------- */
 
   function finishTournament(won) {
+    /* 優勝の演出（カーテン）は、勝った瞬間・結果画面へ進むところで
+       すでに出している（toResult）。ここでは実際に次へ進むための
+       画面と状態の更新だけを行う */
     if (won && state.tour.kind === 'local') {
       state.localFinalLevel = state.tour.finalLevel;
       state.history.push({ year: state.year, tour: 'local', result: '優勝' });
@@ -414,7 +425,6 @@ const Game = (() => {
       state.phase = 'localwin';
       save();
       Screens.localWin(state);
-      UI.curtain('<b>地方大会</b><span>優勝</span>', function () {});
       return;
     }
     if (won && state.tour.kind === 'national') {
@@ -422,7 +432,6 @@ const Game = (() => {
       state.phase = 'champion';
       save();
       Screens.champion(state);
-      UI.curtain('<b>' + UI.esc(state.settings.nationalName) + '</b><span>優勝</span>', function () {});
       return;
     }
     toOffseason();
