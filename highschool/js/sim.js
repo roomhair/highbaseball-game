@@ -424,7 +424,7 @@ const Sim = (() => {
       if (H.byInning[i] == null) H.byInning[i] = null;
     }
 
-    creditDecision(A, H);
+    creditDecision(A, H, log);
     log.push({ k: 'end', score: [A.runs, H.runs], cold, walkoff, innings: last });
 
     return {
@@ -492,18 +492,40 @@ const Sim = (() => {
     };
   }
 
-  /** 勝敗投手。細かい規則までは追わず、投球回と失点で決めている */
-  function creditDecision(A, H) {
+  /**
+   * 勝敗投手。「勝ったチームが最後に勝ち越して、そのまま逆転されずに
+   * 終えた瞬間」に、両チームでそれぞれ投げていた投手にする。
+   * 以前は単純に「勝ったチームでいちばん長く投げた投手」を勝ち投手に
+   * していたため、先発が大量に投げても途中で負け越したまま降板し、
+   * そのあと救援がその回で追いつき・逆転して勝った場合に、
+   * 逆転される前に降りた先発が勝ち投手になってしまっていた。 */
+  function creditDecision(A, H, log) {
     const win = A.runs > H.runs ? A : (H.runs > A.runs ? H : null);
     if (!win) return;
     const lose = win === A ? H : A;
-    const pick = (S, fn) => {
-      const list = S.usedPitchers.map((id) => Team.find(S.team, id)).filter(Boolean);
-      return list.sort(fn)[0] || null;
-    };
-    const w = pick(win, (a, b) => b.game.outs - a.game.outs);
+    const winSide = win === A ? 'away' : 'home';
+    const loseSide = win === A ? 'home' : 'away';
+
+    const curPitcher = { away: A.usedPitchers[0], home: H.usedPitchers[0] };
+    let winPitcherId = null, losePitcherId = null, ahead = false;
+    (log || []).forEach((e) => {
+      if (e.k === 'sub' && e.pitcher && (e.side === 'away' || e.side === 'home')) {
+        curPitcher[e.side] = e.pitcher;
+        return;
+      }
+      if (!e.score) return;
+      const margin = winSide === 'away' ? e.score[0] - e.score[1] : e.score[1] - e.score[0];
+      const aheadNow = margin > 0;
+      if (aheadNow && !ahead) {
+        winPitcherId = curPitcher[winSide];
+        losePitcherId = curPitcher[loseSide];
+      }
+      ahead = aheadNow;
+    });
+
+    const w = winPitcherId != null ? Team.find(win.team, winPitcherId) : null;
     if (w) w.game.w = 1;
-    const l = pick(lose, (a, b) => (b.game.er - a.game.er) || (b.game.outs - a.game.outs));
+    const l = losePitcherId != null ? Team.find(lose.team, losePitcherId) : null;
     if (l) l.game.l = 1;
     /* 完投・完封 */
     if (win.usedPitchers.length === 1 && w) {
