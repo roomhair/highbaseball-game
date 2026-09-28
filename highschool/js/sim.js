@@ -255,15 +255,21 @@ const Sim = (() => {
     /* スクイズ。三塁に走者がいる competitive な場面 */
     if (bases[2] && inning >= 5 && close && lead <= 2 && !(inning >= 8 && chasing >= 2)) {
       let q = 0.10 + (0.50 - pw) * 0.16;
-      if (outs === 1) q *= 0.55;
+      /* 1点ビハインドか同点の一死は、スクイズがいちばん効く場面。
+         打力の低い打者ほど、ここを積極的に使う */
+      if (outs === 1 && lead >= -1 && lead <= 0) q += (0.50 - pw) * 0.55;
+      else if (outs === 1) q *= 0.55;
       if (bases[0] && bases[1]) q *= 0.5;      /* 満塁では出しにくい */
-      if (RNG.chance(C(q, 0, 0.26))) return 'squeeze';
+      if (RNG.chance(C(q, 0, 0.42))) return 'squeeze';
     }
 
-    /* 送りバント。一塁に走者がいるとき。
-       一二塁から送って一死二三塁にするのも、高校野球ではよくある */
-    if (!bases[0]) return null;
-    if (bases[1] && (outs > 0 || bases[2])) return null;
+    /* 送りバント。一塁に走者がいて、三塁には走者がいないとき。
+       一二塁から送って一死二三塁にするのも、高校野球ではよくある。
+       三塁に走者がいるなら、送っても得点圏の走者を増やさないので
+       （スクイズにするかどうかは上のブロックで決めている）、
+       ここでは出さない */
+    if (!bases[0] || bases[2]) return null;
+    if (bases[1] && outs > 0) return null;
     let p = BUNT_BY_SLOT[C(slot, 0, 8)];
     if (bases[1]) p *= 0.55;
     /* 長打のある打者は打たせる。ただし打順の決まりごとのほうが強い */
