@@ -335,6 +335,8 @@ const Sim = (() => {
       /* その日の出来。ふだんは小さいが、10人に1人くらいは大きく振れる。
          「今日は当たっている」「今日はまるで合っていない」を作る */
       p.gameForm = RNG.chance(0.10) ? RNG.norm(0, 9) : RNG.norm(0, 3.2);
+      /* 代走で出たかどうかは、その試合だけの印。次の試合には残さない */
+      p.pinchRunner = false;
     });
   }
 
@@ -405,7 +407,7 @@ const Sim = (() => {
            おかしいため）。後攻がすでに勝っているときだけ、表の途中でも
            打ち切ってよい（後攻はもう追いつく必要がないので） */
         const stopHalf = () => coldNow() && (half === 'bottom' || H.runs > A.runs);
-        const got = yield* playHalf(off, def, log, inning, half, tie, A, H, stopHalf);
+        const got = yield* playHalf(off, def, log, inning, half, tie, A, H, stopHalf, ctl);
         off.byInning[inning - 1] = got;
 
         if (half === 'bottom' && inning >= CONFIG.GAME.INNINGS && H.runs > A.runs) {
@@ -476,6 +478,10 @@ const Sim = (() => {
         return {
           inning: ctl.inning, half: ctl.half,
           off: ctl.off, def: ctl.def, A: ctl.A, H: ctl.H,
+          /* いまの走者（bases[0]が一塁）。ここを直接書き換えると代走になる。
+             打席と打席のあいだで配列ごと差し替わるので、参照はそのつど
+             取り直すこと（保持しておかない） */
+          bases: ctl.bases,
         };
       },
       /** 守っている側の投手を代える。side は 'away' か 'home' */
@@ -552,11 +558,15 @@ const Sim = (() => {
   /* 半分の回を進める。ジェネレータにしてあるのは、
      打席と打席のあいだで止めて「タイム」を受け付けられるようにするため。
      log に積むたびに yield するので、呼ぶ側はそこで止められる。 */
-  function* playHalf(off, def, log, inning, half, tie, A, H, stop) {
+  function* playHalf(off, def, log, inning, half, tie, A, H, stop, ctl) {
     const offTeam = off.team, defTeam = def.team;
     let outs = 0;
     let bases = [null, null, null];
     let got = 0;
+    /* タイムの画面から、いまの走者を見たり代走を出したりできるように、
+       外から見えるところに置いておく。bases はここから先、新しい配列に
+       差し替えられることがあるので、yield のたびに置き直す */
+    const showBases = () => { if (ctl) ctl.bases = bases; };
 
     /* タイブレークは無死一二塁から。走者は前の打順の2人にしておく */
     if (tie) {
@@ -564,6 +574,7 @@ const Sim = (() => {
       bases[0] = Team.find(offTeam, off.team.lineup[i2].pid);
       bases[1] = Team.find(offTeam, off.team.lineup[i1].pid);
     }
+    showBases();
 
     while (outs < 3) {
       /* コールドが成立したら、回の途中でもそこで終わる。
@@ -571,7 +582,7 @@ const Sim = (() => {
       if (stop && stop()) break;
 
       /* 投手交代の見きわめ */
-      if (maybeChangePitcher(def, log, inning, half)) yield;
+      if (maybeChangePitcher(def, log, inning, half)) { showBases(); yield; }
 
       const slotIndex = off.order % 9;
       off.order = (off.order + 1) % 9;
@@ -593,7 +604,7 @@ const Sim = (() => {
         /* やたらとしかけないように、企てる回数は絞ってある。
            そのかわり、行くと決めたときは決まりやすい */
         const pAttempt = C((runner.speed - 25) / 125, 0.02, 0.40) *
-          (outs === 2 ? 0.6 : 1) * (behind ? 0.12 : 1);
+          (outs === 2 ? 0.6 : 1) * (behind ? 0.12 : 1) * (runner.pinchRunner ? 1.35 : 1);
         if (RNG.chance(pAttempt)) {
           const cat = Team.defenders(defTeam, def.pitcherId).C;
           const arm = cat ? (cat.arm * 0.6 + cat.catch * 0.4) : 40;
@@ -601,11 +612,11 @@ const Sim = (() => {
           if (ok) {
             bases[1] = runner; bases[0] = null; runner.game.sb++;
             log.push(snap('steal', { text: runner.name + ' 盗塁成功', ok: true }, off, def, inning, half, outs, bases, A, H, bat, pit));
-            yield;
+            showBases(); yield;
           } else {
             bases[0] = null; outs++;
             log.push(snap('steal', { text: runner.name + ' 盗塁失敗', ok: false }, off, def, inning, half, outs, bases, A, H, bat, pit));
-            yield;
+            showBases(); yield;
             if (outs >= 3) break;
           }
         }
@@ -666,7 +677,7 @@ const Sim = (() => {
         desc: out.desc || '',
       }, off, def, inning, half, outs, bases, A, H, bat, pit, before, slotIndex));
       /* ここが「打席と打席のあいだ」。タイムをかけられるのはこの位置 */
-      yield;
+      showBases(); yield;
 
       /* サヨナラ */
       if (off.isHome && inning >= CONFIG.GAME.INNINGS && off.runs > (off === A ? H.runs : A.runs)) {

@@ -518,6 +518,7 @@ const GameScreen = (() => {
     const slot = t.lineup[n - 1];
     const batter = slot ? Team.find(t, slot.pid) : null;
     const pit = Team.find(t, currentPitcherId(t));
+    const runners = fielding ? [] : baseRunners();
 
     UI.modal(
       '<h3 class="modal__title">タイム</h3>' +
@@ -532,6 +533,8 @@ const GameScreen = (() => {
       '<div class="time__menu">' +
         (fielding ? '' :
           '<button type="button" class="btn btn--wide" id="tm-ph">代打を出す</button>') +
+        (runners.length ?
+          '<button type="button" class="btn btn--wide" id="tm-pr">代走を出す</button>' : '') +
         '<button type="button" class="btn btn--wide" id="tm-sub">選手を交代する</button>' +
         '<button type="button" class="btn btn--wide" id="tm-pos">守備位置を変える</button>' +
         '<button type="button" class="btn btn--wide" id="tm-pit">投手を交代する</button>' +
@@ -544,6 +547,7 @@ const GameScreen = (() => {
         onOpen(body) {
           const on = (id, fn) => { const b = body.querySelector(id); if (b) b.addEventListener('click', fn); };
           on('#tm-ph', () => pinchHit());
+          on('#tm-pr', () => pinchRun());
           on('#tm-sub', () => subPlayer());
           on('#tm-pos', () => changePos());
           on('#tm-pit', () => changePitcher());
@@ -616,6 +620,48 @@ const GameScreen = (() => {
         noteSub('代打　' + out.name + ' → ' + inP.name);
         afterSub();
       }, '控えに出せる選手がいません。');
+  }
+
+  /** いまの走者（一塁・二塁・三塁の順）。いない塁は飛ばす */
+  function baseRunners() {
+    const live = ctx.live.state ? ctx.live.state() : null;
+    const bases = live && live.bases;
+    if (!bases) return [];
+    const labels = ['一塁', '二塁', '三塁'];
+    return bases.map((p, i) => (p ? { i, p, label: labels[i] } : null)).filter(Boolean);
+  }
+
+  /** 代走。走者を控えの選手に差し替える。差し替えた選手は、
+      以後その打順が回ってきたときも打つ（代打と同じ扱い）。
+      足の速い選手のほうが盗塁を仕掛けやすくなる */
+  function pinchRun() {
+    const t = myTeam();
+    const runners = baseRunners();
+    if (!runners.length) { timeMenu(); return; }
+
+    const doPick = (r) => {
+      const list = availableBench(t).map((p) => ({ p, meta: batMeta(p) }));
+      pickPlayer('代走', r.label + ' ' + r.p.name + ' に代えて',
+        list, (pid) => {
+          const inP = Team.find(t, pid);
+          const live = ctx.live.state ? ctx.live.state() : null;
+          if (!inP || !live || !live.bases) { timeMenu(); return; }
+          live.bases[r.i] = inP;
+          inP.pinchRunner = true;
+          const idx = t.lineup.findIndex((s) => s.pid === r.p.id);
+          if (idx >= 0) t.lineup[idx] = { pid: inP.id, pos: t.lineup[idx].pos };
+          retired().add(r.p.id);
+          noteSub('代走　' + r.p.name + ' → ' + inP.name);
+          afterSub();
+        }, '控えに出せる選手がいません。');
+    };
+
+    if (runners.length === 1) { doPick(runners[0]); return; }
+    const list = runners.map((r) => ({ p: r.p, meta: r.label + '　' + batMeta(r.p) }));
+    pickPlayer('代走', 'どの走者に代走を送りますか', list, (pid) => {
+      const r = runners.find((x) => x.p.id === pid);
+      if (r) doPick(r); else timeMenu();
+    });
   }
 
   /** 選手交代。守っている選手を控えと入れ替える */
