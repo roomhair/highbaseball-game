@@ -935,7 +935,8 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 
 /* ===== 引き抜き・オフシーズン ===== */
 tr.prow.is-picked { background: var(--accent); color: var(--accent-ink); }
-tr.prow.is-picked .rank, tr.prow.is-picked .rankval, tr.prow.is-picked td { color: inherit; }
+tr.prow.is-picked .rank, tr.prow.is-picked .rankval, tr.prow.is-picked td,
+tr.prow.is-picked .nmlink { color: inherit; }
 
 .incoming { border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; margin-bottom: 10px; background: var(--panel); }
 .swaplist { display: grid; gap: 6px; max-height: 52vh; overflow-y: auto; }
