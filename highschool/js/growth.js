@@ -262,6 +262,56 @@ const Growth = (() => {
     return i < 0 ? UP_ORDER.length : i;
   }
 
+  /** 打った球種の呼び名（状況の言葉と組み合わせて「勝ち越しタイムリー」などにする） */
+  const HIT_WORD = { HR: 'ホームラン', '3B': '三塁打', SQ: 'スクイズ', BB: '押し出し', HBP: '押し出し' };
+  function hitWord(code) { return HIT_WORD[code] || 'タイムリー'; }
+
+  /* 満塁・3ラン・2ラン・ソロの呼び分け */
+  const HR_RUN_WORD = { 1: 'ソロホームラン', 2: '2ランホームラン', 3: '3ランホームラン', 4: '満塁ホームラン' };
+
+  /**
+   * 試合ログから、この打者にとっていちばんの当たり（先制・同点・勝ち越し・サヨナラ）を探す。
+   * 何打数何安打という数字ではなく「〇〇戦で勝ち越しホームラン」のように場面で語れるようにする。
+   */
+  function findKeyHit(pid, ctx) {
+    if (!ctx.log || !ctx.mySide) return null;
+    const mine = ctx.mySide === 'away' ? 0 : 1;
+    const opp = 1 - mine;
+    const RANK = { walkoff: 4, ahead: 3, tie: 2, first: 1 };
+    let prev = [0, 0];
+    let best = null;
+    let bestHr = null; // 場面が付かなくても、本塁打なら最後の砦として残す
+    for (let i = 0; i < ctx.log.length; i++) {
+      const e = ctx.log[i];
+      if (e.k !== 'pa') { continue; }
+      if (e.batter === pid && e.rbi > 0 &&
+          ['1B', '2B', '3B', 'HR', 'BB', 'HBP', 'SQ'].indexOf(e.code) >= 0) {
+        const beforeMine = prev[mine], beforeOpp = prev[opp];
+        const afterMine = e.score[mine], afterOpp = e.score[opp];
+        const isLast = !ctx.log[i + 1] || ctx.log[i + 1].k === 'end';
+        let kind = null;
+        if (ctx.walkoff && isLast && afterMine > afterOpp) kind = 'walkoff';
+        else if (beforeMine <= beforeOpp && afterMine > afterOpp) kind = 'ahead';
+        else if (beforeMine < beforeOpp && afterMine === afterOpp) kind = 'tie';
+        else if (beforeMine === 0 && beforeOpp === 0) kind = 'first';
+        if (kind) {
+          const r = RANK[kind];
+          if (!best || r > best.r || (r === best.r && e.rbi > best.rbi)) {
+            best = { r, kind, code: e.code, rbi: e.rbi };
+          }
+        }
+        if (e.code === 'HR' && (!bestHr || e.rbi > bestHr.rbi)) bestHr = { rbi: e.rbi };
+      }
+      prev = e.score;
+    }
+    if (best) {
+      const KIND_WORD = { walkoff: 'サヨナラ', ahead: '勝ち越し', tie: '同点', first: '先制' };
+      return KIND_WORD[best.kind] + hitWord(best.code);
+    }
+    if (bestHr) return HR_RUN_WORD[Math.min(4, Math.max(1, bestHr.rbi))] || 'ホームラン';
+    return null;
+  }
+
   /** その試合が「名場面」に残るか */
   function highlightOf(p, ctx, perf) {
     const isPit = p.kind === 'pitcher';
@@ -283,10 +333,21 @@ const Growth = (() => {
       line = ip + '回 ' + s.h + '安打 ' + s.er + '失点 ' + s.so + '奪三振';
       if (s.sho) line += '（完封）';
       else if (s.cg) line += '（完投）';
+      if (ctx.win) line += '（勝利投手）';
     } else {
-      line = s.ab + '打数' + s.h + '安打' + (s.hr ? ' ' + s.hr + '本塁打' : '') +
-             (s.rbi ? ' ' + s.rbi + '打点' : '');
-      if (ctx.walkoff) line += '（サヨナラ）';
+      const keyHit = findKeyHit(p.id, ctx);
+      if (keyHit) {
+        line = keyHit;
+      } else if (s.hr) {
+        line = HR_RUN_WORD[Math.min(4, Math.max(1, s.rbi || 1))] || 'ホームラン';
+      } else if (s.rbi >= 1) {
+        line = s.h >= 3 ? s.h + '安打' + s.rbi + '打点の活躍' : s.rbi + '打点のタイムリー';
+      } else if (s.h >= 3) {
+        line = s.h + '安打の猛打賞';
+      } else {
+        /* 目立った一打が無かった試合。最後の手段として数字だけ残す */
+        line = s.ab + '打数' + s.h + '安打';
+      }
     }
     return { score: Math.round(score * 10) / 10, year: ctx.year, where, line, win: !!ctx.win };
   }

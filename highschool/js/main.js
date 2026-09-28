@@ -279,9 +279,15 @@ const Game = (() => {
       oppName: state.opponent.name,
       win,
       walkoff: res.walkoff && state.mySide === 'home',
+      log: res.log,
+      mySide: state.mySide,
     };
     const report = Growth.afterGame(state.team, ctx);
-    Growth.afterGame(state.opponent, Object.assign({}, ctx, { win: !win, oppName: state.team.name }));
+    Growth.afterGame(state.opponent, Object.assign({}, ctx, {
+      win: !win, oppName: state.team.name,
+      walkoff: res.walkoff && state.mySide === 'away',
+      mySide: state.mySide === 'away' ? 'home' : 'away',
+    }));
     Growth.commitStats(state.team);
     Growth.commitStats(state.opponent);
     Team.restPitchers(state.team);

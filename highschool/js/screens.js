@@ -662,10 +662,12 @@ const Screens = (() => {
         const p = f.player;
         const isPit = p.kind === 'pitcher';
         const abil = isPit
-          ? ['最速 ' + p.velo + 'km/h', '制球 ' + rankOf(p.control), 'スタミナ ' + rankOf(p.stamina),
+          ? ['最速 ' + p.velo + 'km/h', '制球 ' + rankOf(p.control) + ' ' + p.control,
+             'スタミナ ' + rankOf(p.stamina) + ' ' + p.stamina,
              p.pitches.map((q) => q.name + q.level).join('・')].join('　')
-          : ['ミート ' + rankOf(p.meet), 'パワー ' + rankOf(p.power), '走力 ' + rankOf(p.speed),
-             '肩 ' + rankOf(p.arm), '守備 ' + rankOf(p.field), '捕球 ' + rankOf(p.catch),
+          : ['ミート ' + rankOf(p.meet) + ' ' + p.meet, 'パワー ' + rankOf(p.power) + ' ' + p.power,
+             '走力 ' + rankOf(p.speed) + ' ' + p.speed, '肩 ' + rankOf(p.arm) + ' ' + p.arm,
+             '守備 ' + rankOf(p.field) + ' ' + p.field, '捕球 ' + rankOf(p.catch) + ' ' + p.catch,
              '弾道 ' + p.traj].join('　');
         const top = f.top.length
           ? '<ol class="hllist">' + f.top.map((h) =>
