@@ -394,14 +394,21 @@ const Sim = (() => {
         });
         ctl.off = off; ctl.def = def; ctl.inning = inning; ctl.half = half;
         yield;
-        const got = yield* playHalf(off, def, log, inning, half, tie, A, H, coldNow);
+        /* 表の途中でコールドの点差に達しても、まだ試合を終えない
+           （後攻が最後の攻撃をする前に、先攻の攻撃中に決まってしまうのは
+           おかしいため）。後攻がすでに勝っているときだけ、表の途中でも
+           打ち切ってよい（後攻はもう追いつく必要がないので） */
+        const stopHalf = () => coldNow() && (half === 'bottom' || H.runs > A.runs);
+        const got = yield* playHalf(off, def, log, inning, half, tie, A, H, stopHalf);
         off.byInning[inning - 1] = got;
 
         if (half === 'bottom' && inning >= CONFIG.GAME.INNINGS && H.runs > A.runs) {
           walkoff = true; over = true; break;
         }
-        /* コールドゲーム（決勝と全国大会では行わない） */
-        if (coldNow()) { cold = true; over = true; break; }
+        /* コールドゲーム（決勝と全国大会では行わない）。
+           表を終えた時点で先攻がリードしているだけなら、後攻に最後の
+           攻撃をさせてから、裏を終えたところであらためて判定する */
+        if (coldNow() && (half === 'bottom' || H.runs > A.runs)) { cold = true; over = true; break; }
         if (over) break;
       }
       if (over) break;
