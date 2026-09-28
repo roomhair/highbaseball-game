@@ -667,7 +667,7 @@ const Sim = (() => {
       pit.game.bf++;
 
       const before = outs;
-      const out = advance(res, bases, outs, bat, off, def, pit);
+      const out = advance(res, bases, outs, bat, off, def, pit, inning);
       outs = out.outs;
       bases = out.bases;
       got += out.runs;
@@ -722,13 +722,24 @@ const Sim = (() => {
 
   /* ---------- 走者を進める ---------- */
 
-  function advance(res, bases0, outs, bat, off, def, pit) {
+  function advance(res, bases0, outs, bat, off, def, pit, inning) {
     const bases = bases0.slice();
     const outsBefore = outs;
     let runs = 0, rbi = 0, desc = '';
     const scored = [];
 
-    const score = (r) => { if (r) { runs++; scored.push(r); } };
+    /* サヨナラの場面（後攻の最終回以降の攻撃）では、本塁打でないかぎり
+       勝ち越した瞬間に試合が終わる。その後ろの走者がなお還れる当たりでも、
+       そこから先の得点は無かったことにする（打者・残りの走者が
+       それ以上の塁へ進んだことにはしておいて構わないが、点だけは数えない） */
+    const walkoffCap = off.isHome && inning >= CONFIG.GAME.INNINGS && res.code !== 'HR';
+    let stopScoring = false;
+    const score = (r) => {
+      if (!r || stopScoring) return false;
+      runs++; scored.push(r);
+      if (walkoffCap && off.runs + runs > def.runs) stopScoring = true;
+      return true;
+    };
     const sp = (r) => (r ? r.speed / 100 : 0.4);
 
     switch (res.code) {
@@ -739,7 +750,7 @@ const Sim = (() => {
         /* 押し出しになる形だけ進める */
         if (bases[0]) {
           if (bases[1]) {
-            if (bases[2]) { score(bases[2]); rbi++; }
+            if (bases[2]) { if (score(bases[2])) rbi++; }
             bases[2] = bases[1];
           }
           bases[1] = bases[0];
@@ -754,13 +765,14 @@ const Sim = (() => {
         const inf = !!res.infieldHit;
         /* 三塁走者。内野安打でも多くは還れるが、前進守備に突き刺されば止まる */
         if (bases[2] && (!inf || RNG.chance(0.72 + sp(bases[2]) * 0.18))) {
-          score(bases[2]); rbi++; bases[2] = null;
+          if (score(bases[2])) rbi++;
+          bases[2] = null;
         }
         /* 二塁走者。外野へ抜けた当たりなら還れるが、
            内野安打なら三塁で止まるのがふつう */
         if (bases[1]) {
           const q = inf ? 0.03 + sp(bases[1]) * 0.07 : 0.50 + sp(bases[1]) * 0.35;
-          if (RNG.chance(q)) { score(bases[1]); rbi++; bases[1] = null; }
+          if (RNG.chance(q)) { if (score(bases[1])) rbi++; bases[1] = null; }
           else if (!bases[2]) { bases[2] = bases[1]; bases[1] = null; }
         }
         /* 一塁走者。内野安打から三塁まで行けることはまずない */
@@ -774,10 +786,10 @@ const Sim = (() => {
       }
 
       case '2B': {
-        if (bases[2]) { score(bases[2]); rbi++; bases[2] = null; }
-        if (bases[1]) { score(bases[1]); rbi++; bases[1] = null; }
+        if (bases[2]) { if (score(bases[2])) rbi++; bases[2] = null; }
+        if (bases[1]) { if (score(bases[1])) rbi++; bases[1] = null; }
         if (bases[0]) {
-          if (RNG.chance(0.35 + sp(bases[0]) * 0.35)) { score(bases[0]); rbi++; }
+          if (RNG.chance(0.35 + sp(bases[0]) * 0.35)) { if (score(bases[0])) rbi++; }
           else bases[2] = bases[0];
           bases[0] = null;
         }
@@ -786,14 +798,14 @@ const Sim = (() => {
       }
 
       case '3B': {
-        for (let i = 2; i >= 0; i--) if (bases[i]) { score(bases[i]); rbi++; bases[i] = null; }
+        for (let i = 2; i >= 0; i--) if (bases[i]) { if (score(bases[i])) rbi++; bases[i] = null; }
         bases[2] = bat;
         break;
       }
 
       case 'HR': {
-        for (let i = 2; i >= 0; i--) if (bases[i]) { score(bases[i]); rbi++; bases[i] = null; }
-        score(bat); rbi++;
+        for (let i = 2; i >= 0; i--) if (bases[i]) { if (score(bases[i])) rbi++; bases[i] = null; }
+        if (score(bat)) rbi++;
         break;
       }
 
@@ -817,7 +829,7 @@ const Sim = (() => {
 
       case 'SQ': {          /* スクイズ成功 */
         outs++;
-        if (bases[2]) { score(bases[2]); rbi++; bases[2] = null; }
+        if (bases[2]) { if (score(bases[2])) rbi++; bases[2] = null; }
         if (outs < 3) {
           if (bases[1] && !bases[2]) { bases[2] = bases[1]; bases[1] = null; }
           if (bases[0] && !bases[1]) { bases[1] = bases[0]; bases[0] = null; }
@@ -859,7 +871,7 @@ const Sim = (() => {
               bases[0] = null;
               if (outs < 3) {
                 /* 併殺の間に三塁走者が還る。三つめのアウトにならなければ点は入る */
-                if (bases[2] && RNG.chance(0.80)) { score(bases[2]); rbi++; bases[2] = null; }
+                if (bases[2] && RNG.chance(0.80)) { if (score(bases[2])) rbi++; bases[2] = null; }
                 if (bases[1] && !bases[2]) { bases[2] = bases[1]; bases[1] = null; }
               }
               res.text = posShort(res.spot) + '併';
@@ -871,7 +883,8 @@ const Sim = (() => {
             /* 三塁走者は、内野ゴロの間に還ることがある。
                足があるほど、また前進守備でなければ還りやすい */
             if (bases[2] && RNG.chance(C(0.46 + (bases[2].speed - 45) * 0.003, 0.28, 0.66))) {
-              score(bases[2]); rbi++; bases[2] = null;
+              if (score(bases[2])) rbi++;
+              bases[2] = null;
             }
             if (bases[1] && !bases[2] && RNG.chance(0.45)) { bases[2] = bases[1]; bases[1] = null; }
             if (bases[0] && !bases[1]) { bases[1] = bases[0]; bases[0] = null; }
@@ -881,7 +894,8 @@ const Sim = (() => {
           const deep = res.isOF;
           if (bases[2] && outs < 2 && deep && RNG.chance(0.55)) {
             outs++;
-            score(bases[2]); rbi++; bases[2] = null;
+            if (score(bases[2])) rbi++;
+            bases[2] = null;
             res.text = '犠飛';
             res.sf = true;
             break;
