@@ -617,7 +617,14 @@ const Sim = (() => {
             bases[0] = null; outs++;
             log.push(snap('steal', { text: runner.name + ' 盗塁失敗', ok: false }, off, def, inning, half, outs, bases, A, H, bat, pit));
             showBases(); yield;
-            if (outs >= 3) break;
+            if (outs >= 3) {
+              /* 盗塁死で3アウト目になると、いまの打者はまだ打席を
+                 終えていない。打順を進めてしまったままだと、次にこの
+                 チームが攻撃するとき、この打者が丸ごと飛ばされてしまう
+                 ので、次はこの打者からになるよう打順を戻しておく */
+              off.order = slotIndex;
+              break;
+            }
           }
         }
       }
