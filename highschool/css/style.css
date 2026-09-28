@@ -135,7 +135,6 @@ table, .stat__num, .result-score, .scoreboard { font-variant-numeric: tabular-nu
   color: var(--ink-mute); text-decoration: none; font-size: 12px;
   letter-spacing: .08em; white-space: nowrap;
 }
-.appbar__home:hover { color: var(--ink); }
 .appbar__title {
   flex: 1; text-align: left; margin-left: 4px;
   border: 0; background: none; color: inherit; cursor: pointer;
@@ -146,7 +145,6 @@ table, .stat__num, .result-score, .scoreboard { font-variant-numeric: tabular-nu
   border: 1px solid var(--line); background: transparent;
   color: var(--ink-mute); border-radius: 3px; cursor: pointer; font-size: 14px;
 }
-.appbar__icon:hover { color: var(--ink); border-color: var(--ink-mute); }
 
 /* 設定は歯車だけだと何のボタンか分かりづらいので、言葉も一緒に出す */
 .appbar__btn {
@@ -157,7 +155,6 @@ table, .stat__num, .result-score, .scoreboard { font-variant-numeric: tabular-nu
   font: inherit; font-size: 14px; line-height: 1;
 }
 .appbar__btn span { font-size: 12px; letter-spacing: .08em; }
-.appbar__btn:hover { color: var(--ink); border-color: var(--ink-mute); }
 
 /* ===== 画面 ===== */
 #app { min-height: 50vh; }
@@ -215,10 +212,8 @@ table, .stat__num, .result-score, .scoreboard { font-variant-numeric: tabular-nu
      タップが取りこぼされることがあるので、ここでは単発タップだけを見る */
   touch-action: manipulation;
 }
-.btn:hover:not(:disabled) { background: var(--bg-2); }
 .btn:disabled { opacity: .38; cursor: not-allowed; }
 .btn--primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.btn--primary:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); }
 .btn--wide { flex-basis: 100%; }
 .btn--danger { border-color: var(--ng); color: var(--ng); }
 .btn--small { min-height: 32px; padding: 4px 12px; font-size: 13px; }
@@ -252,7 +247,6 @@ td.nm, th.nm { text-align: left; min-width: 5.6em; }
 }
 td.hl { font-weight: 700; }
 .roster tbody tr, .box tbody tr, .lineup tbody tr { cursor: pointer; }
-.roster tbody tr:hover, .box tbody tr:hover, .lineup tbody tr:hover { background: var(--bg-2); }
 .ord { color: var(--ink-faint); font-size: 11px; }
 .hand { font-size: 10.5px; color: var(--ink-mute); }
 /* 変化球の欄。行の高さが揃うように1行に収め、はみ出すぶんは
@@ -324,7 +318,6 @@ td.hl { font-weight: 700; }
   border: 1px solid var(--line); border-radius: 4px; background: transparent;
   padding: 5px 8px; cursor: pointer; font: inherit; color: inherit;
 }
-.spick__item:hover { border-color: var(--ink-mute); background: var(--bg-2); }
 .spick__item.is-on { border-color: var(--accent); border-width: 1.5px; background: var(--bg-2); }
 .spick__nm { font-size: 12.5px; font-weight: 700; }
 .spick__item.is-on .spick__nm::after {
@@ -519,7 +512,6 @@ td.role { font-size: 11px; color: var(--ink-mute); }
   padding: 3px 8px; cursor: pointer;
   touch-action: manipulation;
 }
-.speedbtn:hover { color: var(--ink); border-color: var(--ink-mute); }
 .speedbtn.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .taphint {
   margin: -6px 0 10px; text-align: center; font-size: 11.5px; letter-spacing: .1em;
@@ -709,7 +701,6 @@ td.role { font-size: 11px; color: var(--ink-mute); }
   font: inherit; font-size: 11.5px; letter-spacing: 0; cursor: pointer;
 }
 @media (max-width: 399px) { .skip { padding: 3px 7px; } .speedbtn { padding: 3px 6px; } }
-.skip:hover { color: var(--ink); border-color: var(--ink-mute); }
 .skip[hidden] { display: none; }
 
 /* タイムは速さの並びの左はし。行を1つ増やさないための置き場所。
@@ -720,7 +711,6 @@ td.role { font-size: 11px; color: var(--ink-mute); }
   font-size: 11.5px; letter-spacing: .06em;
   border-color: var(--accent); color: var(--accent); font-weight: 700;
 }
-.btn--time:hover { background: var(--accent); color: var(--bg); }
 .btn--time[hidden] { display: none; }
 
 /* タイムのふきだし */
@@ -767,7 +757,6 @@ td.role { font-size: 11px; color: var(--ink-mute); }
   color: var(--ink-mute); font: inherit; font-size: 14px; font-weight: 700; letter-spacing: .1em;
   padding: 8px 0; cursor: pointer;
 }
-.lutab:hover { color: var(--ink); border-color: var(--ink-mute); }
 .lutab.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .lulist { list-style: none; margin: 0 0 4px; padding: 0; }
 .lurow {
@@ -930,7 +919,6 @@ td.role { font-size: 11px; color: var(--ink-mute); }
   border: 1px solid var(--line); border-radius: 999px; background: transparent;
   color: var(--ink-mute); font: inherit; font-size: 11.5px; padding: 2px 10px; cursor: pointer;
 }
-.sortbtn:hover { color: var(--ink); border-color: var(--ink-mute); }
 .sortbtn.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
 
 /* ===== 引き抜き・オフシーズン ===== */
@@ -945,7 +933,6 @@ tr.prow.is-picked .nmlink { color: inherit; }
   border: 1px solid var(--line); border-radius: 3px; background: var(--panel);
   color: inherit; font: inherit; cursor: pointer;
 }
-.swapitem:hover { background: var(--bg-2); }
 .swapitem b { font-size: 14px; }
 .swapitem span { font-size: 11.5px; color: var(--ink-mute); }
 
@@ -1102,5 +1089,27 @@ tr.prow.is-picked .nmlink { color: inherit; }
 .site-footer { border-top: 1px solid var(--line); padding: 18px 16px 40px; text-align: center; }
 .footer-nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px; }
 .footer-nav a { font-size: 12px; color: var(--ink-mute); text-decoration: none; }
-.footer-nav a:hover { color: var(--ink); text-decoration: underline; }
 .footer-note { margin: 10px 0 0; font-size: 11px; color: var(--ink-faint); }
+
+/* ===== ホバー（マウスのある端末だけ） =====
+   :hover をタッチ端末にもそのまま効かせると、押したところの見た目が
+   触れ続けたまま戻らないことがある（スマホでタップした行や名前が、
+   別の場所を押すまでグレーがかって見えるなど）。hover:hover は
+   本物のポインタ操作ができる端末だけに一致するので、ここにまとめて
+   スマホ・タブレットでは効かないようにしてある。 */
+@media (hover: hover) {
+  .appbar__home:hover { color: var(--ink); }
+  .appbar__icon:hover { color: var(--ink); border-color: var(--ink-mute); }
+  .appbar__btn:hover { color: var(--ink); border-color: var(--ink-mute); }
+  .btn:hover:not(:disabled) { background: var(--bg-2); }
+  .btn--primary:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); }
+  .roster tbody tr:hover, .box tbody tr:hover, .lineup tbody tr:hover { background: var(--bg-2); }
+  .spick__item:hover { border-color: var(--ink-mute); background: var(--bg-2); }
+  .speedbtn:hover { color: var(--ink); border-color: var(--ink-mute); }
+  .skip:hover { color: var(--ink); border-color: var(--ink-mute); }
+  .btn--time:hover { background: var(--accent); color: var(--bg); }
+  .lutab:hover { color: var(--ink); border-color: var(--ink-mute); }
+  .sortbtn:hover { color: var(--ink); border-color: var(--ink-mute); }
+  .swapitem:hover { background: var(--bg-2); }
+  .footer-nav a:hover { color: var(--ink); text-decoration: underline; }
+}
