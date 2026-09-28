@@ -217,9 +217,18 @@ const Sim = (() => {
       /* 長打の方向は外野で言う */
       const ofKey = bat.bats === 'L' ? mirror(OF_BY_ZONE[zone]) : OF_BY_ZONE[zone];
       const mark = kind === '1B' ? '安' : (kind === '2B' ? '二' : '三');
-      const where = kind === '1B' ? spot : ofKey;
-      /* 内野を抜けていない当たりかどうか。走者の進み方が変わる */
-      const infieldHit = kind === '1B' && INF_POS.indexOf(where) >= 0;
+      let where = kind === '1B' ? spot : ofKey;
+      let infieldHit = kind === '1B' && INF_POS.indexOf(where) >= 0;
+      /* ゴロの単打は、多くが内野を抜けて外野前まで届いてヒットになる。
+         内野に止まったまま生きる「内野安打」は、足の速い打者ほど
+         多いというだけの、もっと少ない現象にしてある
+         （守備の巧拙が悪いチームには従来どおりよく抜けるが、
+         全国レベルの強豪同士でもポジション名+安打ばかりに
+         見えていたのを直す） */
+      if (infieldHit) {
+        const pStayInfield = C(0.10 + sp * 0.22, 0.06, 0.34);
+        if (!RNG.chance(pStayInfield)) { where = ofKey; infieldHit = false; }
+      }
       return { code: kind, text: posShort(where) + mark, out: 0, spot: where, infieldHit };
     }
 
