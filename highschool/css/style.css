@@ -760,6 +760,10 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .result-score.is-win { border-left-color: var(--accent); }
 .result-score.is-lose { border-left-color: var(--ng); }
 
+/* 引き抜きの成功・失敗を、文言だけでなく色でもひと目でわかるようにする */
+#poach-title.is-win { color: var(--accent); }
+#poach-title.is-lose { color: var(--ng); }
+
 .awakebox { margin: 14px 0; padding: 10px 14px; border: 1.5px solid var(--crimson); border-radius: 4px; }
 .awakebox__title { margin: 0 0 4px; font-size: 12px; letter-spacing: .2em; color: var(--crimson); }
 .awakebox__line { margin: 2px 0; font-size: 13.5px; }

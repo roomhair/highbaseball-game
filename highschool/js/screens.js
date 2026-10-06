@@ -543,6 +543,7 @@ const Screens = (() => {
   function poachWin(state, onTake, onSkip) {
     let picked = null;
     UI.el('poach-title').textContent = '引き抜き';
+    UI.el('poach-title').classList.remove('is-win', 'is-lose');
     UI.el('poach-lead').textContent =
       esc(state.opponent.name) + 'から1人、自校に引き抜けます。選手を選んでから下のボタンを押してください。' +
       '引き抜くと、同じ区分（野手／投手）の部員を1人放出します。';
@@ -582,8 +583,12 @@ const Screens = (() => {
   /** 引き抜いた選手と入れ替えに出す部員を選ぶ */
   function poachRelease(state, incoming, onRelease, onCancel) {
     let picked = null;
-    UI.el('poach-title').textContent = esc(incoming.name) + ' を迎える';
-    UI.el('poach-lead').textContent = '放出する' + (incoming.kind === 'pitcher' ? '投手' : '野手') + 'を1人選んでください。';
+    UI.el('poach-title').textContent = '引き抜き成功！';
+    UI.el('poach-title').classList.remove('is-lose');
+    UI.el('poach-title').classList.add('is-win');
+    UI.el('poach-lead').textContent =
+      esc(incoming.name) + 'の引き抜きに成功した。迎える代わりに、放出する' +
+      (incoming.kind === 'pitcher' ? '投手' : '野手') + 'を1人選んでください。';
     const own = incoming.kind === 'pitcher' ? state.team.pitchers : state.team.batters;
     UI.html('poach-body',
       '<div class="incoming">' + UI.playerDetail(incoming, { rename: false }) + '</div>' +
@@ -619,6 +624,8 @@ const Screens = (() => {
   /** 引き抜きに失敗したとき。相手に引き止められ、何も変わらずに次へ進む */
   function poachFailed(state, incoming, onNext) {
     UI.el('poach-title').textContent = '引き抜き失敗';
+    UI.el('poach-title').classList.remove('is-win');
+    UI.el('poach-title').classList.add('is-lose');
     UI.el('poach-lead').textContent =
       esc(incoming.name) + 'の引き抜きを試みたが、' + esc(state.opponent.name) + 'に引き止められてしまった。';
     UI.html('poach-body', '<div class="incoming">' + UI.playerDetail(incoming, { rename: false }) + '</div>');
