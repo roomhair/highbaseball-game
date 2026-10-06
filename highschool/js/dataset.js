@@ -48,29 +48,29 @@ const Dataset = (() => {
     return players;
   }
 
-  /** 新入生（1年生だけ）のセット */
-  function freshmanSet(kind, n) {
+  /** 新入生（1年生だけ）のセット。prestigeBonus は学校の格による下駄 */
+  function freshmanSet(kind, n, prestigeBonus) {
     const players = [];
     if (kind === 'batter') {
       /* 守る場所がばらけるように配る。DHは持ち場にしない（役割は毎回選ぶ） */
       const pool = RNG.shuffle(FIELD_POSITIONS.slice());
       for (let i = 0; i < n; i++) {
-        players.push(Player.newBatter({ grade: 1, pos: pool[i % pool.length] }));
+        players.push(Player.newBatter({ grade: 1, pos: pool[i % pool.length], prestigeBonus }));
       }
     } else {
-      for (let i = 0; i < n; i++) players.push(Player.newPitcher({ grade: 1 }));
+      for (let i = 0; i < n; i++) players.push(Player.newPitcher({ grade: 1, prestigeBonus }));
     }
     players.sort((a, b) => Player.rating(b) - Player.rating(a));
     return players;
   }
 
   /** 指定された数だけ用意する */
-  function make(kind, count, n) {
+  function make(kind, count, n, prestigeBonus) {
     const sets = [];
     for (let i = 0; i < (count || 5); i++) {
       sets.push(n == null
         ? (kind === 'batter' ? batterSet() : pitcherSet())
-        : freshmanSet(kind, n));
+        : freshmanSet(kind, n, prestigeBonus));
     }
     return sets;
   }

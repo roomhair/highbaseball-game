@@ -42,6 +42,8 @@ const Game = (() => {
       trainLimits: null,
       /* 秋の地区大会で2位以内に入ったか（センバツ相当に出られるか） */
       springQualified: false,
+      /* 学校の「格」の内部スコア（ユーザーには見せない。効果は新入生の強さだけ） */
+      prestigeScore: 0,
       sets: null,          // いま選ばせているデータセット
       need: null,          // 新入生の必要人数
       usedSchools: [],     // 使った高校名（同じ名前を出さないため）
@@ -56,6 +58,13 @@ const Game = (() => {
   /* チームが出来る前は保存しない。設定だけ触って戻ったときに
      「続きから」が出てしまうため */
   function save() { if (state && state.team) Storage.save(state); }
+
+  /** 学校の格の内部スコアを動かす（勝敗・大会出場・プロ入りなどで呼ぶ）。
+      ユーザーには見せない。範囲を超えないようにだけクランプする */
+  function addPrestige(delta) {
+    const R = CONFIG.SCHOOL_RANK;
+    state.prestigeScore = RNG.clamp((state.prestigeScore || 0) + delta, R.MIN, R.MAX);
+  }
   /* 画面の中で決まるもの（キャプテンなど）も保存できるようにしておく */
   Screens.setOnChange(save);
 
@@ -249,6 +258,11 @@ const Game = (() => {
     }
     state.tour = Tournament.create(kind, from, j, used);
     Growth.resetTour(state.team);
+    /* 大きな大会に出場したこと自体で、学校の格が少し上がる */
+    const R = CONFIG.SCHOOL_RANK;
+    if (kind === 'national') addPrestige(R.NATIONAL_BONUS);
+    else if (kind === 'fallJingu') addPrestige(R.JINGU_BONUS);
+    else if (kind === 'spring') addPrestige(R.SPRING_BONUS);
     state.phase = 'opening';
     save();
     /* 先に開幕画面を描いてから幕を下ろす。幕が開いたときに
@@ -348,6 +362,7 @@ const Game = (() => {
     const op = state.mySide === 'away' ? res.home : res.away;
     const win = my.runs > op.runs;
     const round = Tournament.currentRound(state.tour);
+    addPrestige(win ? CONFIG.SCHOOL_RANK.WIN : CONFIG.SCHOOL_RANK.LOSE);
 
     const ctx = {
       year: state.year,
@@ -608,6 +623,10 @@ const Game = (() => {
     Team.healPitchers(state.team);
     const retired = Offseason.retiring(state.team).map(Offseason.farewell);
     state.retiredCount = retired.length;
+    /* プロ入りした卒業生の分だけ、学校の格が上がる */
+    retired.forEach((f) => {
+      if (f.draft) addPrestige(CONFIG.SCHOOL_RANK.DRAFT_BONUS[f.draft.round] || 0);
+    });
     save();
     Screens.offseason(state, retired);
   }
@@ -625,7 +644,7 @@ const Game = (() => {
     if (!state.need.bat) { state.phase = 'new-pit'; newcomerPitchers(); return; }
     state.phase = 'new-bat';
     state.sets = state.sets && state.sets.kind === 'nbat'
-      ? state.sets : { kind: 'nbat', list: Dataset.make('batter', CONFIG.NEWCOMER_SETS, state.need.bat) };
+      ? state.sets : { kind: 'nbat', list: Dataset.make('batter', CONFIG.NEWCOMER_SETS, state.need.bat, schoolRankNewcomerBonus(state.prestigeScore)) };
     save();
     Screens.pick({
       title: '新入生（野手）',
@@ -644,7 +663,7 @@ const Game = (() => {
   function newcomerPitchers() {
     if (!state.need.pit) { afterNewcomers(); return; }
     state.sets = state.sets && state.sets.kind === 'npit'
-      ? state.sets : { kind: 'npit', list: Dataset.make('pitcher', CONFIG.NEWCOMER_SETS, state.need.pit) };
+      ? state.sets : { kind: 'npit', list: Dataset.make('pitcher', CONFIG.NEWCOMER_SETS, state.need.pit, schoolRankNewcomerBonus(state.prestigeScore)) };
     save();
     Screens.pick({
       title: '新入生（投手）',
@@ -681,6 +700,7 @@ const Game = (() => {
     if (state.settings.jinguName == null) state.settings.jinguName = CONFIG.DEFAULTS.jinguName;
     if (state.trainingNext == null) state.trainingNext = 'local';
     if (state.springQualified == null) state.springQualified = false;
+    if (state.prestigeScore == null) state.prestigeScore = 0;
     if (state.training && state.training.pickLimit == null) {
       state.training.pickLimit = CONFIG.TRAINING.PICKS;
       state.training.passLimit = CONFIG.TRAINING.PASSES;

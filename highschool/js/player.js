@@ -214,11 +214,12 @@ const Player = (() => {
 
   /* ---------- 選手を作る ---------- */
 
-  function baseOf(grade, level) {
+  function baseOf(grade, level, prestigeBonus) {
     /* level を指定しなければ学年どおり（自軍の部員）。
-       指定があれば、その強さに学年ぶんの差を足す（相手校） */
-    if (level == null) return GRADE_BASE[grade] || 30;
-    return level + (GRADE_TILT[grade] || 0);
+       指定があれば、その強さに学年ぶんの差を足す（相手校）。
+       prestigeBonus は学校の格による新入生の下駄（自軍の新入生だけ） */
+    const base = level == null ? (GRADE_BASE[grade] || 30) : level + (GRADE_TILT[grade] || 0);
+    return base + (prestigeBonus || 0);
   }
 
   function newBatter(opt) {
@@ -226,7 +227,7 @@ const Player = (() => {
     const grade = opt.grade || 1;
     const pos = opt.pos || RNG.pick(FIELD_POSITIONS);
     const talent = opt.talent != null ? opt.talent : rollTalent();
-    const base = baseOf(grade, opt.level);
+    const base = baseOf(grade, opt.level, opt.prestigeBonus);
     const hd = hands(false, RIGHT_ONLY.indexOf(pos) >= 0);
 
     /* 守る場所によって、伸びる方向が少し違う。
@@ -281,7 +282,7 @@ const Player = (() => {
     opt = opt || {};
     const grade = opt.grade || 1;
     const talent = opt.talent != null ? opt.talent : rollTalent();
-    const base = baseOf(grade, opt.level);
+    const base = baseOf(grade, opt.level, opt.prestigeBonus);
     const hd = hands(true);
     /* 相手校は大会の強さに合わせて作る。球速と変化球にもそのぶんを効かせないと、
        強いはずの相手が「制球だけ良い遅い投手」になってしまう */
@@ -296,9 +297,11 @@ const Player = (() => {
       /* 球速はひとつながりの分布から引く。「何割が150km/h」のような
          決め打ちはしていない。中心は学年とチームの強さで動き、
          そこに才能とその日ごとのばらつきが乗るだけ。
-         結果として148km/hも149km/hも、それぞれの確率で出てくる。 */
+         結果として148km/hも149km/hも、それぞれの確率で出てくる。
+         prestigeBonus（学校の格）も、同じ考え方で少しだけ乗せる */
       velo: Math.round(RNG.clamp(
-        123 + (GRADE_VELO[grade] || 0) + talent * 2.5 + levelShift * 0.26 + RNG.norm(0, 7.5), 100, 166)),
+        123 + (GRADE_VELO[grade] || 0) + talent * 2.5 + levelShift * 0.26 +
+        (opt.prestigeBonus || 0) * 0.3 + RNG.norm(0, 7.5), 100, 166)),
       control: makeStat(base, talent, 0),
       stamina: makeStat(base, talent, 0),
       pitches: rollPitches(talent, grade, levelShift / 12),

@@ -183,7 +183,44 @@ const CONFIG = {
     /* コールドゲーム。高校野球の一般的な規定に合わせてある */
     COLD: [{ inning: 5, diff: 10 }, { inning: 7, diff: 7 }],
   },
+
+  /* 学校の「格」（内部だけで使う。ユーザーには「弱小」「名門」のような
+     言葉を一切出さない。見える効果は新入生の強さだけ）。
+     ・勝てば上がり、負ければ下がる。1試合ぶんの増減は小さく、
+       段階（弱小→中堅→強豪→名門）が動くのは、それが何年も積み重なった
+       ときだけにしてある（1回勝ったくらいでは段階は変わらない）。
+     ・夏の全国大会・神宮大会相当・選抜相当に出場すると、そのたびに
+       まとまった分だけ上がる（出場した大会が大きいほど幅も大きい）。
+     ・卒業生がプロ入りすると、指名順位に応じて上がる（1位が最も大きい）。
+     ・段階が上がるほど、新入生の素質に乗る下駄（prestigeBonus）が
+       大きくなる（player.js の baseOf で底上げに使う）。 */
+  SCHOOL_RANK: {
+    /* これ以上でその段階（最初の弱小は下限なし） */
+    THRESHOLDS: [15, 40, 80],
+    NEWCOMER_BONUS: [0, 5, 11, 18],   // 弱小・中堅・強豪・名門の順
+    WIN: 1.2,
+    LOSE: -0.8,
+    NATIONAL_BONUS: 8,     // 夏の全国大会に出場
+    JINGU_BONUS: 4,        // 神宮大会相当に出場
+    SPRING_BONUS: 5,       // 選抜相当に出場
+    /* ドラフト順位（1〜6位、6は育成）に応じたボーナス */
+    DRAFT_BONUS: [0, 9, 7, 5.5, 4, 3, 1.5],
+    MIN: -20,
+    MAX: 160,
+  },
 };
+
+/** 学校の格スコアから、段階の番号（0:弱小 〜 3:名門）を求める */
+function schoolRankTier(score) {
+  const T = CONFIG.SCHOOL_RANK.THRESHOLDS;
+  for (let i = T.length - 1; i >= 0; i--) if (score >= T[i]) return i + 1;
+  return 0;
+}
+
+/** 新入生の素質に乗る下駄。段階が上がるほど大きくなる */
+function schoolRankNewcomerBonus(score) {
+  return CONFIG.SCHOOL_RANK.NEWCOMER_BONUS[schoolRankTier(score)] || 0;
+}
 
 /* ===== 能力の評価（S〜G） =====
    S90〜100、A80〜89、B70〜79、C60〜69、D50〜59、E40〜49、F15〜39、G1〜14 */
