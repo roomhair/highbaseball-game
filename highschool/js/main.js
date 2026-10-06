@@ -44,6 +44,10 @@ const Game = (() => {
       springQualified: false,
       /* 学校の「格」の内部スコア（ユーザーには見せない。効果は新入生の強さだけ） */
       prestigeScore: 0,
+      /* 夏の地方大会1回戦で負けた連続回数。2になると野球部が解散する */
+      firstRoundLosses: 0,
+      mode: 'baseball',    // 'baseball' か 'soccer'
+      soccer: null,
       sets: null,          // いま選ばせているデータセット
       need: null,          // 新入生の必要人数
       usedSchools: [],     // 使った高校名（同じ名前を出さないため）
@@ -56,8 +60,8 @@ const Game = (() => {
   }
 
   /* チームが出来る前は保存しない。設定だけ触って戻ったときに
-     「続きから」が出てしまうため */
-  function save() { if (state && state.team) Storage.save(state); }
+     「続きから」が出てしまうため（サッカー部のときは team が無いので別に見る） */
+  function save() { if (state && (state.team || state.mode === 'soccer')) Storage.save(state); }
 
   /** 学校の格の内部スコアを動かす（勝敗・大会出場・プロ入りなどで呼ぶ）。
       ユーザーには見せない。範囲を超えないようにだけクランプする */
@@ -536,6 +540,7 @@ const Game = (() => {
     const kind = state.tour.kind;
     if (won && kind === 'local') {
       state.localFinalLevel = state.tour.finalLevel;
+      state.firstRoundLosses = 0;   // 1回戦で負けていないので、連敗は途切れる
       state.history.push({ year: state.year, tour: 'local', result: '優勝' });
       /* 地方大会と全国大会のあいだは日が空くので、投手の疲れは抜ける */
       Team.healPitchers(state.team);
@@ -620,7 +625,85 @@ const Game = (() => {
     }
     if (kind === 'fallJingu') { toPostFallTraining(); return; }
     if (kind === 'spring') { toPostSpringTraining(); return; }
+
+    /* 夏の地方大会1回戦で負けると、野球部存続の危機が1年ぶん進む。
+       2年連続で1回戦敗退すると、野球部は解散してサッカー部になる */
+    if (kind === 'local') {
+      state.firstRoundLosses = round === '1回戦' ? (state.firstRoundLosses || 0) + 1 : 0;
+      if (state.firstRoundLosses >= 2) { toSoccerConversion(); return; }
+    }
     toOffseason();
+  }
+
+  /* ---------- サッカー部（野球部解散後の第二の物語） ---------- */
+
+  function toSoccerConversion() {
+    const team = state.team;
+    state.mode = 'soccer';
+    state.soccer = Soccer.start(team);
+    state.team = null;
+    state.firstRoundLosses = 0;
+    state.phase = 'soccer-start';
+    save();
+    Screens.soccerStart(state);
+  }
+
+  function soccerStartTournament() {
+    state.soccer.tour = Soccer.createTournament(Soccer.strength(state.soccer));
+    state.phase = 'soccer-pregame';
+    save();
+    Screens.soccerPregame(state);
+  }
+
+  function soccerPlay() {
+    const res = Soccer.playUser(state.soccer);
+    state.lastSoccerRes = res;
+    state.phase = 'soccer-result';
+    save();
+    Screens.soccerResult(state, res);
+  }
+
+  function soccerAfterResult() {
+    const res = state.lastSoccerRes;
+    if (res.win) {
+      const done = Soccer.advance(state.soccer);
+      if (done) {
+        state.soccer.titles++;
+        state.soccer.everChampion = true;
+        toSoccerOffseason(true);
+        return;
+      }
+      state.phase = 'soccer-pregame';
+      save();
+      Screens.soccerPregame(state);
+    } else {
+      toSoccerOffseason(false);
+    }
+  }
+
+  function toSoccerOffseason(champion) {
+    state.soccer.seasons++;
+    state.soccer.lastChampion = !!champion;
+    Soccer.endRetirement(state.soccer);
+    Soccer.fillRecruits(state.soccer);
+    state.phase = 'soccer-offseason';
+    save();
+    Screens.soccerOffseason(state, Soccer.canRevive(state.soccer));
+  }
+
+  function soccerContinue() {
+    state.year++;
+    soccerStartTournament();
+  }
+
+  function reviveBaseball() {
+    if (!Soccer.canRevive(state.soccer)) return;
+    state.mode = 'baseball';
+    state.soccer = null;
+    state.year++;
+    state.team = null;
+    state.sets = null;
+    pickBatters();
   }
 
   /* ---------- オフシーズン ---------- */
@@ -710,6 +793,8 @@ const Game = (() => {
     if (state.trainingNext == null) state.trainingNext = 'local';
     if (state.springQualified == null) state.springQualified = false;
     if (state.prestigeScore == null) state.prestigeScore = 0;
+    if (state.firstRoundLosses == null) state.firstRoundLosses = 0;
+    if (state.mode == null) state.mode = 'baseball';
     if (state.training && state.training.pickLimit == null) {
       state.training.pickLimit = CONFIG.TRAINING.PICKS;
       state.training.passLimit = CONFIG.TRAINING.PASSES;
@@ -738,6 +823,13 @@ const Game = (() => {
       case 'new-bat': newcomerBatters(); break;
       case 'new-pit': newcomerPitchers(); break;
       case 'train-intro': Screens.trainingIntro(state); break;
+      case 'soccer-start': Screens.soccerStart(state); break;
+      case 'soccer-pregame': Screens.soccerPregame(state); break;
+      /* サッカーの試合の中身は保存していないので、結果画面には戻れない。
+         次の試合の前まで戻す */
+      case 'soccer-result': Screens.soccerPregame(state); break;
+      case 'soccer-offseason':
+        Screens.soccerOffseason(state, Soccer.canRevive(state.soccer)); break;
       default: UI.show('screen-top');
     }
   }
@@ -881,6 +973,18 @@ const Game = (() => {
       if (state && state.phase === 'train-intro') startTraining();
     });
     on('btn-off-next', toNewcomers);
+
+    on('btn-soccer-primary', () => {
+      switch (state.phase) {
+        case 'soccer-start': soccerStartTournament(); break;
+        case 'soccer-pregame': soccerPlay(); break;
+        case 'soccer-result': soccerAfterResult(); break;
+        case 'soccer-offseason': soccerContinue(); break;
+      }
+    });
+    on('btn-soccer-secondary', () => {
+      if (state.phase === 'soccer-offseason') reviveBaseball();
+    });
 
     if (typeof ADS !== 'undefined') ADS.init();
   }

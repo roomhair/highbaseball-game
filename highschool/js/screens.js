@@ -778,10 +778,88 @@ const Screens = (() => {
     UI.show('screen-settings');
   }
 
+  /* ---------- サッカー部（野球部解散後の第二の物語） ---------- */
+
+  function soccerLineupTable(S) {
+    const order = { GK: 0, DF: 1, MF: 2, FW: 3 };
+    const rows = S.lineup.slice().sort((a, b) => order[a.pos] - order[b.pos]).map((x) => {
+      const p = Soccer.findP(S, x.pid);
+      if (!p) return '';
+      return '<tr><td class="c">' + esc(x.pos) + '</td><td class="nm">' + esc(p.name) +
+        '</td><td class="c">' + p.grade + '</td><td class="c">' + Soccer.rating(p) + '</td></tr>';
+    }).join('');
+    return '<div class="tablewrap"><table class="growth"><thead><tr><th>位置</th><th class="nm">選手</th><th>年</th><th>評価</th></tr></thead><tbody>' +
+      rows + '</tbody></table></div>';
+  }
+
+  function soccerStart(state) {
+    const S = state.soccer;
+    UI.el('soccer-eyebrow').textContent = state.year + '年目';
+    UI.el('soccer-title').textContent = '野球部、解散';
+    UI.html('soccer-body',
+      '<p class="section-lead">夏の地方大会で2年連続の1回戦敗退。' + esc(S.schoolName) + '野球部は解散した。</p>' +
+      '<p class="section-lead">部員はそのままサッカー部に加わり、新しい挑戦が始まる。</p>');
+    UI.el('btn-soccer-primary').textContent = 'サッカー部の大会へ';
+    UI.el('btn-soccer-secondary').hidden = true;
+    UI.show('screen-soccer');
+  }
+
+  function soccerPregame(state) {
+    const S = state.soccer;
+    const round = Soccer.currentRound(S.tour);
+    UI.el('soccer-eyebrow').textContent = '大会　' + round.name;
+    UI.el('soccer-title').textContent = esc(S.schoolName);
+    UI.html('soccer-body',
+      '<p class="section-lead">自軍の強さの目安: ' + Soccer.strength(S) + '</p>' +
+      soccerLineupTable(S));
+    UI.el('btn-soccer-primary').textContent = '試合開始';
+    UI.el('btn-soccer-secondary').hidden = true;
+    UI.show('screen-soccer');
+  }
+
+  function soccerResult(state, res) {
+    const S = state.soccer;
+    const round = Soccer.currentRound(S.tour);
+    const mySideKey = res.home ? 'home' : 'away';
+    const scorers = res.events.filter((e) => e.kind === 'goal' && e.side === mySideKey).map((e) => e.name);
+    UI.el('soccer-eyebrow').textContent = '大会　' + round.name;
+    UI.el('soccer-title').textContent = (res.win ? '勝利' : '敗戦') + '　' + res.my + ' − ' + res.op +
+      (res.pk ? '（PK戦）' : '');
+    UI.html('soccer-body',
+      (scorers.length ? '<p>得点: ' + scorers.map(esc).join('、') + '</p>' : '<p>得点者なし</p>') +
+      (res.win
+        ? '<p class="section-lead">次の試合へ進む。</p>'
+        : '<p class="section-lead">サッカー部のシーズンが終わった。</p>'));
+    UI.el('btn-soccer-primary').textContent = res.win ? '次へ' : 'シーズン終了へ';
+    UI.el('btn-soccer-secondary').hidden = true;
+    UI.show('screen-soccer');
+  }
+
+  function soccerOffseason(state, canRevive) {
+    const S = state.soccer;
+    const retired = Soccer.retiring(S);
+    UI.el('soccer-eyebrow').textContent = state.year + '年目　オフシーズン';
+    UI.el('soccer-title').textContent = esc(S.schoolName) + '　シーズン終了';
+    UI.html('soccer-body',
+      (S.lastChampion ? '<p class="section-lead">サッカー部として優勝した！</p>' : '') +
+      '<p>サッカー部として' + S.seasons + 'シーズン目を終えた。' + (S.titles ? '（優勝' + S.titles + '回）' : '') + '</p>' +
+      (retired.length ? '<p>卒業: ' + retired.map((p) => esc(p.name)).join('、') + '</p>' : '') +
+      (canRevive ? '<p class="section-lead">野球部を復活させられる。</p>' : ''));
+    UI.el('btn-soccer-primary').textContent = 'サッカー部を続ける';
+    const sec = UI.el('btn-soccer-secondary');
+    if (canRevive) {
+      sec.hidden = false;
+      sec.textContent = '野球部を復活させる';
+    } else {
+      sec.hidden = true;
+    }
+    UI.show('screen-soccer');
+  }
+
   return {
     pick, ready, training, trainingResult, opening, pregame,
     poachWin, poachRelease, poachFailed, champion, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
-    localWin,
+    localWin, soccerStart, soccerPregame, soccerResult, soccerOffseason,
   };
 })();
