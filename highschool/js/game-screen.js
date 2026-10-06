@@ -18,6 +18,9 @@ const GameScreen = (() => {
   /* 0 = 1打席ずつ（タップで進む）、1 = 通常、2 = 2倍、3 = 3倍。
      毎試合「通常」から始める */
   let speed = 1;
+  /* 「チャンスまで」。×3と同じ速さで進めつつ、チャンス（ピンチ）の
+     場面に来たら自動でタップ待ち（1打席ずつ）に切り替える */
+  let chanceMode = false;
 
   /* ---------- スコアボード ---------- */
 
@@ -232,6 +235,7 @@ const GameScreen = (() => {
     /* はじめは「1打席ずつ」。まず1打席ぶんを読んでもらってから、
        速くしたい人が速さを上げる */
     speed = 0;
+    chanceMode = false;
     applySpeedButtons();
     UI.show('screen-game');
     /* 中断から戻ったときは、見たところまでを黙って流してから続ける */
@@ -245,12 +249,14 @@ const GameScreen = (() => {
 
   function applySpeedButtons() {
     document.querySelectorAll('#game-speed .speedbtn').forEach((b) => {
-      b.classList.toggle('is-on', +b.dataset.sp === speed);
+      if (b.dataset.sp === 'chance') { b.classList.toggle('is-on', chanceMode); return; }
+      b.classList.toggle('is-on', !chanceMode && +b.dataset.sp === speed);
     });
   }
 
   function setSpeed(v) {
     const was = speed;
+    chanceMode = false;
     speed = v;
     applySpeedButtons();
     if (!ctx || ctx.done) return;
@@ -264,6 +270,28 @@ const GameScreen = (() => {
       ctx.awaitTap = true;
       showTapHint(true);
     }
+  }
+
+  /** 「チャンスまで」ボタン。×3と同じ速さで進み、チャンス（ピンチ）の
+      場面に来たところで自動的に1打席ずつへ切り替える */
+  function setChanceMode() {
+    chanceMode = true;
+    speed = 3;
+    applySpeedButtons();
+    if (!ctx || ctx.done) return;
+    if (ctx.awaitTap) {
+      ctx.awaitTap = false;
+      showTapHint(false);
+      step();
+    }
+  }
+
+  /** いまの走者・アウト数が「チャンス（ピンチ）」の場面か。
+      得点圏（二塁・三塁）に走者がいるとき、タイブレークの無死一二塁も含む */
+  function isChanceEvent(e) {
+    if (e.k === 'half') return !!e.tie;
+    if (e.k === 'pa' || e.k === 'steal') return !!(e.bases && (e.bases[1] || e.bases[2]));
+    return false;
   }
 
   function showTapHint(on) {
@@ -406,6 +434,16 @@ const GameScreen = (() => {
     /* 回の変わり目ごとに、どこまで見たかを記録してもらう。
        1打席ごとに書くと保存が重いので、この粒度にしてある */
     if (e.k === 'half' && ctx.onProgress) ctx.onProgress(ctx.i);
+    /* 「チャンスまで」の最中に、チャンス（ピンチ）の場面へ来たら、
+       そこで1打席ずつに切り替えてタップ待ちにする */
+    if (chanceMode && isChanceEvent(e)) {
+      chanceMode = false;
+      speed = 0;
+      applySpeedButtons();
+      ctx.awaitTap = true;
+      showTapHint(true);
+      return;
+    }
     const wait = e.k === 'half' ? 620 : (e.k === 'pa' ? (e.runs ? 1000 : 760) : 700);
     schedule(wait);
   }
@@ -944,7 +982,9 @@ const GameScreen = (() => {
   /** 速さのボタンとタップの受け口を用意する（起動時に一度だけ） */
   function init() {
     document.querySelectorAll('#game-speed .speedbtn').forEach((b) =>
-      b.addEventListener('click', () => setSpeed(+b.dataset.sp)));
+      b.addEventListener('click', () => {
+        if (b.dataset.sp === 'chance') setChanceMode(); else setSpeed(+b.dataset.sp);
+      }));
     const st = UI.el('game-stage');
     if (st) st.addEventListener('click', tap);
     const hint = UI.el('game-taphint');
