@@ -800,7 +800,7 @@ const UI = (() => {
         /* 重なりと不足は、決定を押したときにはじめて知らせる */
         const prob = problems();
         if (prob.dup.length || prob.missing.length || prob.count !== 9) {
-          showBad = true; tab = 'bat'; refresh(); return;
+          showBad = true; tab = 'bat'; refresh(); scrollTop(); return;
         }
         /* 決定は「ここまでの並びを確定する」だけで、画面は閉じない。
            打線を決めてから投手タブも見たい、ということがあるため。
@@ -808,7 +808,15 @@ const UI = (() => {
         showBad = false;
         commit();
         refresh();
+        scrollTop();
       });
+    }
+
+    /* 決定（並びの確定、不備があるときの警告表示も含む）を押したら、
+       一覧の下のほうを見ていても画面の先頭へ戻す */
+    function scrollTop() {
+      const panel = document.querySelector('.modal__panel');
+      if (panel) panel.scrollTop = 0;
     }
 
     closeModal.back = null;
