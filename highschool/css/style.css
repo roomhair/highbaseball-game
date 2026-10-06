@@ -281,7 +281,6 @@ td.hl { font-weight: 700; }
    表ごと横にスクロールさせる（球種の数で行の高さが変わらない） */
 .t-break { font-size: 11px; white-space: nowrap; }
 .t-break .luball { display: inline-block; margin: 0 2px 0 0; vertical-align: middle; }
-.luball--more { color: var(--ink-faint); border-style: dashed; }
 .roster td, .roster th { vertical-align: middle; }
 /* 狭い画面では少しでも多く収まるように詰める */
 @media (max-width: 540px) {

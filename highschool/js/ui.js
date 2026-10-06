@@ -210,12 +210,10 @@ const UI = (() => {
       ? ['<td class="c"><b class="rankval">' + p.velo + '</b></td>',
          '<td class="c">' + rankNum(p.control) + '</td>',
          '<td class="c">' + rankNum(p.stamina) + '</td>',
-         /* 変化球は枠に入れて2つまで。残りは「+n」にして、
-            球種の数で列の幅や行の高さが変わらないようにする
-            （全部は選手の詳細で見られる） */
-         '<td class="t-break">' + p.pitches.slice(0, 2).map((q) =>
+         /* 変化球は全部出す。表は .tablewrap で横スクロールできるので、
+            途中で切って「+n」にする必要はない */
+         '<td class="t-break">' + p.pitches.map((q) =>
            '<span class="luball">' + esc(q.name) + '<b>' + q.level + '</b></span>').join('') +
-           (p.pitches.length > 2 ? '<span class="luball luball--more">+' + (p.pitches.length - 2) + '</span>' : '') +
          '</td>'].join('')
       : ['<td class="c"><b class="rankval">' + p.traj + '</b></td>',
          '<td class="c">' + rankNum(p.meet) + '</td>',
