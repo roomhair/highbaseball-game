@@ -802,13 +802,17 @@ const UI = (() => {
         if (prob.dup.length || prob.missing.length || prob.count !== 9) {
           showBad = true; tab = 'bat'; refresh(); return;
         }
+        /* 決定は「ここまでの並びを確定する」だけで、画面は閉じない。
+           打線を決めてから投手タブも見たい、ということがあるため。
+           実際に閉じる（×・枠の外をタップ）ときに onDone を呼ぶ */
         showBad = false;
         commit();
-        closeModal.back = null; closeModal.after = null; closeModal();
-        if (onDone) onDone();
+        refresh();
       });
     }
 
+    closeModal.back = null;
+    closeModal.after = () => { if (onDone) onDone(); };
     modal(render(), { kind: 'lineup', onOpen(body) { wire(body); } });
   }
 

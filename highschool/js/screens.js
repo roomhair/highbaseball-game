@@ -410,33 +410,46 @@ const Screens = (() => {
   function pregame(state, opts) {
     const r = Tournament.currentRound(state.tour);
     UI.el('pregame-title').textContent = Game.tourLabel() + '　' + r.name;
-    const html =
-      /* 相手のチーム力は出さない。オーダーと能力を見て、自分で見積もってもらう */
+    /* 相手のチーム力は出さない。オーダーと能力を見て、自分で見積もってもらう */
+    UI.html('pregame-body',
       '<p class="section-lead vs">' + esc(state.team.name) + '　<i>対</i>　' + esc(state.opponent.name) + '</p>' +
-      '<div class="twocol">' + lineupCard(state.team, { pickable: true }) +
-        lineupCard(state.opponent) + '</div>';
-    UI.html('pregame-body', html);
-    const body = UI.el('pregame-body');
+      '<div class="twocol"><div id="pregame-my"></div><div id="pregame-opp"></div></div>');
     const open = (pid) => {
       const p = Team.find(state.team, pid) || Team.find(state.opponent, pid);
       if (p) UI.openPlayer(p, { team: state.team, rename: !!Team.find(state.team, pid), onRename: () => pregame(state, opts) });
     };
-    bindRows(body, open);
-    body.querySelectorAll('.pitname').forEach((b) =>
-      b.addEventListener('click', () => open(b.dataset.pid)));
-    /* 先発を選ぶ。押された投手を起用順のいちばん前に持ってくる */
-    body.querySelectorAll('.spick__item').forEach((b) => {
-      b.addEventListener('click', () => {
-        const pid = b.dataset.pid;
-        const rot = state.team.rotation.slice();
-        const i = rot.indexOf(pid);
-        if (i <= 0) return;
-        rot.splice(i, 1); rot.unshift(pid);
-        state.team.rotation = rot;
-        if (opts && opts.onChange) opts.onChange();
-        pregame(state, opts);
+
+    /* 相手カードは試合が始まるまで変わらないので、一度だけ描く */
+    UI.html('pregame-opp', lineupCard(state.opponent));
+    const oppBody = UI.el('pregame-opp');
+    bindRows(oppBody, open);
+    oppBody.querySelectorAll('.pitname').forEach((b) => b.addEventListener('click', () => open(b.dataset.pid)));
+
+    /* 自軍カードは先発を選ぶたびに描き直す。ここだけ関数にしておき、
+       画面全体（UI.show）は動かさないようにする。
+       先発を選ぶたびに画面全体を描き直すと、UI.show が呼ぶ
+       window.scrollTo(0,0) でスクロール位置が先頭に戻ってしまい、
+       「リロードされた」ように見えてしまっていたため */
+    function renderMyCard() {
+      UI.html('pregame-my', lineupCard(state.team, { pickable: true }));
+      const myBody = UI.el('pregame-my');
+      bindRows(myBody, open);
+      myBody.querySelectorAll('.pitname').forEach((b) => b.addEventListener('click', () => open(b.dataset.pid)));
+      myBody.querySelectorAll('.spick__item').forEach((b) => {
+        b.addEventListener('click', () => {
+          const pid = b.dataset.pid;
+          const rot = state.team.rotation.slice();
+          const i = rot.indexOf(pid);
+          if (i <= 0) return;
+          rot.splice(i, 1); rot.unshift(pid);
+          state.team.rotation = rot;
+          if (opts && opts.onChange) opts.onChange();
+          renderMyCard();
+        });
       });
-    });
+    }
+    renderMyCard();
+
     UI.show('screen-pregame');
   }
 
