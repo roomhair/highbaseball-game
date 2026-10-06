@@ -17,6 +17,14 @@ const Game = (() => {
      ここに置いておくだけ */
   let lastSim = null;
 
+  /* 特訓の「選択・見送り」の回数。夏と秋の間・（出場した年の）センバツ相当と
+     夏の間は選べる回数を絞ってある。秋とセンバツ相当（出なければ夏）の間は
+     もとの仕様のまま */
+  const TRAIN_LIMITS = {
+    normal: { picks: CONFIG.TRAINING.PICKS, passes: CONFIG.TRAINING.PASSES },
+    short: { picks: CONFIG.TRAINING.SHORT_PICKS, passes: CONFIG.TRAINING.SHORT_PASSES },
+  };
+
   /* ---------- 状態 ---------- */
 
   function fresh() {
@@ -28,6 +36,12 @@ const Game = (() => {
       tour: null,
       opponent: null,
       training: null,
+      /* 次の特訓が終わったら、どこへ進むか（'local'・'fallPref'・
+         'springOrNextSummer'・'nextSummer'）。チーム作り直後は夏の大会へ */
+      trainingNext: 'local',
+      trainLimits: null,
+      /* 秋の地区大会で2位以内に入ったか（センバツ相当に出られるか） */
+      springQualified: false,
       sets: null,          // いま選ばせているデータセット
       need: null,          // 新入生の必要人数
       usedSchools: [],     // 使った高校名（同じ名前を出さないため）
@@ -46,8 +60,15 @@ const Game = (() => {
   Screens.setOnChange(save);
 
   function tourLabel() {
-    return state.tour && state.tour.kind === 'national'
-      ? state.settings.nationalName : '地方大会';
+    if (!state.tour) return '地方大会';
+    switch (state.tour.kind) {
+      case 'national': return state.settings.nationalName;
+      case 'fallPref': return '秋季県大会';
+      case 'fallDistrict': return '秋季地区大会';
+      case 'fallJingu': return state.settings.jinguName;
+      case 'spring': return state.settings.springName;
+      default: return '地方大会';
+    }
   }
 
   /* ---------- チーム作り ---------- */
@@ -114,7 +135,7 @@ const Game = (() => {
       return;
     }
     state.phase = 'training';
-    state.training = Training.start(state.team);
+    state.training = Training.start(state.team, state.trainLimits);
     save();
     Screens.training(state);
   }
@@ -135,7 +156,51 @@ const Game = (() => {
   function showTrainingResult() {
     state.phase = 'training-result';
     save();
-    Screens.trainingResult(state, '地方大会へ');
+    Screens.trainingResult(state, trainingNextLabel());
+  }
+
+  /** 特訓が終わったあと、どこへ進むかの文言。state.trainingNext で決まる */
+  function trainingNextLabel() {
+    switch (state.trainingNext) {
+      case 'fallPref': return '秋の大会へ';
+      case 'springOrNextSummer':
+        return state.springQualified ? (state.settings.springName + 'へ') : '来年の夏へ';
+      case 'nextSummer': return '来年の夏へ';
+      default: return '地方大会へ';
+    }
+  }
+
+  /** 特訓が終わったら実際に次へ進む */
+  function trainingDone() {
+    switch (state.trainingNext) {
+      case 'fallPref': startTournament('fallPref'); break;
+      case 'springOrNextSummer':
+        if (state.springQualified) startTournament('spring'); else startTournament('local');
+        break;
+      case 'nextSummer': startTournament('local'); break;
+      default: startTournament('local');
+    }
+  }
+
+  /** 特訓の入口へ。next は特訓が終わったあとに進む先のタグ、
+      limits は「選択・見送り」の回数（省略すると今までと同じ回数） */
+  function toTrainingPhase(next, limits) {
+    state.trainingNext = next;
+    state.trainLimits = limits || null;
+    state.phase = 'train-intro';
+    save();
+    Screens.trainingIntro(state);
+  }
+
+  /** 秋の大会（県大会・地区大会・神宮大会相当）がすべて終わったあとの特訓。
+      今までの特訓と同じ仕様（選択5回・見送り3回）のまま */
+  function toPostFallTraining() {
+    toTrainingPhase('springOrNextSummer', TRAIN_LIMITS.normal);
+  }
+
+  /** センバツ相当が終わったあとの特訓。夏と秋の間と同じく選択を絞る */
+  function toPostSpringTraining() {
+    toTrainingPhase('nextSummer', TRAIN_LIMITS.short);
   }
 
   /* ---------- 大会 ---------- */
@@ -159,7 +224,7 @@ const Game = (() => {
     if (kind === 'local') {
       from = F.local.from * j;
       state.localJitter = j;
-    } else {
+    } else if (kind === 'national') {
       /* 全国大会の1回戦は、地方大会の決勝の続きから。
          ここだけは相手の強さの期待値を動かさない（rollDrift は平均0）。
          決勝より少し楽な初戦になる年も、少し重い年もある。
@@ -167,6 +232,20 @@ const Game = (() => {
       j = state.localJitter || 1;
       from = (state.localFinalLevel || F.local.from * j) +
              (F.national.bonus + Tournament.rollDrift()) * j;
+    } else if (kind === 'fallPref') {
+      /* 秋は新チーム（3年生引退後）で、県大会から新しいゆらぎで始まる */
+      state.fallJitter = j;
+      from = F.fallPref.from * j;
+    } else if (kind === 'fallDistrict') {
+      j = state.fallJitter || 1;
+      from = (state.fallPrefFinalLevel || F.fallPref.from * j) + F.fallDistrict.bonus * j;
+    } else if (kind === 'fallJingu') {
+      j = state.fallJitter || 1;
+      from = (state.fallDistrictFinalLevel || 0) + F.fallJingu.bonus * j;
+    } else if (kind === 'spring') {
+      /* 選抜相当は地方予選が無く、最初から全国区の相手なので独立に始まる */
+      state.springJitter = j;
+      from = F.spring.from * j;
     }
     state.tour = Tournament.create(kind, from, j, used);
     Growth.resetTour(state.team);
@@ -175,10 +254,7 @@ const Game = (() => {
     /* 先に開幕画面を描いてから幕を下ろす。幕が開いたときに
        前の画面が残っていないようにするため */
     Screens.opening(state);
-    UI.curtain(
-      '<b>' + (kind === 'national' ? UI.esc(state.settings.nationalName) : '地方大会') + '</b><span>開幕</span>',
-      function () {}
-    );
+    UI.curtain('<b>' + UI.esc(tourLabel()) + '</b><span>開幕</span>', function () {});
   }
 
   function toPregame() {
@@ -199,8 +275,10 @@ const Game = (() => {
 
   function playGame() {
     const round = Tournament.currentRound(state.tour);
-    /* 全国大会はコールドゲームなし。地方大会も決勝だけは行わない */
-    const noCold = state.tour.kind === 'national' || (round && round.name === '決勝');
+    /* 全国大会（夏・春・神宮大会相当）はコールドゲームなし。
+       地方大会・秋の県大会・地区大会も決勝だけは行わない */
+    const BIG_STAGE = ['national', 'spring', 'fallJingu'];
+    const noCold = BIG_STAGE.indexOf(state.tour.kind) >= 0 || (round && round.name === '決勝');
     /* この試合ぶんの乱数の種と、試合開始時点の両チームを控えておく。
        これが無いと、途中でブラウザを閉じて開き直したときに試合前まで戻り、
        負けそうな試合を何度でもやり直せてしまう。
@@ -322,11 +400,15 @@ const Game = (() => {
       });
     });
 
+    const isLast = state.tour.index >= state.tour.rounds.length - 1;
     state.lastResult = {
       win, myRuns: my.runs, opRuns: op.runs, round: round.name,
       oppName: state.opponent.name, tourName: tourLabel(),
       cold: res.cold, walkoff: ctx.walkoff,
-      last: state.tour.index >= state.tour.rounds.length - 1,
+      last: isLast,
+      /* 負けたときに次へ進む先の文言（大会によっては、負けても
+         次の大会へ進むことがある） */
+      loseNext: win ? null : loseNextLabel(state.tour.kind, isLast),
       winPitcher: findPit('w'), losePitcher: findPit('l'), savePitcher: findPit('sv'),
       homers,
     };
@@ -356,13 +438,9 @@ const Game = (() => {
        大会優勝そのものの演出は、結果画面へ進むこの瞬間に出す
        （引き抜きのあとまで待たない）。実際に次の大会へ進む操作は、
        引き抜きのあとに出る専用の画面（地方大会優勝／全国大会優勝）で行う */
-    btn.textContent = r.win ? '引き抜きへ' : 'オフシーズンへ';
+    btn.textContent = r.win ? '引き抜きへ' : r.loseNext;
     if (r.win && r.last) {
-      if (state.tour.kind === 'local') {
-        UI.curtain('<b>地方大会</b><span>優勝</span>', function () {});
-      } else if (state.tour.kind === 'national') {
-        UI.curtain('<b>' + UI.esc(state.settings.nationalName) + '</b><span>優勝</span>', function () {});
-      }
+      UI.curtain('<b>' + UI.esc(tourLabel()) + '</b><span>優勝</span>', function () {});
     }
     GameScreen.result(state, lastSim.res, lastSim.meta);
   }
@@ -370,6 +448,14 @@ const Game = (() => {
   function afterResult() {
     if (state.lastResult.win) toPoach();
     else lose();
+  }
+
+  /** 負けたときの結果画面に出す「次へ」の文言。大会によっては、
+      負けても決勝（＝最後の回）まで来ていれば次の大会へ進む */
+  function loseNextLabel(kind, isLast) {
+    if (kind === 'local' || kind === 'national') return 'オフシーズンへ';
+    if (kind === 'fallPref' && isLast) return '秋季地区大会へ';
+    return '特訓へ';
   }
 
   /* ---------- 引き抜き ---------- */
@@ -423,7 +509,8 @@ const Game = (() => {
     /* 優勝の演出（カーテン）は、勝った瞬間・結果画面へ進むところで
        すでに出している（toResult）。ここでは実際に次へ進むための
        画面と状態の更新だけを行う */
-    if (won && state.tour.kind === 'local') {
+    const kind = state.tour.kind;
+    if (won && kind === 'local') {
       state.localFinalLevel = state.tour.finalLevel;
       state.history.push({ year: state.year, tour: 'local', result: '優勝' });
       /* 地方大会と全国大会のあいだは日が空くので、投手の疲れは抜ける */
@@ -433,26 +520,55 @@ const Game = (() => {
       Screens.localWin(state);
       return;
     }
-    if (won && state.tour.kind === 'national') {
+    if (won && kind === 'national') {
       state.history.push({ year: state.year, tour: 'national', result: '優勝' });
       state.phase = 'champion';
       save();
       Screens.champion(state);
       return;
     }
+    if (won && kind === 'fallPref') {
+      /* 県大会優勝。そのまま地区大会へ */
+      state.fallPrefFinalLevel = state.tour.finalLevel;
+      state.history.push({ year: state.year, tour: 'fallPref', result: '優勝' });
+      startTournament('fallDistrict');
+      return;
+    }
+    if (won && kind === 'fallDistrict') {
+      /* 地区大会優勝。センバツ相当は確定のうえ、神宮大会相当へ */
+      state.fallDistrictFinalLevel = state.tour.finalLevel;
+      state.springQualified = true;
+      state.history.push({ year: state.year, tour: 'fallDistrict', result: '優勝' });
+      startTournament('fallJingu');
+      return;
+    }
+    if (won && kind === 'fallJingu') {
+      state.history.push({ year: state.year, tour: 'fallJingu', result: '優勝' });
+      toPostFallTraining();
+      return;
+    }
+    if (won && kind === 'spring') {
+      state.history.push({ year: state.year, tour: 'spring', result: '優勝' });
+      toPostSpringTraining();
+      return;
+    }
     toOffseason();
   }
 
   function lose() {
+    const kind = state.tour.kind;
     const round = state.lastResult.round;
+    const isLast = state.lastResult.last;
     state.history.push({
-      year: state.year, tour: state.tour.kind,
+      year: state.year, tour: kind,
       result: round + '敗退',
     });
     /* 負けたとき、設定が入っていれば一番いい選手を引き抜かれる。
        誰を取られたのかはオフシーズン画面の頭に出す（ふきだしだと
-       読み込み直したときに出しそびれる） */
-    if (state.settings.poach) {
+       読み込み直したときに出しそびれる）ため、夏（地方・全国大会）の
+       ときだけにしてある。秋・春はオフシーズンまで間が空き、時期の
+       ずれた話に見えてしまうため対象外 */
+    if (state.settings.poach && (kind === 'local' || kind === 'national')) {
       const best = Team.bestPlayer(state.team);
       if (best) {
         const list = best.kind === 'pitcher' ? state.team.pitchers : state.team.batters;
@@ -462,6 +578,24 @@ const Game = (() => {
         state.poachedFrom = { to: state.opponent.name, player: best };
       }
     }
+
+    /* 秋は「負けても決勝（＝最後の回）まで来ていれば次の大会へ進む」
+       （県大会2位以内→地区大会、地区大会2位以内→センバツ相当）。
+       地区大会は準優勝でも神宮大会相当には進めない（優勝校だけ） */
+    if (kind === 'fallPref') {
+      state.fallPrefFinalLevel = state.tour.finalLevel;
+      if (isLast) { startTournament('fallDistrict'); return; }
+      toPostFallTraining();
+      return;
+    }
+    if (kind === 'fallDistrict') {
+      state.fallDistrictFinalLevel = state.tour.finalLevel;
+      if (isLast) state.springQualified = true;
+      toPostFallTraining();
+      return;
+    }
+    if (kind === 'fallJingu') { toPostFallTraining(); return; }
+    if (kind === 'spring') { toPostSpringTraining(); return; }
     toOffseason();
   }
 
@@ -528,9 +662,9 @@ const Game = (() => {
   function afterNewcomers() {
     Team.autoLineup(state.team);
     state.poachedFrom = null;
-    state.phase = 'train-intro';
-    save();
-    Screens.trainingIntro(state);
+    /* 新チーム（3年生引退・新入生加入後）は、まず秋の大会へ向かう */
+    state.springQualified = false;
+    toTrainingPhase('fallPref', TRAIN_LIMITS.short);
   }
 
   /* ---------- 再開 ---------- */
@@ -541,13 +675,23 @@ const Game = (() => {
     RNG.unseed();
     state = loaded;
     if (!state.settings) state.settings = Storage.loadSettings();
+    /* 古い保存データの移行。秋・春の大会を追加する前のデータには
+       無いフィールドなので、ここで補っておく */
+    if (state.settings.springName == null) state.settings.springName = CONFIG.DEFAULTS.springName;
+    if (state.settings.jinguName == null) state.settings.jinguName = CONFIG.DEFAULTS.jinguName;
+    if (state.trainingNext == null) state.trainingNext = 'local';
+    if (state.springQualified == null) state.springQualified = false;
+    if (state.training && state.training.pickLimit == null) {
+      state.training.pickLimit = CONFIG.TRAINING.PICKS;
+      state.training.passLimit = CONFIG.TRAINING.PASSES;
+    }
     applySettings();
     switch (state.phase) {
       case 'pick-bat': pickBatters(); break;
       case 'pick-pit': pickPitchers(); break;
       case 'ready': toReady(); break;
       case 'training': Screens.training(state); break;
-      case 'training-result': Screens.trainingResult(state, '地方大会へ'); break;
+      case 'training-result': Screens.trainingResult(state, trainingNextLabel()); break;
       case 'opening': Screens.opening(state); break;
       case 'pregame': Screens.pregame(state, { onChange: save }); break;
       /* 試合の途中で閉じたときは、同じ試合の同じところから続ける */
@@ -681,7 +825,7 @@ const Game = (() => {
 
     on('btn-train-take', trainTake);
     on('btn-train-pass', trainPass);
-    on('btn-train-done', () => startTournament('local'));
+    on('btn-train-done', () => trainingDone());
 
     on('btn-open-start', toPregame);
     on('btn-open-lineup', () => UI.lineupEditor(state.team, () => { save(); Screens.opening(state); }));
@@ -712,7 +856,7 @@ const Game = (() => {
     if (typeof ADS !== 'undefined') ADS.init();
   }
 
-  return { boot, start, resume, get state() { return state; } };
+  return { boot, start, resume, tourLabel, get state() { return state; } };
 })();
 
 document.addEventListener('DOMContentLoaded', Game.boot);

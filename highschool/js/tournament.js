@@ -52,8 +52,25 @@ const Tournament = (() => {
 
   /** その大会・その回で使う確率表。roundName は「これから当たる回」の名前 */
   function stepTable(kind, roundName) {
-    if (kind !== 'national') return CONFIG.FIELD.STEP;
-    return NAT_LATE_FROM.indexOf(roundName) >= 0 ? CONFIG.FIELD.NAT_STEP_LATE : CONFIG.FIELD.NAT_STEP_EARLY;
+    if (kind === 'national') {
+      return NAT_LATE_FROM.indexOf(roundName) >= 0 ? CONFIG.FIELD.NAT_STEP_LATE : CONFIG.FIELD.NAT_STEP_EARLY;
+    }
+    if (kind === 'fallPref') return CONFIG.FIELD.FALL_PREF_STEP;
+    if (kind === 'fallDistrict') return CONFIG.FIELD.FALL_DISTRICT_STEP;
+    if (kind === 'fallJingu') return CONFIG.FIELD.FALL_JINGU_STEP;
+    if (kind === 'spring') return CONFIG.FIELD.SPRING_STEP;
+    return CONFIG.FIELD.STEP;
+  }
+
+  /** その大会で使う回の名前の並び。1回戦から決勝まで */
+  function roundsFor(kind) {
+    if (kind === 'fallDistrict') return ['1回戦', '準々決勝', '準決勝', '決勝'];
+    if (kind === 'fallJingu') return ['1回戦', '準決勝', '決勝'];
+    /* local・national・fallPref・spring は同じ形（4回戦があるかどうかは半々） */
+    const rounds = ['1回戦', '2回戦', '3回戦'];
+    if (RNG.chance(0.5)) rounds.push('4回戦');
+    rounds.push('準々決勝', '準決勝', '決勝');
+    return rounds;
   }
 
   /** 確率表から1つ引く */
@@ -110,11 +127,7 @@ const Tournament = (() => {
   /** 山を組む。kind は 'local'（地方大会）か 'national'（全国大会）。
       scale はその年のゆらぎ（1なら平年） */
   function create(kind, from, scale, usedNames) {
-    const rounds = ['1回戦', '2回戦', '3回戦'];
-    /* 4回戦があるかどうかは半々。無ければそのまま準々決勝へ */
-    if (RNG.chance(0.5)) rounds.push('4回戦');
-    rounds.push('準々決勝', '準決勝', '決勝');
-
+    const rounds = roundsFor(kind);
     const levels = strengthLadder(from, rounds, scale, kind);
     /* 同じ大会の中で同じ高校名が出ないようにするだけ。
        年をまたげば同じ名前が出てよい（常連校が何年も出てくるほうが自然） */

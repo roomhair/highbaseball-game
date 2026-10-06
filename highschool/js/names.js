@@ -128,10 +128,11 @@ const NAMES = (() => {
 
   /**
    * used に無い高校名を作る。
-   * kind に 'national' を渡すと、全国大会の常連校から選ぶ。
+   * kind に 'national'・'spring'・'fallJingu' を渡すと、
+   * 全国大会の常連校から選ぶ（いずれも全国区の相手が出てくる大会のため）。
    */
   function schoolName(used, kind) {
-    if (kind === 'national') {
+    if (kind === 'national' || kind === 'spring' || kind === 'fallJingu') {
       const rest = NATIONAL_SCHOOLS.filter((n) => !used || !used.has(n));
       if (rest.length) {
         const name = pick(rest);

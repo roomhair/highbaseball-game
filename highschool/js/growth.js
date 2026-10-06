@@ -323,7 +323,7 @@ const Growth = (() => {
     if (ctx.walkoff && !isPit) score += 1.5;
     /* 大きい舞台ほど値打ちがある */
     const stage = ctx.roundName === '決勝' ? 2.2 : (ctx.roundName === '準決勝' ? 1.4 : 0.6);
-    score += stage * (ctx.tourLabel === 'national' ? 1.6 : 1);
+    score += stage * (['national', 'spring', 'fallJingu'].indexOf(ctx.tourLabel) >= 0 ? 1.6 : 1);
     if (score < 2.2) return null;
 
     const where = (ctx.tourName || '') + ctx.roundName + '・' + ctx.oppName + '戦';

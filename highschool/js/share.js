@@ -53,8 +53,8 @@ const Share = (() => {
   function draw(state) {
     const r = state.lastResult;
     const win = r.win;
-    const isNational = state.tour && state.tour.kind === 'national';
-    const accent = isNational ? '#8f2233' : '#1d5c3a';
+    const isBigStage = state.tour && ['national', 'spring', 'fallJingu'].indexOf(state.tour.kind) >= 0;
+    const accent = isBigStage ? '#8f2233' : '#1d5c3a';
     const ink = '#16181a', mute = '#6b7076', faint = '#979ba1';
 
     const who = (d) => d ? d.name : null;

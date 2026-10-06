@@ -196,13 +196,24 @@ const Screens = (() => {
 
   /* ---------- 特訓期間 ---------- */
 
+  /** 特訓の入口に出す一言。state.trainingNext（次に進む先）で変える */
+  function trainingIntroLead(state) {
+    switch (state.trainingNext) {
+      case 'fallPref': return '新入生を迎えた新チームの、秋までの練習が始まる。';
+      case 'springOrNextSummer':
+        return state.springQualified ? '春までの練習が始まる。' : '来年の夏までの練習が始まる。';
+      case 'nextSummer': return '夏までの練習が始まる。';
+      default: return '新入生を迎えたチームの、夏までの練習が始まる。';
+    }
+  }
+
   function trainingIntro(state) {
     const t = state.team;
     const cap = Team.captain(t);
     UI.html('trainintro-body',
       '<p class="nextup__eyebrow">' + state.year + '年目</p>' +
       '<h2 class="nextup__title">特訓期間</h2>' +
-      '<p class="nextup__vs">新入生を迎えた' + esc(t.name) + 'の、夏までの練習が始まる。</p>' +
+      '<p class="nextup__vs">' + esc(t.name) + '。' + esc(trainingIntroLead(state)) + '</p>' +
       captainBox(t) +
       /* キャプテンが決まるまでは先へ進ませない。
          画面をタップすると特訓に入るので、注意書きも出す */
@@ -219,10 +230,10 @@ const Screens = (() => {
     const st = state.training;
     /* 「いま何回目か」を1始まりで見せる。最初のカードで1/5、
        最後のカードでも（使い切った6/5にならないよう）5/5のまま */
-    UI.el('train-picks').textContent = Math.min(st.picks + 1, CONFIG.TRAINING.PICKS);
-    UI.el('train-picks-max').textContent = CONFIG.TRAINING.PICKS;
+    UI.el('train-picks').textContent = Math.min(st.picks + 1, st.pickLimit);
+    UI.el('train-picks-max').textContent = st.pickLimit;
     UI.el('train-passes').textContent = st.passes;
-    UI.el('train-passes-max').textContent = CONFIG.TRAINING.PASSES;
+    UI.el('train-passes-max').textContent = st.passLimit;
 
     const card = st.card;
     if (card) {
@@ -264,7 +275,7 @@ const Screens = (() => {
     }
 
     const passBtn = UI.el('btn-train-pass');
-    const left = CONFIG.TRAINING.PASSES - st.passes;
+    const left = st.passLimit - st.passes;
     passBtn.disabled = !Training.canPass(st);
     passBtn.textContent = left > 0 ? '見送る（あと' + left + '回）' : '見送れません';
     UI.show('screen-training');
@@ -374,14 +385,23 @@ const Screens = (() => {
 
   /* ---------- 大会開幕 ---------- */
 
+  /** 大会開幕の見出し下に出す一言。大会の種類ごとに変える */
+  function openingLead(state) {
+    const t = esc(state.team.name);
+    switch (state.tour.kind) {
+      case 'national': return '全国の頂点まであと7つ。' + t + '、初戦へ。';
+      case 'fallPref': return t + '、新チームで秋の大会へ。';
+      case 'fallDistrict': return t + '、地区大会へ。';
+      case 'fallJingu': return t + '、全国の強豪が集う舞台へ。';
+      case 'spring': return t + '、春の全国大会へ。';
+      default: return t + '、夏の地方大会へ。';
+    }
+  }
+
   function opening(state) {
-    const isNational = state.tour.kind === 'national';
-    const name = isNational ? state.settings.nationalName : '地方大会';
     UI.el('opening-year').textContent = state.year + '年目';
-    UI.el('opening-title').textContent = name + ' 開幕';
-    UI.el('opening-lead').textContent = isNational
-      ? '全国の頂点まであと7つ。' + esc(state.team.name) + '、初戦へ。'
-      : esc(state.team.name) + '、夏の地方大会へ。';
+    UI.el('opening-title').textContent = Game.tourLabel() + ' 開幕';
+    UI.el('opening-lead').textContent = openingLead(state);
     UI.show('screen-opening');
   }
 
@@ -389,8 +409,7 @@ const Screens = (() => {
 
   function pregame(state, opts) {
     const r = Tournament.currentRound(state.tour);
-    const label = (state.tour.kind === 'national' ? state.settings.nationalName : '地方大会');
-    UI.el('pregame-title').textContent = label + '　' + r.name;
+    UI.el('pregame-title').textContent = Game.tourLabel() + '　' + r.name;
     const html =
       /* 相手のチーム力は出さない。オーダーと能力を見て、自分で見積もってもらう */
       '<p class="section-lead vs">' + esc(state.team.name) + '　<i>対</i>　' + esc(state.opponent.name) + '</p>' +
@@ -438,7 +457,7 @@ const Screens = (() => {
         (win
           ? (r.last ? '<p class="verdict__lead">' + esc(r.tourName) + '　優勝。</p>'
                     : '<p class="verdict__lead">次の試合へ進む。</p>')
-          : '<p class="verdict__lead">オフシーズンへ。</p>') +
+          : '<p class="verdict__lead">' + esc(r.loseNext || 'オフシーズンへ') + '。</p>') +
       '</div>');
     UI.show('screen-verdict');
   }
@@ -499,10 +518,9 @@ const Screens = (() => {
 
   function nextUp(state) {
     const r = Tournament.currentRound(state.tour);
-    const label = state.tour.kind === 'national' ? state.settings.nationalName : '地方大会';
     UI.html('nextup-body',
       '<p class="nextup__eyebrow">次の試合</p>' +
-      '<h2 class="nextup__title">' + esc(label) + '　' + esc(r.name) + '</h2>' +
+      '<h2 class="nextup__title">' + esc(Game.tourLabel()) + '　' + esc(r.name) + '</h2>' +
       '<p class="nextup__vs">' + esc(state.team.name) + '　対　<b>' + esc(r.schoolName) + '</b></p>');
     UI.show('screen-nextup');
   }

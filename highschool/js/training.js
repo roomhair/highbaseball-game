@@ -11,10 +11,13 @@
 
 const Training = (() => {
 
-  /** 特訓の状態を作る */
-  function start(team) {
+  /** 特訓の状態を作る。limits を渡すと「選択・見送り」の回数を変えられる
+      （夏と秋の間などは選べる回数を絞ってある。省略時は今までと同じ） */
+  function start(team, limits) {
     return {
       picks: 0, passes: 0,
+      pickLimit: (limits && limits.picks) || CONFIG.TRAINING.PICKS,
+      passLimit: (limits && limits.passes) != null ? limits.passes : CONFIG.TRAINING.PASSES,
       done: false,
       card: draw(team),
       log: [],      // 選んだカードの結果
@@ -212,7 +215,7 @@ const Training = (() => {
 
     state.log.push({ title: state.card.title, applied });
     state.picks++;
-    if (state.picks >= CONFIG.TRAINING.PICKS) { state.done = true; state.card = null; }
+    if (state.picks >= state.pickLimit) { state.done = true; state.card = null; }
     else state.card = draw(team);
     return state;
   }
@@ -220,13 +223,13 @@ const Training = (() => {
   /** カードを見送る */
   function pass(state, team) {
     if (state.done) return state;
-    if (state.passes >= CONFIG.TRAINING.PASSES) return state;
+    if (state.passes >= state.passLimit) return state;
     state.passes++;
     state.card = draw(team);
     return state;
   }
 
-  function canPass(state) { return !state.done && state.passes < CONFIG.TRAINING.PASSES; }
+  function canPass(state) { return !state.done && state.passes < state.passLimit; }
 
   /** 特訓の結果を「誰の・どの能力が・どれだけ」でまとめ直す */
   function summarize(state) {
