@@ -208,6 +208,20 @@ const CONFIG = {
     MIN: -20,
     MAX: 160,
   },
+
+  /* 強奪の成功率。相手の強さ（勝った回のレベル）が高いほど失敗しやすく、
+     自校の格（SCHOOL_RANK）が高いほど成功しやすい。確率表そのもの
+     （POACH_SUCCESS_TABLE）で持たせてある。行が相手の強さ、
+     列が自校の格（弱小・中堅・強豪・名門）の順 */
+  POACH: {
+    OPP_TIERS: [30, 55, 75],   // これ未満なら弱い相手・普通・強い・それ以上は超強い
+    SUCCESS_TABLE: [
+      [0.85, 0.90, 0.94, 0.97],   // 弱い相手
+      [0.65, 0.75, 0.84, 0.92],   // 普通
+      [0.40, 0.52, 0.65, 0.80],   // 強い相手
+      [0.18, 0.28, 0.42, 0.60],   // 超強い相手（全国レベル）
+    ],
+  },
 };
 
 /** 学校の格スコアから、段階の番号（0:弱小 〜 3:名門）を求める */
@@ -220,6 +234,16 @@ function schoolRankTier(score) {
 /** 新入生の素質に乗る下駄。段階が上がるほど大きくなる */
 function schoolRankNewcomerBonus(score) {
   return CONFIG.SCHOOL_RANK.NEWCOMER_BONUS[schoolRankTier(score)] || 0;
+}
+
+/** 強奪の成功率。oppLevel は相手チームを作った回の強さ、
+    prestigeScore は自校の格スコア */
+function poachSuccessChance(oppLevel, prestigeScore) {
+  const T = CONFIG.POACH.OPP_TIERS;
+  let oppTier = T.length;
+  for (let i = 0; i < T.length; i++) { if (oppLevel < T[i]) { oppTier = i; break; } }
+  const prestigeTier = schoolRankTier(prestigeScore);
+  return CONFIG.POACH.SUCCESS_TABLE[oppTier][prestigeTier];
 }
 
 /* ===== 能力の評価（S〜G） =====

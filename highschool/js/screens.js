@@ -603,6 +603,24 @@ const Screens = (() => {
     UI.show('screen-poach');
   }
 
+  /** 引き抜きに失敗したとき。相手に引き止められ、何も変わらずに次へ進む */
+  function poachFailed(state, incoming, onNext) {
+    UI.el('poach-title').textContent = '引き抜き失敗';
+    UI.el('poach-lead').textContent =
+      esc(incoming.name) + 'の引き抜きを試みたが、' + esc(state.opponent.name) + 'に引き止められてしまった。';
+    UI.html('poach-body', '<div class="incoming">' + UI.playerDetail(incoming, { rename: false }) + '</div>');
+
+    const more = state.tour.index < state.tour.rounds.length - 1;
+    const ok = UI.el('btn-poach-ok');
+    const skip = UI.el('btn-poach-skip');
+    ok.textContent = more ? '次の試合へ' : '次へ';
+    ok.hidden = false;
+    ok.disabled = false;
+    skip.hidden = true;
+    ok.onclick = () => onNext();
+    UI.show('screen-poach');
+  }
+
   /* ---------- 全国優勝 ---------- */
 
   /** その大会の戦いぶりを短くまとめる */
@@ -762,7 +780,7 @@ const Screens = (() => {
 
   return {
     pick, ready, training, trainingResult, opening, pregame,
-    poachWin, poachRelease, champion, offseason, settings, lineupCard, bindRows,
+    poachWin, poachRelease, poachFailed, champion, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
     localWin,
   };

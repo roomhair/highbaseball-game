@@ -480,9 +480,18 @@ const Game = (() => {
     save();
     Screens.poachWin(state,
       (p) => {
-        Screens.poachRelease(state, p,
-          (out) => { doPoach(p, out); },
-          () => toPoach());
+        /* 強奪が実際に成功するかどうかは、ここで決める。放出する選手を
+           選ばせる前に判定することで、失敗したときに「誰を放出するか」を
+           考えさせずに済む */
+        const round = Tournament.currentRound(state.tour);
+        const chance = poachSuccessChance(round ? round.level : 50, state.prestigeScore);
+        if (RNG.chance(chance)) {
+          Screens.poachRelease(state, p,
+            (out) => { doPoach(p, out); },
+            () => toPoach());
+        } else {
+          Screens.poachFailed(state, p, () => advanceRound());
+        }
       },
       () => advanceRound());
   }
