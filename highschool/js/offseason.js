@@ -1,8 +1,10 @@
 /* ==================================================
    高校野球  offseason.js
 
-   オフシーズン。3年生が引退し、1・2年生が1つ学年を上げ、
-   空いた人数ぶんの新入生が入る。
+   オフシーズン。3年生は夏が終わった時点で引退するが、学年はまだ
+   上げない（秋の大会・センバツ相当は、3年生が抜けた今の学年の
+   ままで戦う）。センバツ相当まで終わってから、残った部員の学年を
+   1つ上げ、空いた人数ぶんの新入生を迎える。
    ・負けて選手を引き抜かれていると、その枠も空いたままなので、
      結果として新入生が1人多く入る（人数を数えるだけで自然にそうなる）。
    ================================================== */
@@ -41,14 +43,20 @@ const Offseason = (() => {
     };
   }
 
-  /** 3年生を外し、残りを1つ進級させる。戻り値は必要な新入生の人数 */
-  function graduate(team) {
+  /** 3年生を外す。学年はまだ上げない（秋の大会・センバツ相当は、
+      3年生が抜けた今の学年のままで戦うため） */
+  function retire(team) {
     team.batters = team.batters.filter((p) => p.grade < 3);
     team.pitchers = team.pitchers.filter((p) => p.grade < 3);
-    Team.all(team).forEach((p) => { p.grade++; });
     /* キャプテンが引退したら印を外す。次の特訓の前に選び直してもらう */
     Team.checkCaptain(team);
     Team.repair(team);
+  }
+
+  /** 残った部員の学年を1つ上げる。戻り値は必要な新入生の人数。
+      秋の大会・センバツ相当がすべて終わってから呼ぶ */
+  function promote(team) {
+    Team.all(team).forEach((p) => { p.grade++; });
     return {
       bat: Math.max(0, 13 - team.batters.length),
       pit: Math.max(0, 7 - team.pitchers.length),
@@ -65,5 +73,5 @@ const Offseason = (() => {
     return team;
   }
 
-  return { retiring, farewell, graduate, enroll, draftPick };
+  return { retiring, farewell, retire, promote, enroll, draftPick };
 })();

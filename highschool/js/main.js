@@ -188,7 +188,9 @@ const Game = (() => {
     switch (state.trainingNext) {
       case 'fallPref': startTournament('fallPref'); break;
       case 'springOrNextSummer':
-        if (state.springQualified) startTournament('spring'); else startTournament('local');
+        /* センバツに出ないと決まった場合も、学年を上げて新入生を迎える
+           タイミングは「センバツ相当が終わったあと」と同じ扱いにする */
+        if (state.springQualified) startTournament('spring'); else toNewSeason();
         break;
       case 'nextSummer': startTournament('local'); break;
       default: startTournament('local');
@@ -211,9 +213,10 @@ const Game = (() => {
     toTrainingPhase('springOrNextSummer', TRAIN_LIMITS.normal);
   }
 
-  /** センバツ相当が終わったあとの特訓。夏と秋の間と同じく選択を絞る */
+  /** センバツ相当が終わったあと。新しい年度として学年を上げ、
+      新入生を迎える（その後の特訓は夏と秋の間と同じく選択を絞る） */
   function toPostSpringTraining() {
-    toTrainingPhase('nextSummer', TRAIN_LIMITS.short);
+    toNewSeason();
   }
 
   /* ---------- 大会 ---------- */
@@ -484,20 +487,26 @@ const Game = (() => {
     save();
     Screens.poachWin(state,
       (p) => {
-        /* 強奪が実際に成功するかどうかは、ここで決める。放出する選手を
-           選ばせる前に判定することで、失敗したときに「誰を放出するか」を
-           考えさせずに済む */
-        const round = Tournament.currentRound(state.tour);
-        const chance = poachSuccessChance(round ? round.level : 50, state.prestigeScore);
-        if (RNG.chance(chance)) {
-          Screens.poachRelease(state, p,
-            (out) => { doPoach(p, out); },
-            () => toPoach());
-        } else {
-          Screens.poachFailed(state, p, () => advanceRound());
-        }
+        /* 放出する選手は、挑戦が成功するかどうかより前に選ばせる。
+           成功してから選ばせると、放出できる選手がいない
+           （区分の部員が他にいない）という事態が起こりうるため */
+        Screens.poachRelease(state, p,
+          (out) => { attemptPoach(p, out); },
+          () => toPoach());
       },
       () => advanceRound());
+  }
+
+  function attemptPoach(incoming, outgoing) {
+    const round = Tournament.currentRound(state.tour);
+    const chance = poachSuccessChance(round ? round.level : 50, state.prestigeScore);
+    if (RNG.chance(chance)) {
+      doPoach(incoming, outgoing);
+      save();
+      Screens.poachSuccess(state, incoming, outgoing, () => advanceRound());
+    } else {
+      Screens.poachFailed(state, incoming, () => advanceRound());
+    }
   }
 
   function doPoach(incoming, outgoing) {
@@ -518,7 +527,6 @@ const Game = (() => {
     if (incoming.kind === 'pitcher' && state.team.rotation.indexOf(incoming.id) < 0) {
       state.team.rotation.push(incoming.id);
     }
-    advanceRound();
   }
 
   function advanceRound() {
@@ -723,8 +731,18 @@ const Game = (() => {
     Screens.offseason(state, retired);
   }
 
-  function toNewcomers() {
-    state.need = Offseason.graduate(state.team);
+  /** 夏が終わったあと、3年生だけを引退させる。学年はまだ上げない
+      （秋の大会・センバツ相当は、3年生が抜けた今の学年のままで戦う）。
+      新入生を迎えて学年を1つ上げるのは、センバツ相当まで終わってから */
+  function toPostSummerRetirement() {
+    Offseason.retire(state.team);
+    toTrainingPhase('fallPref', TRAIN_LIMITS.short);
+  }
+
+  /** 秋・センバツ相当がすべて終わった（あるいはセンバツに出られないと
+      決まった）あと。新しい年度として学年を1つ上げ、新入生を迎える */
+  function toNewSeason() {
+    state.need = Offseason.promote(state.team);
     state.year++;
     state.phase = 'new-bat';
     state.sets = null;
@@ -773,9 +791,9 @@ const Game = (() => {
   function afterNewcomers() {
     Team.autoLineup(state.team);
     state.poachedFrom = null;
-    /* 新チーム（3年生引退・新入生加入後）は、まず秋の大会へ向かう */
+    /* 新入生を迎えたので、来年の夏へ向けた特訓から始める */
     state.springQualified = false;
-    toTrainingPhase('fallPref', TRAIN_LIMITS.short);
+    toTrainingPhase('nextSummer', TRAIN_LIMITS.short);
   }
 
   /* ---------- 再開 ---------- */
@@ -972,7 +990,7 @@ const Game = (() => {
       if (e.target.closest('#btn-captain')) return;
       if (state && state.phase === 'train-intro') startTraining();
     });
-    on('btn-off-next', toNewcomers);
+    on('btn-off-next', toPostSummerRetirement);
 
     on('btn-soccer-primary', () => {
       switch (state.phase) {

@@ -204,10 +204,12 @@ const Screens = (() => {
   /** 特訓の入口に出す一言。state.trainingNext（次に進む先）で変える */
   function trainingIntroLead(state) {
     switch (state.trainingNext) {
-      case 'fallPref': return '新入生を迎えた新チームの、秋までの練習が始まる。';
+      /* 3年生が引退した直後。学年はまだ上がらず、新入生もまだいない */
+      case 'fallPref': return '3年生が引退した今のチームの、秋までの練習が始まる。';
       case 'springOrNextSummer':
         return state.springQualified ? '春までの練習が始まる。' : '来年の夏までの練習が始まる。';
-      case 'nextSummer': return '夏までの練習が始まる。';
+      /* センバツ相当まで終わり、学年が上がって新入生を迎えた直後 */
+      case 'nextSummer': return '新入生を迎えた新チームの、夏までの練習が始まる。';
       default: return '新入生を迎えたチームの、夏までの練習が始まる。';
     }
   }
@@ -593,14 +595,15 @@ const Screens = (() => {
     UI.show('screen-poach');
   }
 
-  /** 引き抜いた選手と入れ替えに出す部員を選ぶ */
+  /** 挑戦する前に、入れ替えに出す部員を選んでおく。
+      （成功してから放出を選ばせると、放出できる選手がいない事態が
+      起こりうるため、挑戦そのものより前に選ばせる） */
   function poachRelease(state, incoming, onRelease, onCancel) {
     let picked = null;
-    UI.el('poach-title').textContent = '引き抜き成功！';
-    UI.el('poach-title').classList.remove('is-lose');
-    UI.el('poach-title').classList.add('is-win');
+    UI.el('poach-title').textContent = '放出する選手を選ぶ';
+    UI.el('poach-title').classList.remove('is-win', 'is-lose');
     UI.el('poach-lead').textContent =
-      esc(incoming.name) + 'の引き抜きに成功した。迎える代わりに、放出する' +
+      esc(incoming.name) + 'の引き抜きに挑戦する前に、迎える代わりに放出する' +
       (incoming.kind === 'pitcher' ? '投手' : '野手') + 'を1人選んでください。';
     const own = incoming.kind === 'pitcher' ? state.team.pitchers : state.team.batters;
     UI.html('poach-body',
@@ -610,7 +613,7 @@ const Screens = (() => {
     const more = state.tour.index < state.tour.rounds.length - 1;
     const ok = UI.el('btn-poach-ok');
     const skip = UI.el('btn-poach-skip');
-    ok.textContent = more ? '放出して次の試合へ' : '放出して次へ';
+    ok.textContent = more ? 'この内容で引き抜きチャレンジへ' : 'この内容で引き抜きチャレンジ';
     ok.hidden = false;
     ok.disabled = true;
     skip.hidden = false;
@@ -626,11 +629,31 @@ const Screens = (() => {
         picked = Team.find(state.team, pid);
         ok.disabled = !picked;
         if (picked) UI.el('poach-lead').textContent =
-          picked.name + '（' + UI.roleText(state.team, picked) + '）を放出します。';
+          picked.name + '（' + UI.roleText(state.team, picked) + '）を放出して、挑戦します。';
       },
     });
     ok.onclick = () => { if (picked) onRelease(picked); };
     skip.onclick = onCancel;
+    UI.show('screen-poach');
+  }
+
+  /** 引き抜きに成功したとき。放出はすでに選んであるので、結果を伝えるだけ */
+  function poachSuccess(state, incoming, outgoing, onNext) {
+    UI.el('poach-title').textContent = '引き抜き成功！';
+    UI.el('poach-title').classList.remove('is-lose');
+    UI.el('poach-title').classList.add('is-win');
+    UI.el('poach-lead').textContent =
+      esc(incoming.name) + 'の引き抜きに成功した。代わりに' + esc(outgoing.name) + 'を放出した。';
+    UI.html('poach-body', '<div class="incoming">' + UI.playerDetail(incoming, { rename: false }) + '</div>');
+
+    const more = state.tour.index < state.tour.rounds.length - 1;
+    const ok = UI.el('btn-poach-ok');
+    const skip = UI.el('btn-poach-skip');
+    ok.textContent = more ? '次の試合へ' : '次へ';
+    ok.hidden = false;
+    ok.disabled = false;
+    skip.hidden = true;
+    ok.onclick = () => onNext();
     UI.show('screen-poach');
   }
 
@@ -640,7 +663,8 @@ const Screens = (() => {
     UI.el('poach-title').classList.remove('is-win');
     UI.el('poach-title').classList.add('is-lose');
     UI.el('poach-lead').textContent =
-      esc(incoming.name) + 'の引き抜きを試みたが、' + esc(state.opponent.name) + 'に引き止められてしまった。';
+      esc(incoming.name) + 'の引き抜きに挑戦したが、' + esc(state.opponent.name) + 'に引き止められてしまった。' +
+      '放出は行われていない。';
     UI.html('poach-body', '<div class="incoming">' + UI.playerDetail(incoming, { rename: false }) + '</div>');
 
     const more = state.tour.index < state.tour.rounds.length - 1;
@@ -891,7 +915,7 @@ const Screens = (() => {
 
   return {
     pick, ready, training, trainingResult, opening, pregame,
-    poachWin, poachRelease, poachFailed, champion, offseason, settings, lineupCard, bindRows,
+    poachWin, poachRelease, poachSuccess, poachFailed, champion, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
     localWin, soccerStart, soccerPregame, soccerResult, soccerOffseason,
   };
