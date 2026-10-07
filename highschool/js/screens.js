@@ -555,11 +555,11 @@ const Screens = (() => {
 
   function poachWin(state, onTake, onSkip) {
     let picked = null;
-    UI.el('poach-title').textContent = '引き抜き';
+    UI.el('poach-title').textContent = '引き抜きチャレンジ';
     UI.el('poach-title').classList.remove('is-win', 'is-lose');
     UI.el('poach-lead').textContent =
-      esc(state.opponent.name) + 'から1人、自校に引き抜けます。選手を選んでから下のボタンを押してください。' +
-      '引き抜くと、同じ区分（野手／投手）の部員を1人放出します。';
+      esc(state.opponent.name) + 'から1人、引き抜きに挑戦できます（必ず成功するとは限りません）。' +
+      '選手を選んでから下のボタンを押してください。成功すると、同じ区分（野手／投手）の部員を1人放出します。';
     UI.html('poach-body',
       '<h3 class="sub">' + esc(state.opponent.name) + '　野手</h3><div id="poach-bat"></div>' +
       '<h3 class="sub">' + esc(state.opponent.name) + '　投手</h3><div id="poach-pit"></div>');
@@ -568,7 +568,7 @@ const Screens = (() => {
     const more = state.tour.index < state.tour.rounds.length - 1;
     const ok = UI.el('btn-poach-ok');
     const skip = UI.el('btn-poach-skip');
-    ok.textContent = more ? '引き抜いて次の試合へ' : '引き抜いて次へ';
+    ok.textContent = more ? '引き抜きチャレンジへ' : '引き抜きチャレンジ';
     ok.hidden = false;
     ok.disabled = true;
     skip.hidden = false;
@@ -582,7 +582,7 @@ const Screens = (() => {
       ok.disabled = !picked;
       if (picked) UI.el('poach-lead').textContent =
         picked.name + '（' + picked.grade + '年・' +
-        (picked.kind === 'pitcher' ? '投手' : posName(picked.pos)) + '）を引き抜きます。';
+        (picked.kind === 'pitcher' ? '投手' : posName(picked.pos)) + '）の引き抜きに挑戦します。';
     };
     UI.rosterPanel(UI.el('poach-bat'), state.opponent.batters,
       { team: state.opponent, onRow: choose, nameLink: true, nameLinkRename: false });
