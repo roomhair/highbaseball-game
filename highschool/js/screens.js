@@ -401,7 +401,7 @@ const Screens = (() => {
       case 'fallDistrict': return t + '、地区大会へ。';
       case 'fallJingu': return t + '、全国の強豪が集う舞台へ。';
       case 'spring': return t + '、春の全国大会へ。';
-      default: return t + '、夏の地方大会へ。';
+      default: return t + '、夏の県予選へ。';
     }
   }
 
@@ -662,9 +662,7 @@ const Screens = (() => {
     UI.el('poach-title').textContent = '引き抜き失敗';
     UI.el('poach-title').classList.remove('is-win');
     UI.el('poach-title').classList.add('is-lose');
-    UI.el('poach-lead').textContent =
-      esc(incoming.name) + 'の引き抜きに挑戦したが、' + esc(state.opponent.name) + 'に引き止められてしまった。' +
-      '放出は行われていない。';
+    UI.el('poach-lead').textContent = esc(state.opponent.name) + 'に引き止められてしまった。';
     UI.html('poach-body', '<div class="incoming">' + UI.playerDetail(incoming, { rename: false }) + '</div>');
 
     const more = state.tour.index < state.tour.rounds.length - 1;
@@ -719,7 +717,7 @@ const Screens = (() => {
     UI.html('localwin-body',
       '<div class="champ champ--local">' +
         '<p class="champ__eyebrow">' + state.year + '年目</p>' +
-        '<h2 class="champ__title">地方大会 優勝</h2>' +
+        '<h2 class="champ__title">県予選 優勝</h2>' +
         '<p class="champ__school">' + esc(t.name) + '</p>' +
         '<div class="champ__rays" aria-hidden="true"></div>' +
         '<p class="champ__record">' + tourLine(state) + '</p>' +
@@ -831,6 +829,8 @@ const Screens = (() => {
   function settings(state) {
     UI.el('set-national').value = state.settings.nationalName;
     UI.el('set-school').value = state.team ? state.team.name : (state.settings.schoolName || '');
+    UI.el('set-jingu').value = state.settings.jinguName;
+    UI.el('set-spring').value = state.settings.springName;
     UI.el('set-poach').checked = !!state.settings.poach;
     UI.show('screen-settings');
   }
@@ -860,7 +860,7 @@ const Screens = (() => {
     UI.el('soccer-eyebrow').textContent = state.year + '年目';
     UI.el('soccer-title').textContent = '野球部、解散';
     UI.html('soccer-body',
-      '<p class="section-lead">夏の地方大会で2年連続の1回戦敗退。' + esc(S.schoolName) + '野球部は解散した。</p>' +
+      '<p class="section-lead">夏の県予選で2年連続の1回戦敗退。' + esc(S.schoolName) + '野球部は解散した。</p>' +
       '<p class="section-lead">部員はそのままサッカー部に加わり、新しい挑戦が始まる。' +
       '都道府県予選を勝ち抜けば、全国大会に進める。</p>');
     UI.el('btn-soccer-primary').textContent = 'サッカー部の大会へ';
@@ -872,7 +872,7 @@ const Screens = (() => {
     const S = state.soccer;
     const round = Soccer.currentRound(S.tour);
     UI.el('soccer-eyebrow').textContent = soccerStageName(S.tour.stage) + '　' + round.name;
-    UI.el('soccer-title').textContent = esc(S.schoolName);
+    UI.el('soccer-title').textContent = esc(S.schoolName) + '　対　' + esc(round.schoolName || '相手校');
     UI.html('soccer-body',
       '<p class="section-lead">自軍の強さの目安: ' + Soccer.strength(S) + '</p>' +
       soccerLineupTable(S));
@@ -912,6 +912,7 @@ const Screens = (() => {
     UI.el('soccer-title').textContent = (res.win ? '勝利' : '敗戦') + '　' + res.my + ' − ' + res.op +
       (res.pk ? '（PK戦）' : '');
     UI.html('soccer-body',
+      '<p class="section-lead vs">' + esc(S.schoolName) + '　<i>対</i>　' + esc(res.oppName || round.schoolName || '相手校') + '</p>' +
       (scorers.length ? '<p>得点: ' + scorers.map(esc).join('、') + '</p>' : '<p>得点者なし</p>') +
       (res.win
         ? '<p class="section-lead">' +

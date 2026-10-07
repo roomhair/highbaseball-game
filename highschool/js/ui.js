@@ -870,9 +870,6 @@ const UI = (() => {
 
     modal(
       '<h3 class="modal__title">キャプテンを決める</h3>' +
-      '<p class="time__where">部を束ねる1人を選んでください。学年は問いません。' +
-        'キャプテンが引退したら、そのときに決め直します。' +
-        'オフシーズンにはいつでも変えられます。</p>' +
       '<div class="spick__list capsel">' + list.map(row).join('') + '</div>',
       {
         kind: 'captain',

@@ -73,14 +73,14 @@ const Game = (() => {
   Screens.setOnChange(save);
 
   function tourLabel() {
-    if (!state.tour) return '地方大会';
+    if (!state.tour) return '県予選';
     switch (state.tour.kind) {
       case 'national': return state.settings.nationalName;
       case 'fallPref': return '秋季県大会';
       case 'fallDistrict': return '秋季地区大会';
       case 'fallJingu': return state.settings.jinguName;
       case 'spring': return state.settings.springName;
-      default: return '地方大会';
+      default: return '県予選';
     }
   }
 
@@ -183,7 +183,7 @@ const Game = (() => {
         return state.springQualified ? (state.settings.springName + 'へ') : '新入生入部へ';
       /* 新入生を迎えたあとの特訓が終わったら、次はいよいよ夏の大会 */
       case 'nextSummer': return '夏の大会へ';
-      default: return '地方大会へ';
+      default: return '県予選へ';
     }
   }
 
@@ -677,9 +677,13 @@ const Game = (() => {
   function soccerPlay() {
     const res = Soccer.playUser(state.soccer);
     state.lastSoccerRes = res;
-    state.phase = 'soccer-result';
+    state.phase = 'soccer-game';
     save();
-    Screens.soccerResult(state, res);
+    SoccerGameScreen.start(state, res, () => {
+      state.phase = 'soccer-result';
+      save();
+      Screens.soccerResult(state, res);
+    });
   }
 
   function soccerAfterResult() {
@@ -766,6 +770,10 @@ const Game = (() => {
     state.year++;
     state.team = null;
     state.sets = null;
+    /* サッカー部に変わる直前は、夏と秋の間などの「短い」特訓だったことが
+       多いので、trainLimits が短いまま残らないようにしておく。
+       野球部の復活は、チーム作成直後と同じ大きいほうの特訓を経て夏へ */
+    state.trainLimits = TRAIN_LIMITS.normal;
     pickBatters();
   }
 
@@ -898,9 +906,9 @@ const Game = (() => {
       case 'train-intro': Screens.trainingIntro(state); break;
       case 'soccer-start': Screens.soccerStart(state); break;
       case 'soccer-pregame': Screens.soccerPregame(state); break;
-      /* サッカーの試合の中身は保存していないので、結果画面には戻れない。
-         次の試合の前まで戻す */
-      case 'soccer-result': Screens.soccerPregame(state); break;
+      /* サッカーの試合の中身（試合中の演出・結果画面）は保存していないので、
+         途中で閉じて開き直したときは次の試合の前まで戻す */
+      case 'soccer-game': case 'soccer-result': Screens.soccerPregame(state); break;
       case 'soccer-training': Screens.soccerTraining(state); break;
       case 'soccer-offseason':
         Screens.soccerOffseason(state, Soccer.canRevive(state.soccer)); break;
@@ -919,7 +927,11 @@ const Game = (() => {
   function saveSettings() {
     const nat = UI.el('set-national').value.trim();
     const school = UI.el('set-school').value.trim();
+    const jingu = UI.el('set-jingu').value.trim();
+    const spring = UI.el('set-spring').value.trim();
     state.settings.nationalName = nat || CONFIG.DEFAULTS.nationalName;
+    state.settings.jinguName = jingu || CONFIG.DEFAULTS.jinguName;
+    state.settings.springName = spring || CONFIG.DEFAULTS.springName;
     state.settings.poach = UI.el('set-poach').checked;
     if (state.team && school) state.team.name = school.slice(0, 14);
     state.settings.schoolName = school;
@@ -989,6 +1001,7 @@ const Game = (() => {
   function boot() {
     UI.init();
     GameScreen.init();
+    SoccerGameScreen.init();
     state = fresh();
     applySettings();
     showTopButtons();

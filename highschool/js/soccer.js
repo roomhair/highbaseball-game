@@ -146,7 +146,8 @@ const Soccer = (() => {
         const s = { spd: n(), phy: n(), sta: n(), atk: n(), def: n(), pas: n(), gk: n() };
         const k = { GK: 'gk', DF: 'def', MF: 'pas', FW: 'atk' }[pos];
         s[k] = RNG.stat(s[k] + 10);
-        side.push({ pid: 'o' + pos + i, name: '', pos, s });
+        const nm = NAMES.personName();
+        side.push({ pid: 'o' + pos + i, name: nm.last + nm.first, pos, s });
       }
     });
     return side;
@@ -201,7 +202,7 @@ const Soccer = (() => {
   const REGIONAL_ROUNDS = ['1回戦', '準決勝', '決勝'];
   const NATIONAL_ROUNDS = ['1回戦', '2回戦', '3回戦', '準々決勝', '準決勝', '決勝'];
 
-  function ladder(from, roundNames, riseFrom) {
+  function ladder(from, roundNames, riseFrom, nameKind) {
     const levels = [RNG.clamp(from, 10, 90)];
     for (let i = 1; i < roundNames.length; i++) {
       const mustRise = i >= roundNames.length - riseFrom;
@@ -209,20 +210,22 @@ const Soccer = (() => {
       if (mustRise && add < 1) add = 1 + Math.random() * 4;
       levels.push(RNG.clamp(levels[i - 1] + add, 10, 97));
     }
-    return roundNames.map((name, i) => ({ name, level: Math.round(levels[i]) }));
+    const used = new Set();
+    return roundNames.map((name, i) =>
+      ({ name, level: Math.round(levels[i]), schoolName: NAMES.schoolName(used, nameKind) }));
   }
 
   /** 都道府県予選の山を組む。1回戦の強さは自軍の強さに合わせる */
   function createRegional(myStrength) {
     const from = myStrength + RNG.range(-8, 2);
-    const rounds = ladder(from, REGIONAL_ROUNDS, 2);
+    const rounds = ladder(from, REGIONAL_ROUNDS, 2, 'regional');
     return { stage: 'regional', rounds, index: 0, finalLevel: rounds[rounds.length - 1].level };
   }
 
   /** 全国大会の山を組む。都道府県予選の決勝の強さの続きから始まる */
   function createNational(myStrength, fromLevel) {
     const from = (fromLevel != null ? fromLevel : myStrength) + RNG.range(0, 6);
-    const rounds = ladder(from, NATIONAL_ROUNDS, 2);
+    const rounds = ladder(from, NATIONAL_ROUNDS, 2, 'national');
     return { stage: 'national', rounds, index: 0, finalLevel: rounds[rounds.length - 1].level };
   }
 
@@ -263,7 +266,7 @@ const Soccer = (() => {
         if (u.length) ups.push({ pid: p.id, name: p.name, ups: u });
       }
     });
-    const res = { home: homeIsMe, my, op, win, pk, events: r.events, ups };
+    const res = { home: homeIsMe, my, op, win, pk, events: r.events, ups, oppName: round.schoolName };
     S.lastMatch = res;
     return res;
   }

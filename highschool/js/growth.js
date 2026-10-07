@@ -129,6 +129,10 @@ const Growth = (() => {
    */
   function afterGame(team, ctx) {
     const report = [];
+    const records = [];
+    /* 覚醒は1試合・1チームにつき1人まで。判定はここで集めておき、
+       2人以上同時に当たったらあとで1人に絞る */
+    const pendingAwaken = [];
     Team.all(team).forEach((p) => {
       const isPit = p.kind === 'pitcher';
       const s = p.game;
@@ -178,46 +182,60 @@ const Growth = (() => {
         }
       }
 
-      /* ---- 覚醒 ---- */
-      let awakened = false;
+      /* ---- 覚醒（判定だけ。実際に反映するのは、重複を1人に絞ってから） ---- */
+      let awakenRoll = false;
       if (!p.awakened && played) {
         const chance = RNG.clamp(0.004 + Math.max(0, perf) * 0.004, 0.004, 0.035);
-        if (RNG.chance(chance)) {
-          awakened = true;
-          p.awakened = true;
-          /* 覚醒も、少数の能力に固めず持っている能力ぜんぶに配る。
-             合計は変えていないが、1つが +15 跳ねることは無くなる。
-             通常の成長と同じ能力に乗ることがあるので（mergeUps でまとまる）、
-             ここを絞らないと合わせて +24 になってしまっていた */
-          const per = isPit ? [4, 9] : [3, 8];
-          /* 球速・変化球・弾道は0〜100の目盛りではないので、ここでは対象にしない
-             （velo/pitch はこのすぐ下、traj はさらにその下で別枠として扱う） */
-          stats.filter((st) => !st.virtual).forEach((st) => {
-            const before = p[st.key];
-            p[st.key] = RNG.stat(before + RNG.range(per[0], per[1]));
-            ups.push({ key: st.key, label: st.label, amount: p[st.key] - before, before, after: p[st.key], awake: true });
-          });
-          if (isPit) {
-            const vb = p.velo;
-            p.velo = Math.min(168, vb + RNG.range(3, 7));
-            ups.push({ key: 'velo', label: '球速', amount: p.velo - vb, before: vb, after: p.velo, unit: 'km/h', awake: true });
-            /* 決め球が一段階よくなる */
-            if (p.pitches.length) {
-              const lb = p.pitches[0].level;
-              p.pitches[0].level = Math.min(7, lb + 1);
-              ups.push({ key: 'pitch', label: p.pitches[0].name, amount: p.pitches[0].level - lb,
-                         before: lb, after: p.pitches[0].level, awake: true });
-            }
-          } else if (p.traj < 4 && RNG.chance(0.18)) {
-            const tb = p.traj;
-            p.traj++;
-            ups.push({ key: 'traj', label: '弾道', amount: 1, before: tb, after: p.traj, awake: true });
-          }
-        }
+        if (RNG.chance(chance)) awakenRoll = true;
       }
+      if (awakenRoll) pendingAwaken.push({ p, isPit, stats, ups });
 
-      if (ups.length || awakened) {
-        report.push({ pid: p.id, name: p.name, grade: p.grade, kind: p.kind, played, awakened, ups: mergeUps(ups) });
+      records.push({ p, isPit, played, perf, ups, awakenRoll });
+    });
+
+    /* 覚醒は1試合・1チームにつき1人まで。2人以上同時に当たったら1人に絞り、
+       残りは覚醒しなかったことにする（通常の成長ぶんはそのまま残る） */
+    if (pendingAwaken.length > 1) {
+      const chosen = RNG.pick(pendingAwaken);
+      records.forEach((r) => { if (r.awakenRoll && r.p !== chosen.p) r.awakenRoll = false; });
+      pendingAwaken.length = 0;
+      pendingAwaken.push(chosen);
+    }
+    pendingAwaken.forEach(({ p, isPit, stats, ups }) => {
+      p.awakened = true;
+      /* 覚醒も、少数の能力に固めず持っている能力ぜんぶに配る。
+         合計は変えていないが、1つが +15 跳ねることは無くなる。
+         通常の成長と同じ能力に乗ることがあるので（mergeUps でまとまる）、
+         ここを絞らないと合わせて +24 になってしまっていた */
+      const per = isPit ? [4, 9] : [3, 8];
+      /* 球速・変化球・弾道は0〜100の目盛りではないので、ここでは対象にしない
+         （velo/pitch はこのすぐ下、traj はさらにその下で別枠として扱う） */
+      stats.filter((st) => !st.virtual).forEach((st) => {
+        const before = p[st.key];
+        p[st.key] = RNG.stat(before + RNG.range(per[0], per[1]));
+        ups.push({ key: st.key, label: st.label, amount: p[st.key] - before, before, after: p[st.key], awake: true });
+      });
+      if (isPit) {
+        const vb = p.velo;
+        p.velo = Math.min(168, vb + RNG.range(3, 7));
+        ups.push({ key: 'velo', label: '球速', amount: p.velo - vb, before: vb, after: p.velo, unit: 'km/h', awake: true });
+        /* 決め球が一段階よくなる */
+        if (p.pitches.length) {
+          const lb = p.pitches[0].level;
+          p.pitches[0].level = Math.min(7, lb + 1);
+          ups.push({ key: 'pitch', label: p.pitches[0].name, amount: p.pitches[0].level - lb,
+                     before: lb, after: p.pitches[0].level, awake: true });
+        }
+      } else if (p.traj < 4 && RNG.chance(0.18)) {
+        const tb = p.traj;
+        p.traj++;
+        ups.push({ key: 'traj', label: '弾道', amount: 1, before: tb, after: p.traj, awake: true });
+      }
+    });
+
+    records.forEach(({ p, played, perf, ups, awakenRoll }) => {
+      if (ups.length || awakenRoll) {
+        report.push({ pid: p.id, name: p.name, grade: p.grade, kind: p.kind, played, awakened: awakenRoll, ups: mergeUps(ups) });
       }
 
       /* ---- 名場面 ---- */

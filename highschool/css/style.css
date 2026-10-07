@@ -764,6 +764,25 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 #poach-title.is-win { color: var(--accent); }
 #poach-title.is-lose { color: var(--ng); }
 
+/* ===== サッカー部の試合中 ===== */
+/* 起きた出来事を積み上げて見せる。ゴールだけ色を変えて目立たせる */
+.soccer-log {
+  margin: 10px 0; max-height: 50vh; overflow-y: auto;
+  border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.soccer-log__list { list-style: none; margin: 0; padding: 4px 0; }
+.soccer-log__item {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 8px 14px; border-bottom: 1px solid var(--line-soft);
+  font-size: 13px; color: var(--ink-mute);
+}
+.soccer-log__item:last-child { border-bottom: none; }
+.soccer-log__min { flex: none; font-size: 11px; color: var(--ink-faint); min-width: 32px; }
+.soccer-log__text { flex: 1; }
+.soccer-log__item--goal { color: var(--ink); font-weight: 700; background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.soccer-log__item.is-mine .soccer-log__text { color: var(--ink); }
+
 .awakebox { margin: 14px 0; padding: 10px 14px; border: 1.5px solid var(--crimson); border-radius: 4px; }
 .awakebox__title { margin: 0 0 4px; font-size: 12px; letter-spacing: .2em; color: var(--crimson); }
 .awakebox__line { margin: 2px 0; font-size: 13.5px; }

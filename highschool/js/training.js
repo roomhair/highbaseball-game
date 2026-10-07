@@ -53,12 +53,16 @@ const Training = (() => {
   /* ゲーム全体の難易度調整で、成長幅をもとの1.4倍に引き上げてある
      （試合後の成長は config.js の GROWTH 側で同じ倍率をかけてある）。
      相手の強さ（CONFIG.FIELD）やステータスと勝率の関係（sim.js）は
-     いっさい変えていない。 */
+     いっさい変えていない。
+     「試合後の伸びを小さく、特訓での伸びを大きく」する要望に合わせて、
+     ここをさらに1.35倍に引き上げてある（config.js の PER_GAME_BAT/PIT を
+     0.6倍にしたのと釣り合わせてあり、夏の大会の決勝進出時点の強さは
+     これまでとほぼ変わらないことを実測で確認済み）。 */
   const POWER_TIERS = [
-    { key: 's',  weight: 30, label: '',        stat: [6, 10],  velo: [1, 4],  pitch: 1, ball: [1, 3] },
-    { key: 'm',  weight: 40, label: '',        stat: [10, 15], velo: [4, 7],  pitch: 1, ball: [3, 4] },
-    { key: 'l',  weight: 22, label: 'みっちり', stat: [18, 29], velo: [7, 10], pitch: 1, ball: [4, 6] },
-    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [22, 35], velo: [8, 14], pitch: 3, ball: [6, 7] },
+    { key: 's',  weight: 30, label: '',        stat: [8, 14],  velo: [1, 5],  pitch: 1, ball: [1, 4] },
+    { key: 'm',  weight: 40, label: '',        stat: [14, 20], velo: [5, 9],  pitch: 1, ball: [4, 5] },
+    { key: 'l',  weight: 22, label: 'みっちり', stat: [24, 39], velo: [9, 14], pitch: 1, ball: [5, 8] },
+    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [30, 47], velo: [11, 19], pitch: 4, ball: [8, 9] },
   ];
 
   /* まれに、2種類の能力が同時に上がる。
