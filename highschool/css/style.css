@@ -1007,9 +1007,29 @@ tr.prow.is-picked .nmlink { color: inherit; }
 .champ__eyebrow { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .02em; color: var(--ink-mute); }
 .champ__title {
   margin: 10px 0 6px; font-size: 38px; font-weight: 700; letter-spacing: -.015em;
-  color: var(--crimson); animation: rise .8s cubic-bezier(.2,.9,.3,1) both;
+  color: var(--crimson); animation: rise-pop .9s cubic-bezier(.2,.9,.3,1) both;
 }
-@keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes rise-pop {
+  0% { opacity: 0; transform: translateY(20px) scale(.82); }
+  55% { opacity: 1; transform: translateY(-5px) scale(1.1); }
+  80% { transform: translateY(1px) scale(.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) { .champ__title { animation: none; } }
+/* 全国優勝（日本一）だけ、タイトルをひとまわり大きく・鮮やかにする */
+.champ--grand .champ__title { font-size: 44px; }
+/* 紙吹雪。優勝の瞬間だけの飾りで、ゲームの判断には関わらない */
+.champ__confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
+.confetti__piece {
+  position: absolute; top: -8%; width: 8px; height: 14px; border-radius: 2px; opacity: 0;
+  animation: confetti-fall var(--dur, 2.4s) var(--delay, 0s) ease-in both;
+}
+@keyframes confetti-fall {
+  0% { transform: translateY(-20px) rotate(var(--rot, 0deg)); opacity: 0; }
+  8% { opacity: .95; }
+  100% { transform: translateY(480px) rotate(calc(var(--rot, 0deg) + 360deg)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .confetti__piece { display: none; } }
 .champ__school { margin: 0 0 6px; font-size: 20px; font-weight: 600; letter-spacing: 0; }
 .champ__lead { margin: 16px 0 0; font-size: 14.5px; color: var(--ink-mute); }
 /* 優勝の背景。旗や光条のような紛らわしい形は避けて、
@@ -1043,6 +1063,18 @@ tr.prow.is-picked .nmlink { color: inherit; }
     color-mix(in srgb, var(--accent) 6%, transparent) 38%,
     transparent 68%);
 }
+
+/* 全国優勝（日本一）は、いちばん派手にする。光をひとまわり強く、
+   速く・大きく明滅させて「優勝した」感じを出す */
+.champ--grand .champ__rays {
+  background: radial-gradient(ellipse at 50% 34%,
+    color-mix(in srgb, var(--crimson) 28%, transparent) 0%,
+    color-mix(in srgb, var(--crimson) 11%, transparent) 42%,
+    transparent 72%);
+  animation: glow-grand 2.6s ease-in-out infinite alternate;
+}
+@keyframes glow-grand { from { opacity: .85; transform: scale(.93); } to { opacity: 1; transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .champ--grand .champ__rays { animation: none; } }
 
 /* ===== 選手の詳細 ===== */
 .pdetail__head { border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 12px; }

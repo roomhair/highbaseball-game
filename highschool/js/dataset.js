@@ -2,9 +2,9 @@
    高校野球  dataset.js
 
    チーム作りと新入生選びで見せる「データセット」。
-   ・野手のセットは13人。捕一二三遊左中右DH を1人ずつ（9人）と控え4人。
-     学年は 4人・4人・5人 に分かれ、どの学年が5人になるかは毎回変わる。
-   ・投手のセットは7人。学年は 2人・2人・3人。
+   ・野手のセットは16人。捕一二三遊左中右を1人ずつ（8人）と控え8人。
+     学年は 5人・5人・6人 に分かれ、どの学年が6人になるかは毎回変わる。
+   ・投手のセットは8人。学年は 2人・3人・3人。
    ・新入生のセットは、必要な人数ぶんの1年生だけで作る。
    ================================================== */
 'use strict';
@@ -22,13 +22,13 @@ const Dataset = (() => {
     return list;
   }
 
-  /** 野手13人のセットを1つ作る */
+  /** 野手16人のセットを1つ作る */
   function batterSet() {
-    const grades = RNG.shuffle(splitGrades([4, 4, 5]));   // 13人ぶんの学年
+    const grades = RNG.shuffle(splitGrades([5, 5, 6]));   // 16人ぶんの学年
     const posList = DATASET_POSITIONS.slice();            // 8人ぶんの守備位置（DHは含めない）
-    /* 残り5人は控え。守る場所が重なってもよい。
+    /* 残り8人は控え。守る場所が重なってもよい。
        指名打者はここから毎回選ぶ役割で、生まれつきの持ち場にはしない */
-    for (let i = 0; i < 5; i++) posList.push(RNG.pick(FIELD_POSITIONS));
+    for (let i = 0; i < 8; i++) posList.push(RNG.pick(FIELD_POSITIONS));
 
     const players = posList.map((pos, i) =>
       Player.newBatter({ grade: grades[i], pos }));
@@ -40,9 +40,9 @@ const Dataset = (() => {
     return players;
   }
 
-  /** 投手7人のセットを1つ作る */
+  /** 投手8人のセットを1つ作る */
   function pitcherSet() {
-    const grades = RNG.shuffle(splitGrades([2, 2, 3]));
+    const grades = RNG.shuffle(splitGrades([2, 3, 3]));
     const players = grades.map((g) => Player.newPitcher({ grade: g }));
     players.sort((a, b) => b.grade - a.grade || Player.rating(b) - Player.rating(a));
     return players;

@@ -699,6 +699,23 @@ const Screens = (() => {
     return Team.all(t).slice().sort((a, b) => score(b) - score(a)).slice(0, 3);
   }
 
+  /** 優勝画面の紙吹雪。純粋な飾りなので、乱数の種には触れない
+      （Math.random を直接使う） */
+  function confetti(n, colors) {
+    let out = '';
+    for (let i = 0; i < n; i++) {
+      const left = Math.floor(Math.random() * 100);
+      const delay = (Math.random() * 0.7).toFixed(2);
+      const dur = (1.9 + Math.random() * 1.3).toFixed(2);
+      const rot = Math.floor(Math.random() * 360);
+      const color = colors[i % colors.length];
+      out += '<i class="confetti__piece" style="left:' + left + '%;' +
+        '--delay:' + delay + 's;--dur:' + dur + 's;--rot:' + rot + 'deg;' +
+        'background:' + color + '"></i>';
+    }
+    return '<div class="champ__confetti" aria-hidden="true">' + out + '</div>';
+  }
+
   function starList(t) {
     return '<ul class="champ__stars">' + tourStars(t).map((p) => {
       const s = p.tour;
@@ -716,6 +733,7 @@ const Screens = (() => {
     const t = state.team;
     UI.html('localwin-body',
       '<div class="champ champ--local">' +
+        confetti(18, ['#6bbf8a', '#ffd54f', '#81c7e8', '#ffffff']) +
         '<p class="champ__eyebrow">' + state.year + '年目</p>' +
         '<h2 class="champ__title">県予選 優勝</h2>' +
         '<p class="champ__school">' + esc(t.name) + '</p>' +
@@ -731,7 +749,8 @@ const Screens = (() => {
   function champion(state) {
     const t = state.team;
     UI.html('champion-body',
-      '<div class="champ">' +
+      '<div class="champ champ--grand">' +
+        confetti(28, ['#d4af37', '#e23b3b', '#3b7fe2', '#ffffff', '#ffd54f']) +
         '<p class="champ__eyebrow">' + state.year + '年目</p>' +
         '<h2 class="champ__title">' + esc(state.settings.nationalName) + ' 優勝</h2>' +
         '<p class="champ__school">' + esc(t.name) + '</p>' +

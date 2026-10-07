@@ -98,7 +98,7 @@ const Game = (() => {
     save();
     Screens.pick({
       title: '野手を選ぶ',
-      lead: '13人ひと組のチームが' + CONFIG.PICK_SETS + 'つ。どれか1つを選んでください。選手をタップすると詳しく見られます。',
+      lead: '16人ひと組のチームが' + CONFIG.PICK_SETS + 'つ。どれか1つを選んでください。選手をタップすると詳しく見られます。',
       setLabel: 'チーム', pickLabel: 'このチームにする',
       sets: state.sets.list,
       onSelect(i) {
@@ -120,7 +120,7 @@ const Game = (() => {
     save();
     Screens.pick({
       title: '投手を選ぶ',
-      lead: '7人ひと組のチームが' + CONFIG.PICK_SETS + 'つ。どれか1つを選んでください。',
+      lead: '8人ひと組のチームが' + CONFIG.PICK_SETS + 'つ。どれか1つを選んでください。',
       setLabel: 'チーム', pickLabel: 'このチームにする',
       sets: state.sets.list,
       onSelect(i) {
