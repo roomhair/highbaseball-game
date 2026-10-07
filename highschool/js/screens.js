@@ -791,7 +791,7 @@ const Screens = (() => {
               q.grade + '年・' + (q.kind === 'pitcher' ? '投手' : posName(q.pos)) + '・' +
               UI.handMark(q) + '）を引き抜かれた。</p>' +
             UI.playerDetail(q, { rename: false }) +
-            '<p class="note">空いた枠には、新入生が1人多く入る。</p>' +
+            '<p class="note">空いた枠には、次に新入生を迎えるときに1人多く入る。</p>' +
           '</section>';
         })()
       : '';

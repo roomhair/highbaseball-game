@@ -460,7 +460,7 @@ const Game = (() => {
        大会優勝そのものの演出は、結果画面へ進むこの瞬間に出す
        （引き抜きのあとまで待たない）。実際に次の大会へ進む操作は、
        引き抜きのあとに出る専用の画面（地方大会優勝／全国大会優勝）で行う */
-    btn.textContent = r.win ? '引き抜きへ' : r.loseNext;
+    btn.textContent = r.win ? '引き抜きチャレンジへ' : r.loseNext;
     if (r.win && r.last) {
       UI.curtain('<b>' + UI.esc(tourLabel()) + '</b><span>優勝</span>', function () {});
     }

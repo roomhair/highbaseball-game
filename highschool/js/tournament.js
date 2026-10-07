@@ -64,9 +64,13 @@ const Tournament = (() => {
 
   /** その大会で使う回の名前の並び。1回戦から決勝まで */
   function roundsFor(kind) {
-    if (kind === 'fallDistrict') return ['1回戦', '準々決勝', '準決勝', '決勝'];
+    /* 秋季県大会は4試合（決勝まで進めば3勝で秋季地区大会へ） */
+    if (kind === 'fallPref') return ['1回戦', '準々決勝', '準決勝', '決勝'];
+    /* 秋季地区大会は3試合（決勝まで進めば2勝でセンバツ相当、
+       優勝すれば神宮大会相当へ） */
+    if (kind === 'fallDistrict') return ['1回戦', '準決勝', '決勝'];
     if (kind === 'fallJingu') return ['1回戦', '準決勝', '決勝'];
-    /* local・national・fallPref・spring は同じ形（4回戦があるかどうかは半々） */
+    /* local・national・spring は同じ形（4回戦があるかどうかは半々） */
     const rounds = ['1回戦', '2回戦', '3回戦'];
     if (RNG.chance(0.5)) rounds.push('4回戦');
     rounds.push('準々決勝', '準決勝', '決勝');
