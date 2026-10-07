@@ -164,7 +164,7 @@ const Screens = (() => {
             esc(Team.staminaLabel(sp)) + '</span>' +
         '</span>' +
         '<span class="spballs">' + pitchText(sp) + '</span></p>' : '') +
-      (opts.pickable ? starterPicker(t) : '') +
+      (opts.pickable ? starterPicker(t, opts.pitcherOrder) : '') +
       '</div>';
   }
 
@@ -175,14 +175,19 @@ const Screens = (() => {
       '<span class="pball">' + esc(q.name) + '<b>' + q.level + '</b></span>').join('');
   }
 
-  /** 先発を選ぶ列。試合前の画面だけに出す */
-  function starterPicker(t) {
-    const rot = (t.rotation || []).map((id) => Team.find(t, id)).filter(Boolean);
+  /** 先発を選ぶ列。試合前の画面だけに出す。
+      order を渡すと、そこに並んだ順で固定して表示する
+      （選ぶたびに並びが入れ替わると選びにくいため。先発かどうかは
+      ハイライトと色だけで示す） */
+  function starterPicker(t, order) {
+    const ids = (order && order.length ? order : (t.rotation || []));
+    const rot = ids.map((id) => Team.find(t, id)).filter(Boolean);
     if (rot.length < 2) return '';
+    const starterId = t.rotation[0];
     return '<div class="spick">' +
       '<div class="spick__head">先発を選ぶ</div>' +
-      '<div class="spick__list">' + rot.map((p, i) =>
-        '<button type="button" class="spick__item' + (i === 0 ? ' is-on' : '') + '" data-pid="' + p.id + '">' +
+      '<div class="spick__list">' + rot.map((p) =>
+        '<button type="button" class="spick__item' + (p.id === starterId ? ' is-on' : '') + '" data-pid="' + p.id + '">' +
           '<span class="spick__nm">' + esc(p.name) + '</span>' +
           '<span class="spick__fat' + (Team.staminaTier(p) !== 'lo' ? ' is-tired' : '') + '">' +
             esc(Team.staminaLabel(p)) + '</span>' +
@@ -425,19 +430,27 @@ const Screens = (() => {
     bindRows(oppBody, open);
     oppBody.querySelectorAll('.pitname').forEach((b) => b.addEventListener('click', () => open(b.dataset.pid)));
 
+    /* 先発を選ぶ列に並べる順番は、この画面を開いたときのまま固定する。
+       選ぶたびに並び替えてしまうと、ボタンの位置が毎回入れ替わって
+       選びにくいため。実際の先発（rotation[0]）はハイライトと
+       色の変化だけで示す */
+    const pitcherOrder = (state.team.rotation || []).slice();
+
     /* 自軍カードは先発を選ぶたびに描き直す。ここだけ関数にしておき、
        画面全体（UI.show）は動かさないようにする。
        先発を選ぶたびに画面全体を描き直すと、UI.show が呼ぶ
        window.scrollTo(0,0) でスクロール位置が先頭に戻ってしまい、
        「リロードされた」ように見えてしまっていたため */
     function renderMyCard() {
-      UI.html('pregame-my', lineupCard(state.team, { pickable: true }));
+      UI.html('pregame-my', lineupCard(state.team, { pickable: true, pitcherOrder: pitcherOrder }));
       const myBody = UI.el('pregame-my');
       bindRows(myBody, open);
       myBody.querySelectorAll('.pitname').forEach((b) => b.addEventListener('click', () => open(b.dataset.pid)));
       myBody.querySelectorAll('.spick__item').forEach((b) => {
         b.addEventListener('click', () => {
           const pid = b.dataset.pid;
+          /* 先発（継投の順番の先頭）だけを入れ替える。以降の継投順は
+             そのまま保つ。表示の並びはここでは変えない */
           const rot = state.team.rotation.slice();
           const i = rot.indexOf(pid);
           if (i <= 0) return;
