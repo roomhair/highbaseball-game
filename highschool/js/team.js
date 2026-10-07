@@ -204,25 +204,22 @@ const Team = (() => {
    * 試合が終わったあとの、投手のスタミナの持ち越し。
    * 「疲労」という別の数字は持たず、次の試合のスタミナの目盛りが
    * どれだけ低いところから始まるかを、そのまま「バッター何人ぶん」で
-   * 持ち越す。たくさん投げた試合のあとは大きく残り、
-   * 投げなかった日はしっかり抜ける（が、めいっぱい投げた翌日は
-   * それでも回復しきらないことがある）。
+   * 持ち越す。
+   * その試合で自分の限界（capacityOf）の何割を使ったかに応じて積む
+   * ので、毎試合めいっぱい投げ続ける投手は試合を重ねるほど消耗が
+   * 積み重なり、連戦では完全には回復しない。投げなかった試合・
+   * 軽い登板だけの試合は、翌日にはおおむね抜ける。
+   * （大会をまたぐ長い休み＝日程が大きく空くときは、この持ち越しとは
+   * 別に healPitchers で完全に抜く）
    */
   function restPitchers(team) {
     team.pitchers.forEach((p) => {
-      const outs = (p.game && p.game.outs) || 0;
       const bf = (p.game && p.game.bf) || 0;
       const before = p.staminaCarry || 0;
-      if (outs === 0) {
-        p.staminaCarry = before * 0.45;   // 投げなかった日はよく抜けるが、一晩で全部ではない
-      } else {
-        /* スタミナの目盛りが赤信号（is-low）に入るあたりから先だけ、
-           次の試合への持ち越しとして積み増す。そこまでの範囲で投げたぶんは
-           一晩でだいたい抜ける */
-        const cap = Sim.capacityOf(p);
-        const over = Math.max(0, bf - (cap + 9));
-        p.staminaCarry = before * 0.4 + over * 0.6;
-      }
+      const cap = Sim.capacityOf(p);
+      const limit = cap + 18;
+      const used = cap > 0 ? (bf / cap) * (limit * 0.35) : 0;
+      p.staminaCarry = before * 0.45 + used;
     });
   }
 

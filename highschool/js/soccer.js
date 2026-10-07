@@ -189,22 +189,41 @@ const Soccer = (() => {
     return { hg, ag, events };
   }
 
-  /* ---------- 大会（トーナメント。野球の地方大会と同じ考え方） ---------- */
+  /* ---------- 大会（トーナメント。野球の地方大会・全国大会と同じ考え方） ----------
+     実際の全国高校サッカー選手権と同じ2段階にしてある。
+     ・都道府県予選（regional）を勝ち抜いた代表校だけが、全国大会
+       （national、48校規模のノックアウト方式）に進める。
+     ・都道府県予選は3試合（1回戦・準決勝・決勝）、全国大会は6試合
+       （1回戦〜3回戦・準々決勝・準決勝・決勝）。
+     都道府県予選で負けたらその年のシーズンはそこで終わり（野球の
+     地方大会で負けたときと同じ）。 */
 
-  const ROUND_NAMES = ['1回戦', '2回戦', '準々決勝', '準決勝', '決勝'];
+  const REGIONAL_ROUNDS = ['1回戦', '準決勝', '決勝'];
+  const NATIONAL_ROUNDS = ['1回戦', '2回戦', '3回戦', '準々決勝', '準決勝', '決勝'];
 
-  /** 山を組む。1回戦の強さ（自軍の強さに合わせる）から、1試合ごとに
-      少しずつ強くなっていく */
-  function createTournament(myStrength) {
-    const from = RNG.clamp(myStrength + RNG.range(-8, 2), 10, 70);
-    const levels = [from];
-    for (let i = 1; i < ROUND_NAMES.length; i++) {
-      const mustRise = i >= ROUND_NAMES.length - 2;
+  function ladder(from, roundNames, riseFrom) {
+    const levels = [RNG.clamp(from, 10, 90)];
+    for (let i = 1; i < roundNames.length; i++) {
+      const mustRise = i >= roundNames.length - riseFrom;
       let add = RNG.range(-2, 7);
       if (mustRise && add < 1) add = 1 + Math.random() * 4;
-      levels.push(RNG.clamp(levels[i - 1] + add, 10, 96));
+      levels.push(RNG.clamp(levels[i - 1] + add, 10, 97));
     }
-    return { rounds: ROUND_NAMES.map((name, i) => ({ name, level: Math.round(levels[i]) })), index: 0 };
+    return roundNames.map((name, i) => ({ name, level: Math.round(levels[i]) }));
+  }
+
+  /** 都道府県予選の山を組む。1回戦の強さは自軍の強さに合わせる */
+  function createRegional(myStrength) {
+    const from = myStrength + RNG.range(-8, 2);
+    const rounds = ladder(from, REGIONAL_ROUNDS, 2);
+    return { stage: 'regional', rounds, index: 0, finalLevel: rounds[rounds.length - 1].level };
+  }
+
+  /** 全国大会の山を組む。都道府県予選の決勝の強さの続きから始まる */
+  function createNational(myStrength, fromLevel) {
+    const from = (fromLevel != null ? fromLevel : myStrength) + RNG.range(0, 6);
+    const rounds = ladder(from, NATIONAL_ROUNDS, 2);
+    return { stage: 'national', rounds, index: 0, finalLevel: rounds[rounds.length - 1].level };
   }
 
   function currentRound(tour) { return tour.rounds[tour.index] || null; }
@@ -268,6 +287,46 @@ const Soccer = (() => {
     return false;
   }
 
+  /* ---------- 特訓（都道府県予選→全国大会の間、シーズンの合間） ----------
+     野球ほど細かい仕組みにはせず、カードを選ぶ・見送るだけの
+     簡単な特訓にしてある。能力は7つ（STATS）のどれかが伸びる */
+
+  function trainingCard(S) {
+    const n = RNG.range(2, 6);
+    const pool = RNG.shuffle(S.players.slice()).slice(0, Math.min(n, S.players.length));
+    const stat = RNG.pick(STATS);
+    const amount = RNG.range(4, 12);
+    return { key: stat.key, label: stat.label, amount, pids: pool.map((p) => p.id), count: pool.length };
+  }
+
+  /** 特訓の状態を作る。選択3回・見送り2回で終わる */
+  function startTraining(S) {
+    return { picks: 0, passes: 0, pickLimit: 3, passLimit: 2, done: false, card: trainingCard(S) };
+  }
+
+  function nextCardOrDone(t, S) {
+    if (t.picks >= t.pickLimit || t.passes >= t.passLimit) { t.done = true; return; }
+    t.card = trainingCard(S);
+  }
+
+  /** カードを選ぶ。対象の選手ぶん、能力が伸びる */
+  function trainingChoose(t, S) {
+    if (t.done) return;
+    t.card.pids.forEach((pid) => {
+      const p = findP(S, pid);
+      if (p) p.soc[t.card.key] = RNG.stat(p.soc[t.card.key] + t.card.amount);
+    });
+    t.picks++;
+    nextCardOrDone(t, S);
+  }
+
+  /** カードを見送る */
+  function trainingPass(t, S) {
+    if (t.done) return;
+    t.passes++;
+    nextCardOrDone(t, S);
+  }
+
   /* ---------- 引退・新入部員 ---------- */
 
   function retiring(S) { return S.players.filter((p) => p.grade >= 3); }
@@ -293,8 +352,10 @@ const Soccer = (() => {
   }
 
   return {
-    STATS, POS, POS_NAME, FORMATION, REVIVE_SEASONS, ROUND_NAMES,
+    STATS, POS, POS_NAME, FORMATION, REVIVE_SEASONS, REGIONAL_ROUNDS, NATIONAL_ROUNDS,
     convert, newRecruit, start, autoLineup, findP, mySide, strength, rating, rateFor,
-    createTournament, currentRound, playUser, advance, retiring, endRetirement, fillRecruits, canRevive,
+    createRegional, createNational, currentRound, playUser, advance,
+    startTraining, trainingChoose, trainingPass,
+    retiring, endRetirement, fillRecruits, canRevive,
   };
 })();

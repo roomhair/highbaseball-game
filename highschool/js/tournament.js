@@ -30,17 +30,33 @@ const Tournament = (() => {
     return r < 0.40 ? 3 : (r < 0.68 ? 2 : 1);
   }
 
-  /** level の強さの相手校を1つ作る */
-  function makeTeam(name, level) {
+  /* 秋・センバツ相当は、どの学校も3年生がすでに引退している
+     （自軍と同じ事情）ので、相手校にも3年生は出さない */
+  function rollGradeNoSenior() {
+    return RNG.chance(0.55) ? 2 : 1;
+  }
+
+  function rollPitcherGradeNoSenior() {
+    return RNG.chance(0.45) ? 2 : 1;
+  }
+
+  const FALL_SPRING_KINDS = ['fallPref', 'fallDistrict', 'fallJingu', 'spring'];
+
+  /** level の強さの相手校を1つ作る。kind を渡すと、秋・センバツ相当では
+      3年生を出さない（省略時は従来どおり夏の大会として作る） */
+  function makeTeam(name, level, kind) {
     const t = Team.create(name);
+    const noSenior = FALL_SPRING_KINDS.indexOf(kind) >= 0;
     /* 野手13人。守る場所が8つぶん揃うように配る（DHは持ち場にしない） */
     const posList = DATASET_POSITIONS.slice();
     for (let i = 0; i < 5; i++) posList.push(RNG.pick(FIELD_POSITIONS));
     posList.forEach((pos) => {
-      t.batters.push(Player.newBatter({ grade: rollGrade(), pos, level, practice: true }));
+      const grade = noSenior ? rollGradeNoSenior() : rollGrade();
+      t.batters.push(Player.newBatter({ grade, pos, level, practice: true }));
     });
     for (let i = 0; i < 7; i++) {
-      t.pitchers.push(Player.newPitcher({ grade: rollPitcherGrade(), level, practice: true }));
+      const grade = noSenior ? rollPitcherGradeNoSenior() : rollPitcherGrade();
+      t.pitchers.push(Player.newPitcher({ grade, level, practice: true }));
     }
     Team.autoLineup(t);
     return t;
@@ -156,7 +172,7 @@ const Tournament = (() => {
   function buildOpponent(tour) {
     const r = currentRound(tour);
     if (!r) return null;
-    return makeTeam(r.schoolName, r.level);
+    return makeTeam(r.schoolName, r.level, tour.kind);
   }
 
   /** 大会の1試合あたりの得点・失点 */

@@ -849,13 +849,20 @@ const Screens = (() => {
       rows + '</tbody></table></div>';
   }
 
+  /** 大会の呼び名。実際の全国高校サッカー選手権と同じ2段構え
+      （都道府県予選を勝ち抜いた代表校だけが全国大会へ進める）にしてある */
+  function soccerStageName(stage) {
+    return stage === 'national' ? '全国大会' : '都道府県予選';
+  }
+
   function soccerStart(state) {
     const S = state.soccer;
     UI.el('soccer-eyebrow').textContent = state.year + '年目';
     UI.el('soccer-title').textContent = '野球部、解散';
     UI.html('soccer-body',
       '<p class="section-lead">夏の地方大会で2年連続の1回戦敗退。' + esc(S.schoolName) + '野球部は解散した。</p>' +
-      '<p class="section-lead">部員はそのままサッカー部に加わり、新しい挑戦が始まる。</p>');
+      '<p class="section-lead">部員はそのままサッカー部に加わり、新しい挑戦が始まる。' +
+      '都道府県予選を勝ち抜けば、全国大会に進める。</p>');
     UI.el('btn-soccer-primary').textContent = 'サッカー部の大会へ';
     UI.el('btn-soccer-secondary').hidden = true;
     UI.show('screen-soccer');
@@ -864,7 +871,7 @@ const Screens = (() => {
   function soccerPregame(state) {
     const S = state.soccer;
     const round = Soccer.currentRound(S.tour);
-    UI.el('soccer-eyebrow').textContent = '大会　' + round.name;
+    UI.el('soccer-eyebrow').textContent = soccerStageName(S.tour.stage) + '　' + round.name;
     UI.el('soccer-title').textContent = esc(S.schoolName);
     UI.html('soccer-body',
       '<p class="section-lead">自軍の強さの目安: ' + Soccer.strength(S) + '</p>' +
@@ -874,18 +881,44 @@ const Screens = (() => {
     UI.show('screen-soccer');
   }
 
+  /** 特訓（都道府県予選と全国大会の間、シーズンの合間） */
+  function soccerTraining(state) {
+    const S = state.soccer;
+    const t = S.training;
+    const nextLabel = S.trainingNext === 'national' ? '全国大会' : (state.year + 1) + '年目の都道府県予選';
+    UI.el('soccer-eyebrow').textContent = '特訓';
+    UI.el('soccer-title').textContent = nextLabel + 'に向けて';
+    const c = t.card;
+    UI.html('soccer-body',
+      '<p class="note">選択 残り' + (t.pickLimit - t.picks) + '回　見送り 残り' + (t.passLimit - t.passes) + '回</p>' +
+      '<div class="traincard">' +
+        '<p class="traincard__kind">' + esc(c.label) + 'の練習<span class="traincard__n">' + c.count + '人</span></p>' +
+        '<p class="note">対象: ' + c.pids.map((pid) => esc(Soccer.findP(S, pid).name)).join('、') + '</p>' +
+      '</div>');
+    UI.el('btn-soccer-primary').textContent = '選ぶ';
+    const sec = UI.el('btn-soccer-secondary');
+    sec.hidden = false;
+    sec.textContent = '見送る';
+    UI.show('screen-soccer');
+  }
+
   function soccerResult(state, res) {
     const S = state.soccer;
     const round = Soccer.currentRound(S.tour);
     const mySideKey = res.home ? 'home' : 'away';
     const scorers = res.events.filter((e) => e.kind === 'goal' && e.side === mySideKey).map((e) => e.name);
-    UI.el('soccer-eyebrow').textContent = '大会　' + round.name;
+    const isLastOfStage = S.tour.index >= S.tour.rounds.length - 1;
+    UI.el('soccer-eyebrow').textContent = soccerStageName(S.tour.stage) + '　' + round.name;
     UI.el('soccer-title').textContent = (res.win ? '勝利' : '敗戦') + '　' + res.my + ' − ' + res.op +
       (res.pk ? '（PK戦）' : '');
     UI.html('soccer-body',
       (scorers.length ? '<p>得点: ' + scorers.map(esc).join('、') + '</p>' : '<p>得点者なし</p>') +
       (res.win
-        ? '<p class="section-lead">次の試合へ進む。</p>'
+        ? '<p class="section-lead">' +
+          (isLastOfStage
+            ? (S.tour.stage === 'regional' ? '都道府県予選を勝ち抜いた。全国大会に進む。' : '全国大会を制した！')
+            : '次の試合へ進む。') +
+          '</p>'
         : '<p class="section-lead">サッカー部のシーズンが終わった。</p>'));
     UI.el('btn-soccer-primary').textContent = res.win ? '次へ' : 'シーズン終了へ';
     UI.el('btn-soccer-secondary').hidden = true;
@@ -917,6 +950,6 @@ const Screens = (() => {
     pick, ready, training, trainingResult, opening, pregame,
     poachWin, poachRelease, poachSuccess, poachFailed, champion, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
-    localWin, soccerStart, soccerPregame, soccerResult, soccerOffseason,
+    localWin, soccerStart, soccerPregame, soccerResult, soccerTraining, soccerOffseason,
   };
 })();
