@@ -87,6 +87,30 @@ const GameScreen = (() => {
   /* 本塁の座標。打球はかならずここから飛んでいく */
   const HOME = [100, 152];
 
+  /** その打席でバットがどう動くか。
+      本塁打〜凡打・空振り三振は大きく振り、バント・スクイズは小さく当てにいく。
+      四球・死球・見逃し三振は振らない（見送っただけ） */
+  function swingKindOf(e) {
+    if (!e) return 'idle';
+    if (e.code === 'K') return (e.text && e.text.indexOf('空') >= 0) ? 'swing' : 'idle';
+    if (['1B', '2B', '3B', 'HR', 'OUT', 'E'].indexOf(e.code) >= 0) return 'swing';
+    if (['SH', 'SQ', 'SQF', 'BF', 'BE'].indexOf(e.code) >= 0) return 'bunt';
+    return 'idle';
+  }
+
+  /** 打者が打席に立っている絵。本塁のすぐ後ろ（バックネット側）に立たせる。
+      打ったときだけバットを振り、ボールが飛んでいく線と動きを合わせてある */
+  function batterView(kind) {
+    const cls = kind === 'swing' ? ' is-swing' : (kind === 'bunt' ? ' is-bunt' : '');
+    return '<g class="batter">' +
+      '<path class="bt-legs" d="M82,170 L86,160 L90,170"/>' +
+      '<line class="bt-body" x1="86" y1="160" x2="86" y2="151"/>' +
+      '<circle class="bt-head" cx="86" cy="148" r="2.8"/>' +
+      '<line class="bt-bat' + cls + '" x1="86" y1="155" x2="95" y2="145" ' +
+        'style="transform-origin:86px 155px"/>' +
+    '</g>';
+  }
+
   function fieldView(bases, outs, e) {
     const t = ballTarget(e);
     const b = (i) => (bases && bases[i] ? ' is-on' : '');
@@ -117,6 +141,7 @@ const GameScreen = (() => {
         '<rect class="fv-base' + b(1) + '" x="95.5" y="66" width="9" height="9" transform="rotate(45 100 70.5)"/>' +
         '<rect class="fv-base' + b(2) + '" x="54.5" y="107" width="9" height="9" transform="rotate(45 59 111.5)"/>' +
         '<polygon class="fv-home" points="100,147 105,152 100,157 95,152"/>' +
+        batterView(swingKindOf(e)) +
         ball +
       '</svg>' +
       '<div class="outs">' + [0, 1, 2].map((i) =>

@@ -586,6 +586,25 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .fv-base { fill: var(--bg); stroke: var(--line); stroke-width: 1.6; }
 .fv-base.is-on { fill: var(--accent); stroke: var(--accent); }
 .fv-home { fill: var(--ink-faint); }
+/* 打者。本塁のうしろに立たせておき、打ったときだけバットを振る */
+.bt-legs, .bt-body { fill: none; stroke: var(--ink-mute); stroke-width: 1.6; stroke-linecap: round; }
+.bt-head { fill: var(--ink-mute); }
+.bt-bat { stroke: var(--ink-mute); stroke-width: 2; stroke-linecap: round; transform: rotate(-15deg); }
+.bt-bat.is-swing { animation: batswing .5s cubic-bezier(.3,.6,.25,1) both; }
+.bt-bat.is-bunt { animation: batbunt .5s ease both; }
+@keyframes batswing {
+  0%   { transform: rotate(-15deg); }
+  40%  { transform: rotate(80deg); }
+  100% { transform: rotate(95deg); }
+}
+@keyframes batbunt {
+  0%   { transform: rotate(-15deg); }
+  60%  { transform: rotate(18deg); }
+  100% { transform: rotate(18deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bt-bat.is-swing, .bt-bat.is-bunt { animation: none; transform: rotate(70deg); }
+}
 /* 打球。本塁から落ちどころまで飛ぶ */
 /* 打球。本塁から飛んでいくのが分かるように、
    ①本塁に打点の印を出し ②そこから軌跡の線を伸ばし ③線の上をボールが走る */
