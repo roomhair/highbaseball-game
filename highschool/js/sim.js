@@ -255,14 +255,31 @@ const Sim = (() => {
      クリーンアップはまず打たせる。 */
   const BUNT_BY_SLOT = [0.18, 0.64, 0.10, 0.05, 0.09, 0.28, 0.44, 0.48, 0.46];
 
+  /* 打撃能力（ミートとパワーの平均。0〜100）による、小技の出しやすさの補正。
+     確率表で持たせてある。打撃能力が低いほど「小技で加点」に頼るので
+     バントはやや出しやすく、スクイズはかなり出しやすくなる。
+     高いほど打たせたいので、逆にどちらも出しにくくなる */
+  const TACTIC_ABILITY_TIERS = [35, 50, 65, 80];
+  const BUNT_ABILITY_MULT    = [1.30, 1.10, 1.00, 0.80, 0.55];
+  const SQUEEZE_ABILITY_MULT = [2.00, 1.40, 1.00, 0.70, 0.40];
+
+  function battingAbility(bat) { return (bat.meet + bat.power) / 2; }
+
+  function tacticAbilityMult(table, ability) {
+    const T = TACTIC_ABILITY_TIERS;
+    let tier = T.length;
+    for (let i = 0; i < T.length; i++) { if (ability < T[i]) { tier = i; break; } }
+    return table[tier];
+  }
+
   /**
    * この打席で作戦に出るか。
    * 強い学校ほど送らない、ではなく、むしろきっちり送るのが高校野球なので、
-   * 打順と場面を主にして、打力はそこへの補正にとどめてある。
+   * 打順と場面を主にして、打撃能力はそこへの補正にとどめてある。
    */
   function chooseTactic(bat, slot, outs, bases, inning, lead) {
     if (outs >= 2) return null;
-    const pw = bat.power / 100;
+    const ability = battingAbility(bat);
     const close = Math.abs(lead) <= 3;
 
     /* 追っている点差（勝っていれば負の値）。
@@ -272,13 +289,13 @@ const Sim = (() => {
 
     /* スクイズ。三塁に走者がいる competitive な場面 */
     if (bases[2] && inning >= 5 && close && lead <= 2 && !(inning >= 8 && chasing >= 2)) {
-      let q = 0.10 + (0.50 - pw) * 0.16;
-      /* 1点ビハインドか同点の一死は、スクイズがいちばん効く場面。
-         打力の低い打者ほど、ここを積極的に使う */
-      if (outs === 1 && lead >= -1 && lead <= 0) q += (0.50 - pw) * 0.55;
+      let q = 0.10;
+      /* 1点ビハインドか同点の一死は、スクイズがいちばん効く場面 */
+      if (outs === 1 && lead >= -1 && lead <= 0) q *= 1.6;
       else if (outs === 1) q *= 0.55;
       if (bases[0] && bases[1]) q *= 0.5;      /* 満塁では出しにくい */
-      if (RNG.chance(C(q, 0, 0.42))) return 'squeeze';
+      q *= tacticAbilityMult(SQUEEZE_ABILITY_MULT, ability);
+      if (RNG.chance(C(q, 0, 0.60))) return 'squeeze';
     }
 
     /* 送りバント。一塁に走者がいて、三塁には走者がいないとき。
@@ -290,8 +307,7 @@ const Sim = (() => {
     if (bases[1] && outs > 0) return null;
     let p = BUNT_BY_SLOT[C(slot, 0, 8)];
     if (bases[1]) p *= 0.55;
-    /* 長打のある打者は打たせる。ただし打順の決まりごとのほうが強い */
-    p *= 1 - C((pw - 0.55) * 0.8, 0, 0.45);
+    p *= tacticAbilityMult(BUNT_ABILITY_MULT, ability);
     if (lead < -3) p *= 0.35;                  /* 大きく負けていれば送らない */
     /* 終盤は場面で大きく変わる。
        同点か1点差なら、走者を進めれば追いつける・勝てるので送りやすい。
