@@ -473,7 +473,9 @@ const GameScreen = (() => {
 
 
   /* ---------- タイム ----------
-     試合を止めて、代打・選手交代・守備位置・投手交代をする。
+     試合を止めて、代打・代走・守備交代・守備位置・投手交代をする。
+     守備交代（選手の入れ替え）は守備中にしか出さない。攻撃中は
+     代打・代走でまかなう。
      高校野球と同じで、一度退いた選手は戻れない。 */
 
   /** その試合でもう使えない選手（退いた選手）。
@@ -573,7 +575,8 @@ const GameScreen = (() => {
           '<button type="button" class="btn btn--wide" id="tm-ph">代打を出す</button>') +
         (runners.length ?
           '<button type="button" class="btn btn--wide" id="tm-pr">代走を出す</button>' : '') +
-        '<button type="button" class="btn btn--wide" id="tm-sub">選手を交代する</button>' +
+        (fielding ?
+          '<button type="button" class="btn btn--wide" id="tm-sub">守備を交代する</button>' : '') +
         '<button type="button" class="btn btn--wide" id="tm-pos">守備位置を変える</button>' +
         '<button type="button" class="btn btn--wide" id="tm-pit">投手を交代する</button>' +
       '</div>' +
@@ -702,14 +705,14 @@ const GameScreen = (() => {
     });
   }
 
-  /** 選手交代。守っている選手を控えと入れ替える */
+  /** 守備交代。守っている選手を控えと入れ替える */
   function subPlayer() {
     const t = myTeam();
     const list = t.lineup.map((s, i) => {
       const p = Team.find(t, s.pid);
       return p ? { p, meta: (i + 1) + '番 ' + posName(s.pos) + '　' + batMeta(p), idx: i } : null;
     }).filter(Boolean);
-    pickPlayer('選手を交代する', 'まず、退く選手を選んでください', list, (pid) => {
+    pickPlayer('守備を交代する', 'まず、退く選手を選んでください', list, (pid) => {
       const idx = t.lineup.findIndex((s) => s.pid === pid);
       const out = Team.find(t, pid);
       if (idx < 0 || !out) { timeMenu(); return; }
@@ -721,7 +724,7 @@ const GameScreen = (() => {
         if (!inP) { timeMenu(); return; }
         t.lineup[idx] = { pid: inP.id, pos: t.lineup[idx].pos };
         retired().add(out.id);
-        noteSub('選手交代　' + out.name + ' → ' + inP.name);
+        noteSub('守備交代　' + out.name + ' → ' + inP.name);
         afterSub();
       }, '控えに出せる選手がいません。');
     });
