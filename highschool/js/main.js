@@ -525,7 +525,8 @@ const Game = (() => {
   function doPoach(incoming, outgoing) {
     /* どこから来たのかを覚えておく。詳細画面と引退のときに出す */
     incoming.from = { year: state.year, school: state.opponent.name };
-    incoming.staminaCarry = 0;
+    /* スタミナの持ち越し（staminaCarry）はあえて消さない。投手なら、
+       いま負けた相手として投げたばかりの疲れをそのまま引き継ぐほうが自然 */
 
     const list = incoming.kind === 'pitcher' ? state.team.pitchers : state.team.batters;
     const idx = list.findIndex((x) => x.id === outgoing.id);
