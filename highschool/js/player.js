@@ -22,7 +22,7 @@ const Player = (() => {
   /* 学年ごとの下駄。1年→2年→3年で強くなるが、talent の効きのほうが大きい。
      入部したての部員はとにかく弱い。ここから3年かけて伸ばしていくゲームなので、
      最初の数字はF・Gだらけで構わない。 */
-  const GRADE_BASE = { 1: 15, 2: 21, 3: 26 };
+  const GRADE_BASE = { 1: 18, 2: 21, 3: 26 };
   /* 相手校のように「チームの強さ」を指定して作るときの、学年ぶんの差。
      こちらは GRADE_BASE と切り離してある（自軍だけを弱くしたいため） */
   const GRADE_TILT = { 1: -6, 2: 0, 3: 4 };
@@ -54,9 +54,13 @@ const Player = (() => {
       （能力の散らばりの幅そのものは変えていない）。talent をそのまま強く
       効かせると、同じ選手のどの能力も「talent」という1つの数字に
       引っ張られてしまい、才能が悪いと全部の能力が最低値に張り付く、
-      という選手ばかりになってしまっていたため */
-  function makeStat(base, talent, bias) {
-    return RNG.stat(softClamp(base + talent * 4 + RNG.norm(0, 11.4) + (bias || 0)));
+      という選手ばかりになってしまっていたため。
+      ownTeam のときだけ、ばらつきの幅をひとまわり広くしてある
+      （自軍の入部時・新入生だけ、能力が上振れした選手がもう少し出やすい。
+      相手校はここを変えない） */
+  function makeStat(base, talent, bias, ownTeam) {
+    const sigma = ownTeam ? 13.0 : 11.4;
+    return RNG.stat(softClamp(base + talent * 4 + RNG.norm(0, sigma) + (bias || 0)));
   }
 
   /* ---------- 守備適性 ---------- */
@@ -228,6 +232,7 @@ const Player = (() => {
     const pos = opt.pos || RNG.pick(FIELD_POSITIONS);
     const talent = opt.talent != null ? opt.talent : rollTalent();
     const base = baseOf(grade, opt.level, opt.prestigeBonus);
+    const ownTeam = opt.level == null;
     const hd = hands(false, RIGHT_ONLY.indexOf(pos) >= 0);
 
     /* 守る場所によって、伸びる方向が少し違う。
@@ -251,12 +256,12 @@ const Player = (() => {
       throws: hd.throws, bats: hd.bats,
       talent,
       traj: RNG.clamp(Math.round(RNG.norm(1.75 + talent * 0.20, 0.68)), 1, 4),
-      meet:  makeStat(base, talent, bias.meet),
-      power: makeStat(base, talent, bias.power),
-      speed: makeStat(base, talent, bias.speed),
-      arm:   makeStat(base, talent, bias.arm),
-      field: makeStat(base, talent, bias.field),
-      catch: makeStat(base, talent, bias.catch),
+      meet:  makeStat(base, talent, bias.meet, ownTeam),
+      power: makeStat(base, talent, bias.power, ownTeam),
+      speed: makeStat(base, talent, bias.speed, ownTeam),
+      arm:   makeStat(base, talent, bias.arm, ownTeam),
+      field: makeStat(base, talent, bias.field, ownTeam),
+      catch: makeStat(base, talent, bias.catch, ownTeam),
       /* 100に近いほど引っ張り、-100に近いほど流し打ち。0ならセンター返し */
       pull: Math.round(RNG.clamp(RNG.norm(20, 42), -100, 100)),
       apt: null,   // 利き腕が決まってから入れる
@@ -283,6 +288,7 @@ const Player = (() => {
     const grade = opt.grade || 1;
     const talent = opt.talent != null ? opt.talent : rollTalent();
     const base = baseOf(grade, opt.level, opt.prestigeBonus);
+    const ownTeam = opt.level == null;
     const hd = hands(true);
     /* 相手校は大会の強さに合わせて作る。球速と変化球にもそのぶんを効かせないと、
        強いはずの相手が「制球だけ良い遅い投手」になってしまう */
@@ -302,16 +308,16 @@ const Player = (() => {
       velo: Math.round(RNG.clamp(
         123 + (GRADE_VELO[grade] || 0) + talent * 2.5 + levelShift * 0.26 +
         (opt.prestigeBonus || 0) * 0.3 + RNG.norm(0, 7.5), 100, 166)),
-      control: makeStat(base, talent, 0),
-      stamina: makeStat(base, talent, 0),
+      control: makeStat(base, talent, 0, ownTeam),
+      stamina: makeStat(base, talent, 0, ownTeam),
       pitches: rollPitches(talent, grade, levelShift / 12),
       /* 投手も打席に立つ。打撃は弱めに作る */
-      meet:  RNG.stat(makeStat(base, talent, -14)),
-      power: RNG.stat(makeStat(base, talent, -12)),
-      speed: makeStat(base, talent, -4),
-      arm:   makeStat(base, talent, 6),
-      field: makeStat(base, talent, 0),
-      catch: makeStat(base, talent, -2),
+      meet:  RNG.stat(makeStat(base, talent, -14, ownTeam)),
+      power: RNG.stat(makeStat(base, talent, -12, ownTeam)),
+      speed: makeStat(base, talent, -4, ownTeam),
+      arm:   makeStat(base, talent, 6, ownTeam),
+      field: makeStat(base, talent, 0, ownTeam),
+      catch: makeStat(base, talent, -2, ownTeam),
       traj: RNG.clamp(Math.round(RNG.norm(1.4, 0.6)), 1, 4),
       pull: Math.round(RNG.clamp(RNG.norm(15, 40), -100, 100)),
       apt: aptitudeFor(RNG.pick(FIELD_POSITIONS), hd.throws),

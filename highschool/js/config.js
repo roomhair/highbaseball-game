@@ -102,9 +102,11 @@ const CONFIG = {
        春（センバツ相当）は地方予選が無く、最初から全国区の相手なので、
        1回戦からでも夏の地方大会より強いが、夏の全国大会の頂点ほどには
        強くならない（夏の最終盤がいちばん強い、という順を保つため）。 */
-    fallPref:     { from: 18.0 },
-    fallDistrict: { bonus: 3.0 },
-    fallJingu:    { bonus: 5.0 },
+    /* 秋の相手を少し強くしてある（fallPref: 18.0→21.5、bonus も比例して
+       引き上げ）。「秋がいちばん弱い」という順そのものは変えていない */
+    fallPref:     { from: 21.5 },
+    fallDistrict: { bonus: 3.6 },
+    fallJingu:    { bonus: 6.0 },
     spring:       { from: 48.0 },
 
     FALL_PREF_STEP: [
