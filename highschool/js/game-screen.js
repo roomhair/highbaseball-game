@@ -98,29 +98,26 @@ const GameScreen = (() => {
     return 'idle';
   }
 
-  /** 打者が打席に立っている絵。本塁のすぐ後ろに立たせる。
+  /** 打者が打席に立っている絵。本塁から少し離した、はっきり分かる
+      すき間を空けてうしろに立たせる（本塁に近すぎると、打球が本塁からでなく
+      打者から飛び出したように見えてしまうため）。
       右打ちは本塁の三塁側（図の左）、左打ちは一塁側（図の右）に立つので、
-      どちら打ちかひと目で分かる。打ったときだけバットを振り、
-      ボールが飛んでいく線と動きを合わせてある。
-      構えの姿勢ではバットの先が本塁にかからないようにしてある
-      （本塁に重なると、打球が本塁からでなく打者から飛び出したように
-      見えてしまうため）。振り切った先（95度）でおおよそ本塁の上に来る
-      ので、打つ瞬間だけ自然に本塁のあたりでバットと打球が重なる */
+      どちら打ちかひと目で分かる。打ったときだけバットを振る */
   function batterView(kind, bats) {
     const flip = bats === 'L';
     const mx = (x) => (flip ? 200 - x : x);
     const cls = (kind === 'swing' ? ' is-swing' : (kind === 'bunt' ? ' is-bunt' : '')) +
       (flip ? ' is-flip' : '');
-    const legs = 'M' + mx(83) + ',170 L' + mx(86.4) + ',161 L' + mx(89.6) + ',161 L' + mx(93) + ',170 Z';
+    const legs = 'M' + mx(83) + ',186 L' + mx(86.4) + ',177 L' + mx(89.6) + ',177 L' + mx(93) + ',186 Z';
     const torsoX = flip ? mx(91.2) : 84.8;
     const handX = mx(90.2), tipX = mx(90.2);
     return '<g class="batter">' +
       '<path class="bt-legs" d="' + legs + '"/>' +
-      '<rect class="bt-body" x="' + torsoX + '" y="154.5" width="6.4" height="7" rx="2.6"/>' +
-      '<circle class="bt-head" cx="' + mx(88) + '" cy="151.5" r="2.7"/>' +
-      '<g class="bt-bat' + cls + '" style="transform-origin:' + handX + 'px 157px">' +
-        '<line x1="' + handX + '" y1="157" x2="' + tipX + '" y2="148"/>' +
-        '<circle cx="' + tipX + '" cy="148" r="1.4"/>' +
+      '<rect class="bt-body" x="' + torsoX + '" y="170.5" width="6.4" height="7" rx="2.6"/>' +
+      '<circle class="bt-head" cx="' + mx(88) + '" cy="167.5" r="2.7"/>' +
+      '<g class="bt-bat' + cls + '" style="transform-origin:' + handX + 'px 173px">' +
+        '<line x1="' + handX + '" y1="173" x2="' + tipX + '" y2="164"/>' +
+        '<circle cx="' + tipX + '" cy="164" r="1.4"/>' +
       '</g>' +
     '</g>';
   }
@@ -147,7 +144,7 @@ const GameScreen = (() => {
           'style="--dx:' + dx + ';--dy:' + dy + '"></circle>';
     }
     return '<div class="fieldview">' +
-      '<svg viewBox="0 0 200 172" aria-hidden="true">' +
+      '<svg viewBox="0 0 200 188" aria-hidden="true">' +
         '<path class="fv-grass" d="M100 152 L14 66 A122 122 0 0 1 186 66 Z"/>' +
         '<path class="fv-fence" d="M14 66 A122 122 0 0 1 186 66"/>' +
         '<polygon class="fv-inf" points="100,152 141,111 100,70 59,111"/>' +

@@ -577,9 +577,9 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 
 /* グラウンドの絵。打球が飛んでいくのが見える */
 .fieldview { text-align: center; }
-.fieldview svg { width: 60px; height: 52px; overflow: visible; }
-@media (max-width: 399px) { .fieldview svg { width: 52px; height: 45px; } }
-@media (min-width: 720px) { .fieldview svg { width: 92px; height: 79px; } }
+.fieldview svg { width: 60px; height: 56px; overflow: visible; }
+@media (max-width: 399px) { .fieldview svg { width: 52px; height: 49px; } }
+@media (min-width: 720px) { .fieldview svg { width: 92px; height: 86px; } }
 .fv-grass { fill: color-mix(in srgb, var(--accent) 10%, transparent); stroke: none; }
 .fv-fence { fill: none; stroke: var(--line); stroke-width: 2; }
 .fv-inf { fill: color-mix(in srgb, var(--accent) 16%, transparent); stroke: var(--line); stroke-width: 1.4; }
@@ -721,7 +721,7 @@ td.role { font-size: 11px; color: var(--ink-mute); }
   .ll__item { line-height: 1.2; }
   .ll { padding: 3px 4px; }
   .scoreboard th, .scoreboard td { font-size: 11.5px; }
-  .fieldview svg { width: 46px; height: 40px; }
+  .fieldview svg { width: 46px; height: 43px; }
   .stage { min-height: 50px; margin: 3px 0; padding: 4px 8px; }
 }
 .ll__item.is-now .ll__no, .ll__item.is-now .ll__pos { color: inherit; opacity: .8; }
