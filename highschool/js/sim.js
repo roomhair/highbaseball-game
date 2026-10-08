@@ -20,8 +20,17 @@ const Sim = (() => {
   function veloScore(p) { return C((p.velo - 116) / 48, 0, 1); }
 
   /** 投手の球威（球速と変化球）。
-     変化球だけで押し切れると高校野球らしくないので、球速のほうを重く見る */
-  function stuffOf(p) { return C(veloScore(p) * 0.68 + Player.breakScore(p) * 0.32, 0, 1); }
+     変化球だけで押し切れると高校野球らしくないので、球速のほうを重く見る。
+     ×1.15 は、制球（p.control/100）や打者のミート・パワー（meet/power/100）と
+     実効値（0〜1）の水準をそろえるための補正。無しだと、能力のランクが
+     同じA同士でも球威の実効値だけ0.45前後にとどまり（制球や打力は0.7台）、
+     打席の判定で投手が一方的に不利になって打高に偏っていた（測定して確認済み。
+     打率は.27〜.30、防御率は5前後で、しかもランクが上がるほど悪化していた）。
+     ×1.15 はぴったり1.0（完全に同じ水準）までは引き上げていない。
+     そこまで引き上げると今度は打率.17〜.19・防御率2台まで落ち込み、
+     金属バットで守備もまだ粗い高校野球としては投高すぎた（これも測定済み）。
+     打率.22〜.27・防御率3.4〜4.4あたりに収まる水準として選んだ */
+  function stuffOf(p) { return C((veloScore(p) * 0.68 + Player.breakScore(p) * 0.32) * 1.15, 0, 1); }
 
   /** 守備陣のまとまり（0〜1）。安打になりにくさに効く */
   function defenseOf(team, pitcherId) {
@@ -714,6 +723,8 @@ const Sim = (() => {
     e.score = [A.runs, H.runs];
     e.batter = bat ? bat.id : null;
     e.batterName = bat ? bat.name : '';
+    /* 右打ち・左打ち。試合中の画面で打者の絵をどちら向きに立たせるか */
+    e.batterBats = bat ? bat.bats : null;
     e.pitcher = pit ? pit.id : null;
     /* いま打った打順（1〜9）。盗塁など打席の外の出来事では次打者を指す */
     e.order = (slotIndex == null ? off.order : slotIndex) + 1;

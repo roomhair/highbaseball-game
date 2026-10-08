@@ -98,16 +98,26 @@ const GameScreen = (() => {
     return 'idle';
   }
 
-  /** 打者が打席に立っている絵。本塁のすぐ後ろ（バックネット側）に立たせる。
-      打ったときだけバットを振り、ボールが飛んでいく線と動きを合わせてある */
-  function batterView(kind) {
-    const cls = kind === 'swing' ? ' is-swing' : (kind === 'bunt' ? ' is-bunt' : '');
+  /** 打者が打席に立っている絵。本塁のすぐ後ろに立たせる。
+      右打ちは本塁の三塁側（図の左）、左打ちは一塁側（図の右）に立つので、
+      どちら打ちかひと目で分かる。打ったときだけバットを振り、
+      ボールが飛んでいく線と動きを合わせてある */
+  function batterView(kind, bats) {
+    const flip = bats === 'L';
+    const mx = (x) => (flip ? 200 - x : x);
+    const cls = (kind === 'swing' ? ' is-swing' : (kind === 'bunt' ? ' is-bunt' : '')) +
+      (flip ? ' is-flip' : '');
+    const legs = 'M' + mx(83) + ',170 L' + mx(86.4) + ',161 L' + mx(89.6) + ',161 L' + mx(93) + ',170 Z';
+    const torsoX = flip ? mx(91.2) : 84.8;
+    const handX = mx(90.2), tipX = mx(96);
     return '<g class="batter">' +
-      '<path class="bt-legs" d="M82,170 L86,160 L90,170"/>' +
-      '<line class="bt-body" x1="86" y1="160" x2="86" y2="151"/>' +
-      '<circle class="bt-head" cx="86" cy="148" r="2.8"/>' +
-      '<line class="bt-bat' + cls + '" x1="86" y1="155" x2="95" y2="145" ' +
-        'style="transform-origin:86px 155px"/>' +
+      '<path class="bt-legs" d="' + legs + '"/>' +
+      '<rect class="bt-body" x="' + torsoX + '" y="154.5" width="6.4" height="7" rx="2.6"/>' +
+      '<circle class="bt-head" cx="' + mx(88) + '" cy="151.5" r="2.7"/>' +
+      '<g class="bt-bat' + cls + '" style="transform-origin:' + handX + 'px 157px">' +
+        '<line x1="' + handX + '" y1="157" x2="' + tipX + '" y2="150"/>' +
+        '<circle cx="' + tipX + '" cy="150" r="1.4"/>' +
+      '</g>' +
     '</g>';
   }
 
@@ -141,7 +151,7 @@ const GameScreen = (() => {
         '<rect class="fv-base' + b(1) + '" x="95.5" y="66" width="9" height="9" transform="rotate(45 100 70.5)"/>' +
         '<rect class="fv-base' + b(2) + '" x="54.5" y="107" width="9" height="9" transform="rotate(45 59 111.5)"/>' +
         '<polygon class="fv-home" points="100,147 105,152 100,157 95,152"/>' +
-        batterView(swingKindOf(e)) +
+        batterView(swingKindOf(e), e && e.batterBats) +
         ball +
       '</svg>' +
       '<div class="outs">' + [0, 1, 2].map((i) =>
@@ -397,7 +407,7 @@ const GameScreen = (() => {
       return '<div class="stage__play' + (e.ok ? ' is-good' : ' is-bad') + '">' +
         '<span class="stage__meta">' + halfLabel(e) + '</span>' +
         '<span class="stage__text">' + esc(e.text) + '</span></div>' +
-        fieldView(e.bases.map(Boolean), e.outs, null);
+        fieldView(e.bases.map(Boolean), e.outs, e);
     }
 
     if (e.k === 'pa') {

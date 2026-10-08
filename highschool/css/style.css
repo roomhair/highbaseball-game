@@ -586,24 +586,41 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .fv-base { fill: var(--bg); stroke: var(--line); stroke-width: 1.6; }
 .fv-base.is-on { fill: var(--accent); stroke: var(--accent); }
 .fv-home { fill: var(--ink-faint); }
-/* 打者。本塁のうしろに立たせておき、打ったときだけバットを振る */
-.bt-legs, .bt-body { fill: none; stroke: var(--ink-mute); stroke-width: 1.6; stroke-linecap: round; }
-.bt-head { fill: var(--ink-mute); }
-.bt-bat { stroke: var(--ink-mute); stroke-width: 2; stroke-linecap: round; transform: rotate(-15deg); }
+/* 打者。本塁のうしろに立たせておき、打ったときだけバットを振る。
+   右打ちは三塁側（図の左）、左打ちは一塁側（図の右）に立つ、
+   シルエットだけの簡略な絵（流麗さより、小さく出しても崩れないことを優先） */
+.bt-legs, .bt-body, .bt-head { fill: var(--ink-mute); }
+.bt-bat line { stroke: var(--ink); stroke-width: 1.5; stroke-linecap: round; }
+.bt-bat circle { fill: var(--accent); }
+.bt-bat { transform: rotate(-15deg); }
+.bt-bat.is-flip { transform: rotate(15deg); }
 .bt-bat.is-swing { animation: batswing .5s cubic-bezier(.3,.6,.25,1) both; }
+.bt-bat.is-flip.is-swing { animation-name: batswing-flip; }
 .bt-bat.is-bunt { animation: batbunt .5s ease both; }
+.bt-bat.is-flip.is-bunt { animation-name: batbunt-flip; }
 @keyframes batswing {
   0%   { transform: rotate(-15deg); }
   40%  { transform: rotate(80deg); }
   100% { transform: rotate(95deg); }
+}
+@keyframes batswing-flip {
+  0%   { transform: rotate(15deg); }
+  40%  { transform: rotate(-80deg); }
+  100% { transform: rotate(-95deg); }
 }
 @keyframes batbunt {
   0%   { transform: rotate(-15deg); }
   60%  { transform: rotate(18deg); }
   100% { transform: rotate(18deg); }
 }
+@keyframes batbunt-flip {
+  0%   { transform: rotate(15deg); }
+  60%  { transform: rotate(-18deg); }
+  100% { transform: rotate(-18deg); }
+}
 @media (prefers-reduced-motion: reduce) {
   .bt-bat.is-swing, .bt-bat.is-bunt { animation: none; transform: rotate(70deg); }
+  .bt-bat.is-flip.is-swing, .bt-bat.is-flip.is-bunt { transform: rotate(-70deg); }
 }
 /* 打球。本塁から落ちどころまで飛ぶ */
 /* 打球。本塁から飛んでいくのが分かるように、
