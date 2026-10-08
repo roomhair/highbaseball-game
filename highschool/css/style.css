@@ -591,7 +591,10 @@ td.role { font-size: 11px; color: var(--ink-mute); }
    シルエットだけの簡略な絵（流麗さより、小さく出しても崩れないことを優先） */
 .bt-legs, .bt-body, .bt-head { fill: var(--ink-mute); }
 .bt-bat line { stroke: var(--ink); stroke-width: 1.5; stroke-linecap: round; }
-.bt-bat circle { fill: var(--accent); }
+/* バットの先は打者と同じ地味な色にしておく。打球の軌跡（アクセント色）
+   と色を分けておかないと、本塁から飛んでいるのかバットから飛んでいるのか
+   紛らわしくなる */
+.bt-bat circle { fill: var(--ink-mute); }
 .bt-bat { transform: rotate(-15deg); }
 .bt-bat.is-flip { transform: rotate(15deg); }
 .bt-bat.is-swing { animation: batswing .5s cubic-bezier(.3,.6,.25,1) both; }

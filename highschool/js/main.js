@@ -226,6 +226,15 @@ const Game = (() => {
   /* ---------- 大会 ---------- */
 
   function startTournament(kind) {
+    /* ここは、ひとつの大会（県大会・地区大会・神宮大会相当・センバツ相当・
+       夏の地方大会・全国大会）が新しく始まるときに必ず通る、唯一の入口。
+       大会と大会のあいだは、規模が変わるにしろ年をまたぐにしろ必ず
+       実際の日程が空くので、先発投手の疲れはここで毎回いったん完全に抜く
+       （抜けた状態で始めて、そのあとは試合ごとに Team.restPitchers が
+       積み増していく）。保存データを読み直したときは resume() が
+       state.phase を見て該当の画面を出し直すだけで、ここは通らない
+       （同じ大会の途中で二重に抜けることはない） */
+    Team.healPitchers(state.team);
     /* 高校名の重複を避けるのはこの大会の中だけ。
        年をまたげば同じ常連校がまた出てくる */
     const used = new Set();
@@ -554,8 +563,7 @@ const Game = (() => {
       state.localFinalLevel = state.tour.finalLevel;
       state.firstRoundLosses = 0;   // 1回戦で負けていないので、連敗は途切れる
       state.history.push({ year: state.year, tour: 'local', result: '優勝' });
-      /* 地方大会と全国大会のあいだは日が空くので、投手の疲れは抜ける */
-      Team.healPitchers(state.team);
+      /* 投手の疲れを抜くのは、次の大会が始まる startTournament 側でまとめて行う */
       state.phase = 'localwin';
       save();
       Screens.localWin(state);
@@ -569,21 +577,17 @@ const Game = (() => {
       return;
     }
     if (won && kind === 'fallPref') {
-      /* 県大会優勝。そのまま地区大会へ。大会の規模が変わり日程が空くので、
-         投手の疲れはここで抜く */
+      /* 県大会優勝。そのまま地区大会へ */
       state.fallPrefFinalLevel = state.tour.finalLevel;
       state.history.push({ year: state.year, tour: 'fallPref', result: '優勝' });
-      Team.healPitchers(state.team);
       startTournament('fallDistrict');
       return;
     }
     if (won && kind === 'fallDistrict') {
-      /* 地区大会優勝。センバツ相当は確定のうえ、神宮大会相当へ。
-         ここも大会の規模が変わるので、投手の疲れを抜く */
+      /* 地区大会優勝。センバツ相当は確定のうえ、神宮大会相当へ */
       state.fallDistrictFinalLevel = state.tour.finalLevel;
       state.springQualified = true;
       state.history.push({ year: state.year, tour: 'fallDistrict', result: '優勝' });
-      Team.healPitchers(state.team);
       startTournament('fallJingu');
       return;
     }
@@ -629,9 +633,8 @@ const Game = (() => {
        地区大会は準優勝でも神宮大会相当には進めない（優勝校だけ） */
     if (kind === 'fallPref') {
       state.fallPrefFinalLevel = state.tour.finalLevel;
-      /* 準優勝（決勝で敗退）でも地区大会へは進む。大会の規模が変わるので
-         投手の疲れを抜く（県大会の中の敗退なら抜かない） */
-      if (isLast) { Team.healPitchers(state.team); startTournament('fallDistrict'); return; }
+      /* 準優勝（決勝で敗退）でも地区大会へは進む */
+      if (isLast) { startTournament('fallDistrict'); return; }
       toPostFallTraining();
       return;
     }

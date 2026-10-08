@@ -101,7 +101,11 @@ const GameScreen = (() => {
   /** 打者が打席に立っている絵。本塁のすぐ後ろに立たせる。
       右打ちは本塁の三塁側（図の左）、左打ちは一塁側（図の右）に立つので、
       どちら打ちかひと目で分かる。打ったときだけバットを振り、
-      ボールが飛んでいく線と動きを合わせてある */
+      ボールが飛んでいく線と動きを合わせてある。
+      構えの姿勢ではバットの先が本塁にかからないようにしてある
+      （本塁に重なると、打球が本塁からでなく打者から飛び出したように
+      見えてしまうため）。振り切った先（95度）でおおよそ本塁の上に来る
+      ので、打つ瞬間だけ自然に本塁のあたりでバットと打球が重なる */
   function batterView(kind, bats) {
     const flip = bats === 'L';
     const mx = (x) => (flip ? 200 - x : x);
@@ -109,19 +113,19 @@ const GameScreen = (() => {
       (flip ? ' is-flip' : '');
     const legs = 'M' + mx(83) + ',170 L' + mx(86.4) + ',161 L' + mx(89.6) + ',161 L' + mx(93) + ',170 Z';
     const torsoX = flip ? mx(91.2) : 84.8;
-    const handX = mx(90.2), tipX = mx(96);
+    const handX = mx(90.2), tipX = mx(90.2);
     return '<g class="batter">' +
       '<path class="bt-legs" d="' + legs + '"/>' +
       '<rect class="bt-body" x="' + torsoX + '" y="154.5" width="6.4" height="7" rx="2.6"/>' +
       '<circle class="bt-head" cx="' + mx(88) + '" cy="151.5" r="2.7"/>' +
       '<g class="bt-bat' + cls + '" style="transform-origin:' + handX + 'px 157px">' +
-        '<line x1="' + handX + '" y1="157" x2="' + tipX + '" y2="150"/>' +
-        '<circle cx="' + tipX + '" cy="150" r="1.4"/>' +
+        '<line x1="' + handX + '" y1="157" x2="' + tipX + '" y2="148"/>' +
+        '<circle cx="' + tipX + '" cy="148" r="1.4"/>' +
       '</g>' +
     '</g>';
   }
 
-  function fieldView(bases, outs, e) {
+  function fieldView(bases, outs, e, showBatter) {
     const t = ballTarget(e);
     const b = (i) => (bases && bases[i] ? ' is-on' : '');
     /* 打球は「本塁から飛んでいく」ことが分かるように、
@@ -151,7 +155,7 @@ const GameScreen = (() => {
         '<rect class="fv-base' + b(1) + '" x="95.5" y="66" width="9" height="9" transform="rotate(45 100 70.5)"/>' +
         '<rect class="fv-base' + b(2) + '" x="54.5" y="107" width="9" height="9" transform="rotate(45 59 111.5)"/>' +
         '<polygon class="fv-home" points="100,147 105,152 100,157 95,152"/>' +
-        batterView(swingKindOf(e), e && e.batterBats) +
+        (showBatter === false ? '' : batterView(swingKindOf(e), e && e.batterBats)) +
         ball +
       '</svg>' +
       '<div class="outs">' + [0, 1, 2].map((i) =>
@@ -394,8 +398,10 @@ const GameScreen = (() => {
          回が終わってはじめて 0 を入れる */
       closeHalf(st);
       st.openHalf = { side: cur.side, inning: e.inning };
+      /* イニングの変わり目では、まだ誰も打席に入っていないので
+         打者の絵は出さない */
       return '<div class="stage__half">' + halfLabel(e) + (e.tie ? '　タイブレーク' : '') + '</div>' +
-        fieldView([e.tie, e.tie, false], 0, null);
+        fieldView([e.tie, e.tie, false], 0, null, false);
     }
 
     if (e.k === 'sub') {
