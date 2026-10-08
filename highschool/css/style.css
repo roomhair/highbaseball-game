@@ -1115,6 +1115,17 @@ tr.prow.is-picked .nmlink { color: inherit; }
 @keyframes glow-grand { from { opacity: .85; transform: scale(.93); } to { opacity: 1; transform: scale(1.08); } }
 @media (prefers-reduced-motion: reduce) { .champ--grand .champ__rays { animation: none; } }
 
+/* センバツ相当の出場決定。夏（地方大会）・全国優勝とは違う色にして見分ける */
+.champ--spring .champ__title { color: #3b7fe2; }
+.champ--spring .champ__rays {
+  background: radial-gradient(ellipse at 50% 34%,
+    color-mix(in srgb, #3b7fe2 16%, transparent) 0%,
+    color-mix(in srgb, #3b7fe2 6%, transparent) 38%,
+    transparent 68%);
+}
+/* センバツ相当に出られなかった年は、派手にしない。見出しも地味な色に */
+.champ--miss .champ__title { color: var(--ink-mute); animation: none; }
+
 /* ===== 選手の詳細 ===== */
 .pdetail__head { border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 12px; }
 .pdetail__name { font-size: 23px; font-weight: 800; letter-spacing: .06em; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }

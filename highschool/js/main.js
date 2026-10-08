@@ -191,14 +191,27 @@ const Game = (() => {
   function trainingDone() {
     switch (state.trainingNext) {
       case 'fallPref': startTournament('fallPref'); break;
-      case 'springOrNextSummer':
-        /* センバツに出ないと決まった場合も、学年を上げて新入生を迎える
-           タイミングは「センバツ相当が終わったあと」と同じ扱いにする */
-        if (state.springQualified) startTournament('spring'); else toNewSeason();
-        break;
+      /* 秋の大会がすべて終わったあとの特訓を終えたら、センバツ相当に
+         出られるかどうかをここで発表する。実際にその先（センバツ相当・
+         新入生を迎える手続き）へ進むのは、発表の画面を見たあと */
+      case 'springOrNextSummer': showSpringResult(); break;
       case 'nextSummer': startTournament('local'); break;
       default: startTournament('local');
     }
+  }
+
+  /** センバツ相当に出られるかどうかの発表画面へ */
+  function showSpringResult() {
+    state.phase = 'spring-result';
+    save();
+    Screens.springResult(state, state.springQualified);
+  }
+
+  /** 発表画面を見たあと、実際に次へ進む */
+  function afterSpringResult() {
+    /* センバツに出ないと決まった場合も、学年を上げて新入生を迎える
+       タイミングは「センバツ相当が終わったあと」と同じ扱いにする */
+    if (state.springQualified) startTournament('spring'); else toNewSeason();
   }
 
   /** 特訓の入口へ。next は特訓が終わったあとに進む先のタグ、
@@ -903,6 +916,7 @@ const Game = (() => {
       case 'poach': toPoach(); break;
       case 'localwin': Screens.localWin(state); break;
       case 'champion': Screens.champion(state); break;
+      case 'spring-result': Screens.springResult(state, state.springQualified); break;
       case 'offseason':
         Screens.offseason(state, Offseason.retiring(state.team).map(Offseason.farewell)); break;
       case 'new-bat': newcomerBatters(); break;
@@ -1057,6 +1071,7 @@ const Game = (() => {
     on('btn-result-next', afterResult);
     on('btn-localwin-next', () => startTournament('national'));
     on('btn-champion-next', toOffseason);
+    on('btn-spring-result-next', afterSpringResult);
     const intro = UI.el('screen-trainintro');
     if (intro) intro.addEventListener('click', (e) => {
       /* キャプテンを決めるボタンを押したときは、特訓に入らない */

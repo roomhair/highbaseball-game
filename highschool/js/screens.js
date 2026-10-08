@@ -763,6 +763,31 @@ const Screens = (() => {
     UI.show('screen-champion');
   }
 
+  /** 秋の大会がすべて終わったあと、センバツ相当に出られるかどうかの発表。
+      出られる年は少しだけ華やかに、出られない年は淡々と伝える */
+  function springResult(state, qualified) {
+    const t = state.team;
+    const name = state.settings.springName;
+    const body = qualified
+      ? '<div class="champ champ--spring">' +
+          confetti(16, ['#3b7fe2', '#81c7e8', '#ffffff', '#ffd54f']) +
+          '<p class="champ__eyebrow">' + state.year + '年目</p>' +
+          '<h2 class="champ__title">' + esc(name) + ' 出場決定</h2>' +
+          '<p class="champ__school">' + esc(t.name) + '</p>' +
+          '<div class="champ__rays" aria-hidden="true"></div>' +
+          '<p class="champ__lead">秋の大会の成績が認められ、来年の' + esc(name) + 'への出場が決まった。</p>' +
+        '</div>'
+      : '<div class="champ champ--miss">' +
+          '<p class="champ__eyebrow">' + state.year + '年目</p>' +
+          '<h2 class="champ__title">' + esc(name) + ' 出場ならず</h2>' +
+          '<p class="champ__school">' + esc(t.name) + '</p>' +
+          '<p class="champ__lead">来年の' + esc(name) + 'への出場はかなわなかった。新入生を迎え、来年の夏に備える。</p>' +
+        '</div>';
+    UI.html('spring-result-body', body);
+    UI.el('btn-spring-result-next').textContent = qualified ? (name + 'へ') : '新入生入部へ';
+    UI.show('screen-spring-result');
+  }
+
   /* ---------- オフシーズン ---------- */
 
   function offseason(state, retired) {
@@ -968,7 +993,7 @@ const Screens = (() => {
 
   return {
     pick, ready, training, trainingResult, opening, pregame,
-    poachWin, poachRelease, poachSuccess, poachFailed, champion, offseason, settings, lineupCard, bindRows,
+    poachWin, poachRelease, poachSuccess, poachFailed, champion, springResult, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
     localWin, soccerStart, soccerPregame, soccerResult, soccerTraining, soccerOffseason,
   };

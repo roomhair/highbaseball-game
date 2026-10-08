@@ -57,12 +57,17 @@ const Training = (() => {
      「試合後の伸びを小さく、特訓での伸びを大きく」する要望に合わせて、
      ここをさらに1.35倍に引き上げてある（config.js の PER_GAME_BAT/PIT を
      0.6倍にしたのと釣り合わせてあり、夏の大会の決勝進出時点の強さは
-     これまでとほぼ変わらないことを実測で確認済み）。 */
+     これまでとほぼ変わらないことを実測で確認済み）。
+     ただし球速（velo）だけは、この2段の引き上げを他の能力と同じ比率で
+     乗せると「特訓だけで3年かけて168km/h上限まで届く」ほど伸びすぎて
+     しまっていた（実測: 1回あたり平均7.1km/h、球速一本に絞れば
+     卒業時点で平均44.6km/hも伸びていた）。そのため velo の幅だけは
+     他の能力より控えめに取り直してある。 */
   const POWER_TIERS = [
-    { key: 's',  weight: 30, label: '',        stat: [8, 14],  velo: [1, 5],  pitch: 1, ball: [1, 4] },
-    { key: 'm',  weight: 40, label: '',        stat: [14, 20], velo: [5, 9],  pitch: 1, ball: [4, 5] },
-    { key: 'l',  weight: 22, label: 'みっちり', stat: [24, 39], velo: [9, 14], pitch: 1, ball: [5, 8] },
-    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [30, 47], velo: [11, 19], pitch: 4, ball: [8, 9] },
+    { key: 's',  weight: 30, label: '',        stat: [8, 14],  velo: [1, 2], pitch: 1, ball: [1, 4] },
+    { key: 'm',  weight: 40, label: '',        stat: [14, 20], velo: [2, 3], pitch: 1, ball: [4, 5] },
+    { key: 'l',  weight: 22, label: 'みっちり', stat: [24, 39], velo: [3, 5], pitch: 1, ball: [5, 8] },
+    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [30, 47], velo: [4, 8], pitch: 4, ball: [8, 9] },
   ];
 
   /* まれに、2種類の能力が同時に上がる。
