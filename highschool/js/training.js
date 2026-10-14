@@ -67,7 +67,7 @@ const Training = (() => {
      STAT_COUNT_TIERS で複数の能力が同時に上がりやすくした代わりに、
      1つあたりの額面を0.65倍ほどに抑えてある（特訓で1回に伸びる
      合計の量そのものは、以前とほぼ変わらないよう釣り合わせた）。
-     velo・pitch・ball はこの対象外（複数化していないので幅はそのまま）。 */
+     velo・pitch・ball の幅はそのまま。 */
   const POWER_TIERS = [
     { key: 's',  weight: 30, label: '',        stat: [5, 9],   velo: [1, 2], pitch: 1, ball: [1, 4] },
     { key: 'm',  weight: 40, label: '',        stat: [9, 13],  velo: [2, 3], pitch: 1, ball: [4, 5] },
@@ -76,8 +76,9 @@ const Training = (() => {
   ];
 
   /* 1枚のカードで、同じ選手の能力がいくつ同時に上がるか。
-     複数が重なりやすく、まれに3つ・4つ（投手は持ち場が制球・
-     スタミナの2つしかないので、実際には最大2つに収まる）になることもある。
+     複数が重なりやすく、まれに3つ・4つになることもある。
+     同時に上がる能力は同じ種類でなくてよく、投手なら球速も、打者なら
+     弾道も候補に入る（投手は制球・スタミナ・球速の最大3つ）。
      「複数」と「猛特訓」が重なったときがいちばんうれしい当たりになる。 */
   const STAT_COUNT_TIERS = [
     { weight: 55, n: 1 },
@@ -154,19 +155,32 @@ const Training = (() => {
 
     const isPit = menu.key === 'pit';
     const statPool = isPit ? PITCHER_STATS : BATTER_STATS;
+    /* 複数が同時に上がるときだけ、同じ種類の能力に限らず、
+       投手なら球速、打者なら弾道も候補に入る
+       （球速と弾道は額面の単位が違うので、候補に入れるのはここだけ）。
+       1つだけ上がるカードは、これまでどおり通常の能力から引く */
+    const extras = isPit
+      ? [{ key: 'velo', label: '球速', unit: 'km/h', amount: () => range(power.velo) }]
+      : (chosen.some((p) => p.traj < 4)
+        ? [{ key: 'traj', label: '弾道', amount: () => 1 }]
+        : []);
+    const multiPool = statPool.concat(extras);
     /* いくつの能力が同時に上がるかは、効き目（猛特訓）とは別に引く */
-    const statN = Math.min(statPool.length, RNG.weighted(STAT_COUNT_TIERS).n);
+    const statN = Math.min(multiPool.length, RNG.weighted(STAT_COUNT_TIERS).n);
     const multi = statN >= 2;
-    const picked = statN <= 1 ? [RNG.pick(statPool)] : RNG.shuffle(statPool.slice()).slice(0, statN);
+    const picked = statN <= 1 ? [RNG.pick(statPool)] : RNG.shuffle(multiPool.slice()).slice(0, statN);
     /* 上がり幅は能力ごとに引き直す。どれか1つだけ大きく伸びることもある。
        投手は持ち場が制球・スタミナの2つしか無いぶん、同じ額面でも
        打者より集中して伸びやすいが、そこは上の headroom（頭打ち）が
        効いて抑える形にしてあり、額面そのものは打者と揃えてある */
-    const amounts = picked.map(() => range(power.stat));
+    const amounts = picked.map((st) => (st.amount ? st.amount() : range(power.stat)));
     const targets = [];
     chosen.forEach((p) => {
       picked.forEach((st, i) => {
-        targets.push({ pid: p.id, name: p.name, label: st.label, amount: amounts[i], key: st.key });
+        if (st.key === 'traj' && p.traj >= 4) return;
+        const t = { pid: p.id, name: p.name, label: st.label, amount: amounts[i], key: st.key };
+        if (st.unit) t.unit = st.unit;
+        targets.push(t);
       });
     });
     return Object.assign(base, {
