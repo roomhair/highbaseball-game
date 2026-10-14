@@ -22,7 +22,10 @@ const Player = (() => {
   /* 学年ごとの下駄。1年→2年→3年で強くなるが、talent の効きのほうが大きい。
      入部したての部員はとにかく弱い。ここから3年かけて伸ばしていくゲームなので、
      最初の数字はF・Gだらけで構わない。 */
-  const GRADE_BASE = { 1: 20, 2: 21, 3: 26 };
+  const GRADE_BASE = { 1: 20, 2: 27, 3: 35 };
+  /* チーム作りで学年どうしの差をはっきり出すため、2年・3年の球速に
+     自軍だけ上乗せする（相手校には効かせない） */
+  const OWN_VELO_EXTRA = { 1: 0, 2: 3, 3: 6 };
   /* 相手校のように「チームの強さ」を指定して作るときの、学年ぶんの差。
      こちらは GRADE_BASE と切り離してある（自軍だけを弱くしたいため） */
   const GRADE_TILT = { 1: -6, 2: 0, 3: 4 };
@@ -307,7 +310,7 @@ const Player = (() => {
          結果として148km/hも149km/hも、それぞれの確率で出てくる。
          prestigeBonus（学校の格）も、同じ考え方で少しだけ乗せる */
       velo: Math.round(RNG.clamp(
-        123 + (GRADE_VELO[grade] || 0) + talent * 2.5 + levelShift * 0.26 +
+        123 + (GRADE_VELO[grade] || 0) + (ownTeam ? (OWN_VELO_EXTRA[grade] || 0) : 0) + talent * 2.5 + levelShift * 0.26 +
         (opt.prestigeBonus || 0) * 0.3 + RNG.norm(0, 7.5), 100, 166)),
       control: makeStat(base, talent, 0, ownTeam),
       stamina: makeStat(base, talent, 0, ownTeam),
