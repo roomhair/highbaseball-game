@@ -77,8 +77,8 @@ const Training = (() => {
 
   /* 1枚のカードで、同じ選手の能力がいくつ同時に上がるか。
      複数が重なりやすく、まれに3つ・4つになることもある。
-     同時に上がる能力は同じ種類でなくてよく、投手なら球速も、打者なら
-     弾道も候補に入る（投手は制球・スタミナ・球速の最大3つ）。
+     同時に上がる能力は同じ種類でなくてよく、投手なら球速・変化球も、打者なら
+     弾道も候補に入る（投手は制球・スタミナ・球速・変化球の最大4つ）。
      「複数」と「猛特訓」が重なったときがいちばんうれしい当たりになる。 */
   const STAT_COUNT_TIERS = [
     { weight: 55, n: 1 },
@@ -156,11 +156,13 @@ const Training = (() => {
     const isPit = menu.key === 'pit';
     const statPool = isPit ? PITCHER_STATS : BATTER_STATS;
     /* 複数が同時に上がるときだけ、同じ種類の能力に限らず、
-       投手なら球速、打者なら弾道も候補に入る
-       （球速と弾道は額面の単位が違うので、候補に入れるのはここだけ）。
+       投手なら球速・変化球、打者なら弾道も候補に入る
+       （球速・変化球・弾道は額面の単位が違うので、候補に入れるのはここだけ）。
        1つだけ上がるカードは、これまでどおり通常の能力から引く */
     const extras = isPit
-      ? [{ key: 'velo', label: '球速', unit: 'km/h', amount: () => range(power.velo) }]
+      ? [{ key: 'velo', label: '球速', unit: 'km/h', amount: () => range(power.velo) }].concat(
+        chosen.some((p) => p.pitches.some((q) => q.level < 7))
+          ? [{ key: 'pitch', label: '変化球', amount: () => power.pitch }] : [])
       : (chosen.some((p) => p.traj < 4)
         ? [{ key: 'traj', label: '弾道', amount: () => 1 }]
         : []);
@@ -178,6 +180,14 @@ const Training = (() => {
     chosen.forEach((p) => {
       picked.forEach((st, i) => {
         if (st.key === 'traj' && p.traj >= 4) return;
+        if (st.key === 'pitch') {
+          /* 変化球は選手ごとに、まだ伸びる球種を1つ選ぶ */
+          const room = p.pitches.filter((x) => x.level < 7);
+          if (!room.length) return;
+          const q = RNG.pick(room);
+          targets.push({ pid: p.id, name: p.name, label: q.name, amount: amounts[i], key: 'pitch', pitch: q.name });
+          return;
+        }
         const t = { pid: p.id, name: p.name, label: st.label, amount: amounts[i], key: st.key };
         if (st.unit) t.unit = st.unit;
         targets.push(t);
