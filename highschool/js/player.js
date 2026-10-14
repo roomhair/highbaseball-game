@@ -55,11 +55,12 @@ const Player = (() => {
       効かせると、同じ選手のどの能力も「talent」という1つの数字に
       引っ張られてしまい、才能が悪いと全部の能力が最低値に張り付く、
       という選手ばかりになってしまっていたため。
-      ownTeam のときだけ、ばらつきの幅をひとまわり広くしてある
-      （自軍の入部時・新入生だけ、能力が上振れした選手がもう少し出やすい。
-      相手校はここを変えない） */
+      ownTeam のときだけ、能力ごとの独立したばらつきを狭くしてある
+      （自軍の入部時・新入生は、1人の中でミート・パワー・走力などの
+      数字がバラバラになりにくい。才能（talent）による選手どうしの
+      差はそのまま。相手校はここを変えない） */
   function makeStat(base, talent, bias, ownTeam) {
-    const sigma = ownTeam ? 13.0 : 11.4;
+    const sigma = ownTeam ? 9.0 : 11.4;
     return RNG.stat(softClamp(base + talent * 4 + RNG.norm(0, sigma) + (bias || 0)));
   }
 
