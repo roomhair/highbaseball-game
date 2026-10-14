@@ -63,17 +63,28 @@ const Training = (() => {
      しまっていた（実測: 1回あたり平均7.1km/h、球速一本に絞れば
      卒業時点で平均44.6km/hも伸びていた）。そのため velo の幅だけは
      他の能力より控えめに取り直してある。 */
+  /* stat（ミート・パワーなど、1つの能力の上がり幅）は、下の
+     STAT_COUNT_TIERS で複数の能力が同時に上がりやすくした代わりに、
+     1つあたりの額面を0.65倍ほどに抑えてある（特訓で1回に伸びる
+     合計の量そのものは、以前とほぼ変わらないよう釣り合わせた）。
+     velo・pitch・ball はこの対象外（複数化していないので幅はそのまま）。 */
   const POWER_TIERS = [
-    { key: 's',  weight: 30, label: '',        stat: [8, 14],  velo: [1, 2], pitch: 1, ball: [1, 4] },
-    { key: 'm',  weight: 40, label: '',        stat: [14, 20], velo: [2, 3], pitch: 1, ball: [4, 5] },
-    { key: 'l',  weight: 22, label: 'みっちり', stat: [24, 39], velo: [3, 5], pitch: 1, ball: [5, 8] },
-    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [30, 47], velo: [4, 8], pitch: 4, ball: [8, 9] },
+    { key: 's',  weight: 30, label: '',        stat: [5, 9],   velo: [1, 2], pitch: 1, ball: [1, 4] },
+    { key: 'm',  weight: 40, label: '',        stat: [9, 13],  velo: [2, 3], pitch: 1, ball: [4, 5] },
+    { key: 'l',  weight: 22, label: 'みっちり', stat: [16, 25], velo: [3, 5], pitch: 1, ball: [5, 8] },
+    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [20, 31], velo: [4, 8], pitch: 4, ball: [8, 9] },
   ];
 
-  /* まれに、2種類の能力が同時に上がる。
-     「何の練習か」「何人に効くか」「どれだけ効くか」と同じく独立に引いているので、
+  /* 1枚のカードで、同じ選手の能力がいくつ同時に上がるか。
+     複数が重なりやすく、まれに3つ・4つ（投手は持ち場が制球・
+     スタミナの2つしかないので、実際には最大2つに収まる）になることもある。
      「複数」と「猛特訓」が重なったときがいちばんうれしい当たりになる。 */
-  const MULTI_RATE = 0.048;
+  const STAT_COUNT_TIERS = [
+    { weight: 55, n: 1 },
+    { weight: 32, n: 2 },
+    { weight: 11, n: 3 },
+    { weight: 2,  n: 4 },
+  ];
 
   /* 何の練習か */
   const MENUS = [
@@ -143,10 +154,11 @@ const Training = (() => {
 
     const isPit = menu.key === 'pit';
     const statPool = isPit ? PITCHER_STATS : BATTER_STATS;
-    /* 能力が2つ上がるかどうかは、効き目（猛特訓）とは別に引く */
-    const multi = statPool.length >= 2 && RNG.chance(MULTI_RATE);
-    const picked = multi ? RNG.shuffle(statPool.slice()).slice(0, 2) : [RNG.pick(statPool)];
-    /* 上がり幅は能力ごとに引き直す。片方だけ大きく伸びることもある。
+    /* いくつの能力が同時に上がるかは、効き目（猛特訓）とは別に引く */
+    const statN = Math.min(statPool.length, RNG.weighted(STAT_COUNT_TIERS).n);
+    const multi = statN >= 2;
+    const picked = statN <= 1 ? [RNG.pick(statPool)] : RNG.shuffle(statPool.slice()).slice(0, statN);
+    /* 上がり幅は能力ごとに引き直す。どれか1つだけ大きく伸びることもある。
        投手は持ち場が制球・スタミナの2つしか無いぶん、同じ額面でも
        打者より集中して伸びやすいが、そこは上の headroom（頭打ち）が
        効いて抑える形にしてあり、額面そのものは打者と揃えてある */
