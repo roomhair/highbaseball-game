@@ -216,14 +216,8 @@ table, .stat__num, .result-score, .scoreboard { font-variant-numeric: tabular-nu
 }
 .rules__heading { margin: 0 0 12px; font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--ink-mute); }
 .flow { margin: 0; padding-left: 1.3em; }
-.flow li { margin-bottom: 10px; font-size: 14px; }
-.flow b { display: inline-block; min-width: 6.5em; font-weight: 600; }
-.flow span { color: var(--ink-mute); font-size: 13px; }
-/* 狭い画面では見出しと説明を2行に分ける（途中で折り返すと読みにくい） */
-@media (max-width: 520px) {
-  .flow b { display: block; min-width: 0; }
-  .flow span { display: block; }
-}
+.flow li { margin-bottom: 6px; font-size: 14px; }
+.flow b { font-weight: 600; }
 
 /* ===== ボタン ===== */
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 6px; }
