@@ -166,6 +166,11 @@ const GameScreen = (() => {
 
   /* ---------- 両軍のオーダー ---------- */
 
+  /** 投打（投げる手・打つ手）。右投左打なら「右左」 */
+  function handShort(p) {
+    return (p.throws === 'L' ? '左' : '右') + (p.bats === 'L' ? '左' : '右');
+  }
+
   /** 名前の下に出す、打つほうの能力だけの小さい行。
       守備や肩まで並べると半分の幅に収まらないので、
       打席を見ているあいだに気になる4つだけにしてある */
@@ -198,7 +203,8 @@ const GameScreen = (() => {
       '<span class="ll__pname">投手　' +
         '<button type="button" class="linkbtn llpit" data-pid="' + p.id + '">' +
         esc(p.name) + '</button>' +
-        '<span class="ll__gr">' + p.grade + '年</span></span>' +
+        '<span class="ll__gr">' + p.grade + '年</span>' +
+        '<span class="ll__gr ll__hand">' + handShort(p) + '</span></span>' +
       '<span class="ll__ab">球速' + p.velo + ' 制球' + r(p.control) +
         ' スタミナ' + r(p.stamina) + '</span>' +
       '<span class="ll__sta' + worn + '">' +
@@ -226,6 +232,7 @@ const GameScreen = (() => {
           '<span class="ll__pos">' + posShort(s.pos) + '</span>' +
           '<span class="ll__name">' + esc(p.name) + '</span>' +
           '<span class="ll__gr">' + p.grade + '年</span>' +
+          '<span class="ll__gr ll__hand">' + handShort(p) + '</span>' +
           abTiny(p) +
           '<span class="ll__res">' + res + '</span></li>';
       }).join('');

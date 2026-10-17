@@ -755,6 +755,7 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 /* 学年は名前のすぐ右に小さく */
 .ll__gr { flex: none; font-size: 9px; color: var(--ink-faint); margin-left: 2px; }
 .ll__item.is-now .ll__gr { color: inherit; opacity: .85; }
+.ll__hand { margin-left: 4px; letter-spacing: .02em; }
 .ll__title { font-size: 12px; }
 @media (min-width: 720px) { .ll__title { font-size: 13px; } }
 
