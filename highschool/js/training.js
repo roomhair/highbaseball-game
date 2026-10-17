@@ -71,7 +71,7 @@ const Training = (() => {
   const POWER_TIERS = [
     { key: 's',  weight: 30, label: '',        stat: [5, 9],   velo: [1, 2], pitch: 1, ball: [1, 4] },
     { key: 'm',  weight: 40, label: '',        stat: [9, 13],  velo: [2, 3], pitch: 1, ball: [4, 5] },
-    { key: 'l',  weight: 22, label: 'みっちり', stat: [16, 25], velo: [3, 5], pitch: 1, ball: [5, 8] },
+    { key: 'l',  weight: 22, label: 'みっちり', stat: [14, 21], velo: [3, 5], pitch: 1, ball: [5, 8] },
     { key: 'xl', weight: 4,  label: '猛特訓',   stat: [20, 31], velo: [4, 8], pitch: 4, ball: [8, 9] },
   ];
 

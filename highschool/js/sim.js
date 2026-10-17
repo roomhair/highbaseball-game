@@ -340,9 +340,13 @@ const Sim = (() => {
 
   /* ---------- 試合を組み立てる ---------- */
 
-  /** その試合のチームの調子。20回に1回ほど、大きく振れる日がある */
+  /** その試合のチームの調子。ときどき大きく振れる日がある。
+      ここを広げるほど、力の差がある相手にも勝ちやすくなる（下剋上）。
+      調子が良い日は、打つほうも投げるほうも良くなる（守りのほうは
+      def.form の符号を反転して渡している。反転しないと攻守で打ち消し合い、
+      調子を広げても勝敗がほとんど動かなかった） */
   function rollForm() {
-    return RNG.chance(0.05) ? RNG.norm(0, 11) : RNG.norm(0, 3.5);
+    return RNG.chance(0.06) ? RNG.norm(0, 15) : RNG.norm(0, 7.5);
   }
 
   function sideState(team, isHome) {
@@ -685,7 +689,7 @@ const Sim = (() => {
       const res = tactic
         ? resolveTactic(tactic, bat, pit, defRating)
         : resolvePA(bat, pit, defTeam, defRating, fatigue, defenders,
-                    off.form + (bat.gameForm || 0), def.form + (pit.gameForm || 0) * 0.5);
+                    off.form + (bat.gameForm || 0), -def.form + (pit.gameForm || 0) * 0.5);
       res.slotIndex = slotIndex;
 
       def.bf++;

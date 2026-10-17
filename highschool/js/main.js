@@ -176,11 +176,9 @@ const Game = (() => {
   function trainingNextLabel() {
     switch (state.trainingNext) {
       case 'fallPref': return '秋の大会へ';
-      /* センバツに出られない場合も、この特訓のあとに向かう先は
-         夏そのものではなく、学年を上げて新入生を迎える手続きなので、
-         文言もそれに合わせる */
+      /* 出場が決まっていない年は、春の大会ではなく夏の大会へと書く */
       case 'springOrNextSummer':
-        return state.springQualified ? (state.settings.springName + 'へ') : '新入生入部へ';
+        return state.springQualified ? (state.settings.springName + 'へ') : '夏の大会へ';
       /* 新入生を迎えたあとの特訓が終わったら、次はいよいよ夏の大会 */
       case 'nextSummer': return '夏の大会へ';
       default: return '県予選へ';
@@ -263,6 +261,7 @@ const Game = (() => {
       j = r[0] + Math.random() * (r[1] - r[0]);
     }
     let from;
+    if (kind === 'fallPref') state.springQualified = false;
     if (kind === 'local') {
       from = F.local.from * j;
       state.localJitter = j;

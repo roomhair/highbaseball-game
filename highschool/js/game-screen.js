@@ -21,6 +21,10 @@ const GameScreen = (() => {
   /* 「チャンスまで」。×3と同じ速さで進めつつ、チャンス（ピンチ）の
      場面に来たら自動でタップ待ち（1打席ずつ）に切り替える */
   let chanceMode = false;
+  /* 「スタミナが切れるまで」。×3と同じ速さで進めつつ、自軍の投手の
+     スタミナが一定（30%）まで減ったら自動でタップ待ち（1打席ずつ）に切り替える */
+  let staminaMode = false;
+  const STAMINA_STOP = 0.30;
 
   /* ---------- スコアボード ---------- */
 
@@ -272,6 +276,7 @@ const GameScreen = (() => {
        速くしたい人が速さを上げる */
     speed = 0;
     chanceMode = false;
+    staminaMode = false;
     applySpeedButtons();
     UI.show('screen-game');
     /* 中断から戻ったときは、見たところまでを黙って流してから続ける */
@@ -286,13 +291,15 @@ const GameScreen = (() => {
   function applySpeedButtons() {
     document.querySelectorAll('#game-speed .speedbtn').forEach((b) => {
       if (b.dataset.sp === 'chance') { b.classList.toggle('is-on', chanceMode); return; }
-      b.classList.toggle('is-on', !chanceMode && +b.dataset.sp === speed);
+      if (b.dataset.sp === 'stamina') { b.classList.toggle('is-on', staminaMode); return; }
+      b.classList.toggle('is-on', !chanceMode && !staminaMode && +b.dataset.sp === speed);
     });
   }
 
   function setSpeed(v) {
     const was = speed;
     chanceMode = false;
+    staminaMode = false;
     speed = v;
     applySpeedButtons();
     if (!ctx || ctx.done) return;
@@ -312,6 +319,7 @@ const GameScreen = (() => {
       場面に来たところで自動的に1打席ずつへ切り替える */
   function setChanceMode() {
     chanceMode = true;
+    staminaMode = false;
     speed = 3;
     applySpeedButtons();
     if (!ctx || ctx.done) return;
@@ -320,6 +328,32 @@ const GameScreen = (() => {
       showTapHint(false);
       step();
     }
+  }
+
+  /** 「スタミナが切れるまで」ボタン。×3と同じ速さで進み、自軍の投手の
+      スタミナが30%まで減ったところで自動的に1打席ずつへ切り替える */
+  function setStaminaMode() {
+    staminaMode = true;
+    chanceMode = false;
+    speed = 3;
+    applySpeedButtons();
+    if (!ctx || ctx.done) return;
+    if (ctx.awaitTap) {
+      ctx.awaitTap = false;
+      showTapHint(false);
+      step();
+    }
+  }
+
+  /** 自軍のいまの投手の、スタミナの残り（0〜1）。
+      試合中の表示（pitBlock）と同じ式 */
+  function myPitcherStaminaLeft() {
+    const key = ctx.mySide === 'home' ? 'home' : 'away';
+    const p = Team.find(myTeam(), ctx.cur[key + 'Pitcher']);
+    if (!p) return 1;
+    const limit = Sim.capacityOf(p) + 18;
+    const faced = Math.max(0, (p.staminaCarry || 0) + (ctx.cur[key + 'Bf'] || 0));
+    return Math.max(0, Math.min(1, 1 - faced / limit));
   }
 
   /** いまの走者・アウト数が「チャンス（ピンチ）」の場面か。
@@ -476,6 +510,16 @@ const GameScreen = (() => {
        そこで1打席ずつに切り替えてタップ待ちにする */
     if (chanceMode && isChanceEvent(e)) {
       chanceMode = false;
+      speed = 0;
+      applySpeedButtons();
+      ctx.awaitTap = true;
+      showTapHint(true);
+      return;
+    }
+    /* 「スタミナが切れるまで」の最中に、自軍の投手のスタミナが
+       30%まで減ったら、そこで1打席ずつに切り替えてタップ待ちにする */
+    if (staminaMode && myPitcherStaminaLeft() <= STAMINA_STOP) {
+      staminaMode = false;
       speed = 0;
       applySpeedButtons();
       ctx.awaitTap = true;
@@ -1024,7 +1068,9 @@ const GameScreen = (() => {
   function init() {
     document.querySelectorAll('#game-speed .speedbtn').forEach((b) =>
       b.addEventListener('click', () => {
-        if (b.dataset.sp === 'chance') setChanceMode(); else setSpeed(+b.dataset.sp);
+        if (b.dataset.sp === 'chance') setChanceMode();
+        else if (b.dataset.sp === 'stamina') setStaminaMode();
+        else setSpeed(+b.dataset.sp);
       }));
     const st = UI.el('game-stage');
     if (st) st.addEventListener('click', tap);
