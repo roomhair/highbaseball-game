@@ -87,6 +87,9 @@ const Training = (() => {
     { weight: 2,  n: 4 },
   ];
 
+  /* 1枚で効く人数の上限（受けられる選手に対する割合） */
+  const MAX_SHARE = 0.7;
+
   /* 何の練習か */
   const MENUS = [
     { key: 'bat',     weight: 100, pool: (t) => t.batters },
@@ -108,7 +111,10 @@ const Training = (() => {
 
     const power = RNG.weighted(POWER_TIERS);
     const count = RNG.weighted(COUNT_TIERS);
-    const n = Math.max(1, Math.min(pool.length, count.pick(pool.length)));
+    /* 1枚で効く人数は、その練習を受けられる選手の7割までに抑える
+       （全体練習で、ほぼ全員が一度に上がらないようにする） */
+    const cap = Math.max(1, Math.floor(pool.length * MAX_SHARE));
+    const n = Math.max(1, Math.min(cap, count.pick(pool.length)));
     const chosen = RNG.shuffle(pool.slice()).slice(0, n);
 
     const base = { kind: menu.key, tier: power.key, tierLabel: power.label, count: n };
