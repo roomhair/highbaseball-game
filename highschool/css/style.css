@@ -640,6 +640,9 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .balltrail.is-hr { stroke: var(--crimson); opacity: .6; animation-duration: .95s; }
 @keyframes trail { to { stroke-dashoffset: 0; } }
 .ball {
+  /* 拡大の中心をボール自身にする。既定のままだと図の左上（0,0）を中心に
+     縮むので、飛び出しの瞬間だけ左上からやってくるように見えていた */
+  transform-box: fill-box; transform-origin: center;
   fill: var(--ink); stroke: var(--bg); stroke-width: 1.4;
   animation: fly .78s cubic-bezier(.25,.75,.4,1) both;
 }
