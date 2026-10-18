@@ -1174,9 +1174,14 @@ tr.prow.is-picked .nmlink { color: inherit; }
 
 .modal[data-kind="lineup"] { padding: 8px; }
 .modal[data-kind="lineup"] .modal__panel { width: min(100%, 980px); max-height: 94vh; padding: 16px 14px 20px; }
+/* ×は、中身を下までスクロールしても画面の上に残す（スクロールするのは
+   ふきだし全体なので、固定ではなく sticky で、先頭に置いた×を追従させる） */
 .modal__close {
-  position: absolute; top: 6px; right: 8px; width: 32px; height: 32px;
-  border: 0; background: none; color: var(--ink-mute); font-size: 22px; cursor: pointer; line-height: 1;
+  position: sticky; top: 0; float: right; z-index: 5;
+  width: 36px; height: 36px; margin: -12px -8px -24px 8px;
+  border: 0; border-radius: 50%; background: var(--panel); color: var(--ink-mute);
+  font-size: 22px; cursor: pointer; line-height: 1;
+  box-shadow: 0 0 0 4px var(--panel);
 }
 .modal__title { margin: 0 0 12px; font-size: 17px; font-weight: 800; letter-spacing: .08em; }
 
