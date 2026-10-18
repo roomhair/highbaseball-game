@@ -797,7 +797,7 @@ const Screens = (() => {
           '<p class="champ__lead">来年の' + esc(name) + 'への出場はかなわなかった。新入生を迎え、来年の夏に備える。</p>' +
         '</div>';
     UI.html('spring-result-body', body);
-    UI.el('btn-spring-result-next').textContent = qualified ? (name + 'へ') : '夏の大会へ';
+    UI.el('btn-spring-result-next').textContent = qualified ? (name + 'へ') : '新入生の入部';
     UI.show('screen-spring-result');
   }
 
