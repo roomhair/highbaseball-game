@@ -887,6 +887,10 @@ const Game = (() => {
        試合を続けるときは runGame が掛け直す */
     RNG.unseed();
     state = loaded;
+    /* 変化球の切れ味は7が上限。以前の版で8・9まで付いた球は7に直す */
+    if (state.team) Team.all(state.team).forEach((p) => {
+      (p.pitches || []).forEach((q) => { if (q.level > 7) q.level = 7; });
+    });
     if (!state.settings) state.settings = Storage.loadSettings();
     /* 古い保存データの移行。秋・春の大会を追加する前のデータには
        無いフィールドなので、ここで補っておく */

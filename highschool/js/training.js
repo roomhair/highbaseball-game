@@ -247,7 +247,7 @@ const Training = (() => {
         p.pitches.sort((a, b) => b.level - a.level);
       } else if (t.key === 'newpitch') {
         if (p.pitches.some((x) => x.name === t.pitch)) return;
-        p.pitches.push({ name: t.pitch, level: t.amount });
+        p.pitches.push({ name: t.pitch, level: Math.min(7, t.amount) });
         p.pitches.sort((a, b) => b.level - a.level);
         before = 0; after = t.amount;
       } else {
