@@ -442,9 +442,10 @@ const Sim = (() => {
         yield;
         /* 表の途中でコールドの点差に達しても、まだ試合を終えない
            （後攻が最後の攻撃をする前に、先攻の攻撃中に決まってしまうのは
-           おかしいため）。後攻がすでに勝っているときだけ、表の途中でも
-           打ち切ってよい（後攻はもう追いつく必要がないので） */
-        const stopHalf = () => coldNow() && (half === 'bottom' || H.runs > A.runs);
+           おかしいため）。後攻がすでに勝っているときだけ、表でも裏でも
+           途中で打ち切ってよい。先攻がリードしている裏は、3アウトまで
+           行う（点差だけを見ると、裏が1人も打たずに終わってしまう） */
+        const stopHalf = () => coldNow() && H.runs > A.runs;
         const got = yield* playHalf(off, def, log, inning, half, tie, A, H, stopHalf, ctl);
         off.byInning[inning - 1] = got;
 
