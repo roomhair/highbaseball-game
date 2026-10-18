@@ -88,7 +88,7 @@ const UI = (() => {
        オーダー変更を開き直したときに途中から始まってしまう。
        描き直し（refresh）はここを通らないので、
        並べ替えの最中に飛ばされることはない */
-    const panel = m.querySelector('.modal__panel');
+    const panel = m.querySelector('.modal__body');
     if (panel) panel.scrollTop = 0;
     if (opts && opts.onOpen) opts.onOpen(el('modal-body'));
   }
@@ -814,7 +814,7 @@ const UI = (() => {
     /* 決定（並びの確定、不備があるときの警告表示も含む）を押したら、
        一覧の下のほうを見ていても画面の先頭へ戻す */
     function scrollTop() {
-      const panel = document.querySelector('.modal__panel');
+      const panel = document.querySelector('.modal__body');
       if (panel) panel.scrollTop = 0;
     }
 

@@ -1160,11 +1160,17 @@ tr.prow.is-picked .nmlink { color: inherit; }
 .modal[hidden] { display: none; }
 .modal__backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, .4); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 .modal__panel {
-  position: relative; width: min(100%, 720px); max-height: 88vh; overflow-y: auto;
-
+  position: relative; width: min(100%, 720px); max-height: 88vh; max-height: 88dvh;
+  display: flex; flex-direction: column; overflow: hidden;
   background: var(--panel); border: 0; border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg); padding: 22px 20px 24px;
+  box-shadow: var(--shadow-lg); padding: 0;
   animation: modalin .2s cubic-bezier(.2,.9,.3,1) both;
+}
+/* スクロールするのは中身（modal__body）だけ。×はふきだし側に付けてあるので、
+   中身をどこまで送っても、スクロールで隠れたり上のバーに潜ったりしない */
+.modal__body {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch; padding: 22px 20px 24px;
 }
 @keyframes modalin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 /* オーダー変更は情報が多いので、画面いっぱいに広く取る */
@@ -1173,15 +1179,12 @@ tr.prow.is-picked .nmlink { color: inherit; }
 .confirmbox { margin: 0; font-size: 14px; line-height: 1.8; }
 
 .modal[data-kind="lineup"] { padding: 8px; }
-.modal[data-kind="lineup"] .modal__panel { width: min(100%, 980px); max-height: 94vh; padding: 16px 14px 20px; }
-/* ×は、中身を下までスクロールしても画面の上に残す（スクロールするのは
-   ふきだし全体なので、固定ではなく sticky で、先頭に置いた×を追従させる） */
+.modal[data-kind="lineup"] .modal__panel { width: min(100%, 980px); max-height: 94vh; max-height: 94dvh; }
+.modal[data-kind="lineup"] .modal__body { padding: 16px 14px 20px; }
 .modal__close {
-  position: sticky; top: 0; float: right; z-index: 5;
-  width: 36px; height: 36px; margin: -12px -8px -24px 8px;
+  position: absolute; top: 6px; right: 8px; z-index: 5; width: 36px; height: 36px;
   border: 0; border-radius: 50%; background: var(--panel); color: var(--ink-mute);
   font-size: 22px; cursor: pointer; line-height: 1;
-  box-shadow: 0 0 0 4px var(--panel);
 }
 .modal__title { margin: 0 0 12px; font-size: 17px; font-weight: 800; letter-spacing: .08em; }
 
