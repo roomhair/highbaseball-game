@@ -861,7 +861,7 @@ const Screens = (() => {
         '学年は問いません。引退する3年生は選べません。</p>';
 
     UI.html('off-body',
-      taken + '<p class="section-lead">3年生が引退します。名前を押すと能力を見られます。</p>' +
+      taken + '<p class="section-lead">3年生が引退します。</p>' +
       cards + capPart);
     const body = UI.el('off-body');
     const all = retired.map((f) => f.player).concat(
