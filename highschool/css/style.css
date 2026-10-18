@@ -525,6 +525,8 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .speedbar { display: flex; align-items: center; gap: 4px; margin: 6px 0 0; flex-wrap: wrap; }
 /* スキップは速さの並びの右はし。行を1つ増やさずに済む */
 .speedbar .skip { margin-left: auto; }
+/* 「〜まで」の2つは、狭い画面でも1行に横並びにする */
+.speedbar__row { display: flex; gap: 4px; flex-basis: 100%; }
 .speedbar__label { font-size: 10.5px; letter-spacing: .12em; color: var(--ink-faint); margin-right: 4px; }
 /* 細い画面では「速さ」の文字を落とす。これが無いとスキップが
    下の行に落ちてしまい、そのぶんオーダーが画面から押し出される */
