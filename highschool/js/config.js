@@ -202,7 +202,7 @@ const CONFIG = {
   SCHOOL_RANK: {
     /* これ以上でその段階（最初の弱小は下限なし） */
     THRESHOLDS: [15, 40, 80],
-    NEWCOMER_BONUS: [0, 5, 11, 18],   // 弱小・中堅・強豪・名門の順
+    NEWCOMER_BONUS: [3, 8, 14, 21],   // 弱小・中堅・強豪・名門の順。弱小でもチーム作りの1年生より少し強い
     WIN: 1.2,
     LOSE: -0.8,
     NATIONAL_BONUS: 8,     // 夏の全国大会に出場
