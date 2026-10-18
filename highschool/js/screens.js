@@ -436,7 +436,14 @@ const Screens = (() => {
        選ぶたびに並び替えてしまうと、ボタンの位置が毎回入れ替わって
        選びにくいため。実際の先発（rotation[0]）はハイライトと
        色の変化だけで示す */
-    const pitcherOrder = (state.team.rotation || []).slice();
+    /* さらに、次の試合でこの画面を開いたときも並びが変わらないよう、
+       並びそのものをチームに持たせておく（先発を選んだ投手が、
+       次の試合で先頭の位置に来てしまわないようにする）。
+       いない投手は外し、新しく加わった投手は最後に足す */
+    const pitcherOrder = (state.team.pitcherOrder || state.team.rotation || [])
+      .filter((id) => state.team.pitchers.some((p) => p.id === id));
+    (state.team.rotation || []).forEach((id) => { if (pitcherOrder.indexOf(id) < 0) pitcherOrder.push(id); });
+    state.team.pitcherOrder = pitcherOrder.slice();
 
     /* 自軍カードは先発を選ぶたびに描き直す。ここだけ関数にしておき、
        画面全体（UI.show）は動かさないようにする。

@@ -734,7 +734,7 @@ const UI = (() => {
       const pit = body.querySelector('#lu-pit');
       if (pit) makeSortable(pit, {
         onMove: relabel,
-        onDone: (order) => { team.rotation = order.slice(); refresh(); },
+        onDone: (order) => { team.rotation = order.slice(); team.pitcherOrder = null; refresh(); },
       });
 
       const move = (list, i, d) => {
@@ -754,11 +754,11 @@ const UI = (() => {
       }));
       body.querySelectorAll('.pup').forEach((b) => b.addEventListener('click', () => {
         const next = move(team.rotation, +b.dataset.i, -1);
-        if (next) { team.rotation = next; refresh(); }
+        if (next) { team.rotation = next; team.pitcherOrder = null; refresh(); }
       }));
       body.querySelectorAll('.pdown').forEach((b) => b.addEventListener('click', () => {
         const next = move(team.rotation, +b.dataset.i, 1);
-        if (next) { team.rotation = next; refresh(); }
+        if (next) { team.rotation = next; team.pitcherOrder = null; refresh(); }
       }));
 
       /* 守備位置を変えるのは、その選手だけ。
@@ -780,6 +780,7 @@ const UI = (() => {
       if (auto) auto.addEventListener('click', () => {
         if (tab === 'pit') {
           Team.autoRotation(team);
+          team.pitcherOrder = null;
         } else {
           /* autoLineup は投げる順番まで組み直すので、そこは戻しておく */
           const keep = (team.rotation || []).slice();

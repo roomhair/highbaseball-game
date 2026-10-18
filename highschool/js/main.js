@@ -550,6 +550,11 @@ const Game = (() => {
       (sl.pid === outgoing.id ? { pid: incoming.id, pos: sl.pos } : sl));
     state.team.rotation = (state.team.rotation || []).map((id) =>
       (id === outgoing.id ? incoming.id : id));
+    /* 試合前に先発を選ぶ列の並びも、放出した投手の位置にそのまま入れる */
+    if (state.team.pitcherOrder) {
+      state.team.pitcherOrder = state.team.pitcherOrder.map((id) =>
+        (id === outgoing.id ? incoming.id : id));
+    }
     if (incoming.kind === 'pitcher' && state.team.rotation.indexOf(incoming.id) < 0) {
       state.team.rotation.push(incoming.id);
     }
