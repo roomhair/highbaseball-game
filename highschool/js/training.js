@@ -67,12 +67,13 @@ const Training = (() => {
      STAT_COUNT_TIERS で複数の能力が同時に上がりやすくした代わりに、
      1つあたりの額面を0.65倍ほどに抑えてある（特訓で1回に伸びる
      合計の量そのものは、以前とほぼ変わらないよう釣り合わせた）。
-     velo・pitch・ball の幅はそのまま。 */
+     velo・pitch の幅はそのまま。新しく覚える変化球（ball）は、どの段階でも
+     1〜2から（覚えたては未熟で、そこから練習で伸ばす）。 */
   const POWER_TIERS = [
-    { key: 's',  weight: 30, label: '',        stat: [5, 9],   velo: [1, 2], pitch: 1, ball: [1, 4] },
-    { key: 'm',  weight: 40, label: '',        stat: [9, 13],  velo: [2, 3], pitch: 1, ball: [4, 5] },
-    { key: 'l',  weight: 22, label: 'みっちり', stat: [14, 21], velo: [3, 5], pitch: 1, ball: [5, 8] },
-    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [20, 31], velo: [4, 8], pitch: 4, ball: [8, 9] },
+    { key: 's',  weight: 30, label: '',        stat: [5, 9],   velo: [1, 2], pitch: 1, ball: [1, 2] },
+    { key: 'm',  weight: 40, label: '',        stat: [9, 13],  velo: [2, 3], pitch: 1, ball: [1, 2] },
+    { key: 'l',  weight: 22, label: 'みっちり', stat: [14, 21], velo: [3, 5], pitch: 1, ball: [1, 2] },
+    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [20, 31], velo: [4, 8], pitch: 4, ball: [1, 2] },
   ];
 
   /* 1枚のカードで、同じ選手の能力がいくつ同時に上がるか。
