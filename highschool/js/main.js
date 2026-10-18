@@ -887,7 +887,6 @@ const Game = (() => {
        試合を続けるときは runGame が掛け直す */
     RNG.unseed();
     state = loaded;
-    if (state.team && state.mode !== 'soccer') Offseason.rescue(state.team);
     if (!state.settings) state.settings = Storage.loadSettings();
     /* 古い保存データの移行。秋・春の大会を追加する前のデータには
        無いフィールドなので、ここで補っておく */

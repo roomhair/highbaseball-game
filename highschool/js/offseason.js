@@ -12,9 +12,6 @@
 
 const Offseason = (() => {
 
-  /* 引退のあとに最低限そろえておく人数 */
-  const MIN_BATTERS = 10, MIN_PITCHERS = 3;
-
   /** 引退する3年生 */
   function retiring(team) {
     return Team.all(team).filter((p) => p.grade >= 3);
@@ -46,31 +43,6 @@ const Offseason = (() => {
     };
   }
 
-  /** 引き抜きで3年生ばかりを迎えていると、引退で人数が足りなくなる
-      （野手9人に満たないと、スタメンが組めない）。足りない分だけ
-      1年生が急きょ入部する。あとで新入生を迎えるときは、その人数を
-      差し引くので、全体の人数は変わらない */
-  function fillShort(team) {
-    const lack = { bat: Math.max(0, MIN_BATTERS - team.batters.length),
-                   pit: Math.max(0, MIN_PITCHERS - team.pitchers.length) };
-    const pool = RNG.shuffle(FIELD_POSITIONS.slice());
-    for (let i = 0; i < lack.bat; i++) {
-      team.batters.push(Player.newBatter({ grade: 1, pos: pool[i % pool.length] }));
-    }
-    for (let i = 0; i < lack.pit; i++) team.pitchers.push(Player.newPitcher({ grade: 1 }));
-    return lack;
-  }
-
-  /** 古い保存データの救済。野手が9人に満たないまま進んでいたら補う */
-  function rescue(team) {
-    if (team && team.batters.length > 0 && team.batters.length < 9) {
-      const lack = fillShort({ batters: team.batters, pitchers: [{}, {}, {}] });
-      Team.repair(team);
-      return lack.bat;
-    }
-    return 0;
-  }
-
   /** 3年生を外す。学年はまだ上げない（秋の大会・センバツ相当は、
       3年生が抜けた今の学年のままで戦うため） */
   function retire(team) {
@@ -78,9 +50,7 @@ const Offseason = (() => {
     team.pitchers = team.pitchers.filter((p) => p.grade < 3);
     /* キャプテンが引退したら印を外す。次の特訓の前に選び直してもらう */
     Team.checkCaptain(team);
-    const lack = fillShort(team);
     Team.repair(team);
-    return lack;
   }
 
   /** 残った部員の学年を1つ上げる。戻り値は必要な新入生の人数。
@@ -103,5 +73,5 @@ const Offseason = (() => {
     return team;
   }
 
-  return { retiring, farewell, retire, promote, enroll, draftPick, rescue };
+  return { retiring, farewell, retire, promote, enroll, draftPick };
 })();
