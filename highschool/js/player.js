@@ -62,9 +62,14 @@ const Player = (() => {
       （自軍の入部時・新入生は、1人の中でミート・パワー・走力などの
       数字がバラバラになりにくい。才能（talent）による選手どうしの
       差はそのまま。相手校はここを変えない） */
+  const SINGLE_DIGIT_LIFT = 0.97;
   function makeStat(base, talent, bias, ownTeam) {
     const sigma = ownTeam ? 9.0 : 11.4;
-    return RNG.stat(softClamp(base + talent * 4 + RNG.norm(0, sigma) + (bias || 0)));
+    const v = RNG.stat(softClamp(base + talent * 4 + RNG.norm(0, sigma) + (bias || 0)));
+    /* 自軍の入部時・新入生は、能力が一桁（1〜9）になることをほとんど無くす。
+       一桁になりかけた分は、10〜14のあたりに引き上げる（ごくまれには残る） */
+    if (ownTeam && v < 10 && RNG.chance(SINGLE_DIGIT_LIFT)) return 10 + RNG.range(0, 4);
+    return v;
   }
 
   /* ---------- 守備適性 ---------- */
