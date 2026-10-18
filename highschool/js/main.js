@@ -73,14 +73,14 @@ const Game = (() => {
   Screens.setOnChange(save);
 
   function tourLabel() {
-    if (!state.tour) return '県予選';
+    if (!state.tour) return '県大会';
     switch (state.tour.kind) {
       case 'national': return state.settings.nationalName;
       case 'fallPref': return '秋季県大会';
       case 'fallDistrict': return '秋季地区大会';
       case 'fallJingu': return state.settings.jinguName;
       case 'spring': return state.settings.springName;
-      default: return '県予選';
+      default: return '県大会';
     }
   }
 
@@ -181,7 +181,7 @@ const Game = (() => {
         return state.springQualified ? (state.settings.springName + 'へ') : '夏の大会へ';
       /* 新入生を迎えたあとの特訓が終わったら、次はいよいよ夏の大会 */
       case 'nextSummer': return '夏の大会へ';
-      default: return '県予選へ';
+      default: return '県大会へ';
     }
   }
 
@@ -687,7 +687,7 @@ const Game = (() => {
     Screens.soccerStart(state);
   }
 
-  /** 都道府県予選の山を組んで始める（サッカー部転換直後だけここから入る） */
+  /** 都道府県大会の山を組んで始める（サッカー部転換直後だけここから入る） */
   function soccerStartTournament() {
     state.soccer.tour = Soccer.createRegional(Soccer.strength(state.soccer));
     state.phase = 'soccer-pregame';
@@ -713,7 +713,7 @@ const Game = (() => {
       const done = Soccer.advance(state.soccer);
       if (done) {
         if (state.soccer.tour.stage === 'regional') {
-          /* 都道府県予選を勝ち抜いた。全国大会までの特訓をはさむ */
+          /* 都道府県大会を勝ち抜いた。全国大会までの特訓をはさむ */
           state.soccer.regionalFinalLevel = state.soccer.tour.finalLevel;
           soccerToTraining('national');
           return;
@@ -743,7 +743,7 @@ const Game = (() => {
   }
 
   /** シーズンの合間の特訓。next は特訓のあとに向かう先
-      （'national' は全国大会、'regional' は来季の都道府県予選） */
+      （'national' は全国大会、'regional' は来季の都道府県大会） */
   function soccerToTraining(next) {
     state.soccer.trainingNext = next;
     state.soccer.training = Soccer.startTraining(state.soccer);

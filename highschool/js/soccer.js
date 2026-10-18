@@ -192,11 +192,11 @@ const Soccer = (() => {
 
   /* ---------- 大会（トーナメント。野球の地方大会・全国大会と同じ考え方） ----------
      実際の全国高校サッカー選手権と同じ2段階にしてある。
-     ・都道府県予選（regional）を勝ち抜いた代表校だけが、全国大会
+     ・都道府県大会（regional）を勝ち抜いた代表校だけが、全国大会
        （national、48校規模のノックアウト方式）に進める。
-     ・都道府県予選は3試合（1回戦・準決勝・決勝）、全国大会は6試合
+     ・都道府県大会は3試合（1回戦・準決勝・決勝）、全国大会は6試合
        （1回戦〜3回戦・準々決勝・準決勝・決勝）。
-     都道府県予選で負けたらその年のシーズンはそこで終わり（野球の
+     都道府県大会で負けたらその年のシーズンはそこで終わり（野球の
      地方大会で負けたときと同じ）。 */
 
   const REGIONAL_ROUNDS = ['1回戦', '準決勝', '決勝'];
@@ -215,14 +215,14 @@ const Soccer = (() => {
       ({ name, level: Math.round(levels[i]), schoolName: NAMES.schoolName(used, nameKind) }));
   }
 
-  /** 都道府県予選の山を組む。1回戦の強さは自軍の強さに合わせる */
+  /** 都道府県大会の山を組む。1回戦の強さは自軍の強さに合わせる */
   function createRegional(myStrength) {
     const from = myStrength + RNG.range(-8, 2);
     const rounds = ladder(from, REGIONAL_ROUNDS, 2, 'regional');
     return { stage: 'regional', rounds, index: 0, finalLevel: rounds[rounds.length - 1].level };
   }
 
-  /** 全国大会の山を組む。都道府県予選の決勝の強さの続きから始まる */
+  /** 全国大会の山を組む。都道府県大会の決勝の強さの続きから始まる */
   function createNational(myStrength, fromLevel) {
     const from = (fromLevel != null ? fromLevel : myStrength) + RNG.range(0, 6);
     const rounds = ladder(from, NATIONAL_ROUNDS, 2, 'national');
@@ -290,7 +290,7 @@ const Soccer = (() => {
     return false;
   }
 
-  /* ---------- 特訓（都道府県予選→全国大会の間、シーズンの合間） ----------
+  /* ---------- 特訓（都道府県大会→全国大会の間、シーズンの合間） ----------
      野球ほど細かい仕組みにはせず、カードを選ぶ・見送るだけの
      簡単な特訓にしてある。能力は7つ（STATS）のどれかが伸びる */
 
