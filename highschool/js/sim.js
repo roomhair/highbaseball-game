@@ -922,14 +922,26 @@ const Sim = (() => {
             if (bases[0] && !bases[1]) { bases[1] = bases[0]; bases[0] = null; }
           }
         } else {
-          /* 犠飛 */
-          const deep = res.isOF;
-          if (bases[2] && outs < 2 && deep && RNG.chance(0.55)) {
+          /* 飛球でのタッチアップ。外野フライでは、三塁走者が還る（左・中・右とも
+             よくある）ほか、右飛なら二塁走者も三塁へ進むことが多い。
+             それ以外（左飛・中飛での二塁走者、一塁走者、内野フライ）は稀 */
+          const spot = res.spot;
+          const fly = res.bbType !== 'LD';          // ライナーは飛び出していて戻れない
+          if (outs < 2) {
+            const pHome = res.isOF ? (fly ? 0.55 : 0.18) : 0.02;
+            const pSecond = res.isOF
+              ? (spot === 'RF' ? (fly ? 0.40 : 0.10) : (fly ? 0.06 : 0.02))
+              : 0.01;
+            const pFirst = res.isOF && fly ? 0.03 : 0.0;
             outs++;
-            if (score(bases[2])) rbi++;
-            bases[2] = null;
-            res.text = '犠飛';
-            res.sf = true;
+            let scoredNow = false;
+            if (bases[2] && RNG.chance(pHome)) {
+              if (score(bases[2])) rbi++;
+              bases[2] = null; scoredNow = true;
+            }
+            if (bases[1] && !bases[2] && RNG.chance(pSecond)) { bases[2] = bases[1]; bases[1] = null; }
+            if (bases[0] && !bases[1] && RNG.chance(pFirst)) { bases[1] = bases[0]; bases[0] = null; }
+            if (scoredNow) { res.text = '犠飛'; res.sf = true; }
             break;
           }
           outs++;
