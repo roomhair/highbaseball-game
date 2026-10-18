@@ -565,6 +565,7 @@ const Screens = (() => {
   function poachWin(state, onTake, onSkip) {
     let picked = null;
     UI.el('poach-title').textContent = '引き抜きチャレンジ';
+    UI.el('poach-warn').hidden = true;
     UI.el('poach-title').classList.remove('is-win', 'is-lose');
     UI.el('poach-lead').textContent =
       esc(state.opponent.name) + 'から1人、引き抜きに挑戦できます（必ず成功するとは限りません）。' +
@@ -618,6 +619,8 @@ const Screens = (() => {
       '<h3 class="sub">放出する選手を選ぶ</h3><div id="poach-own"></div>');
 
     const more = state.tour.index < state.tour.rounds.length - 1;
+    const warn = UI.el('poach-warn');
+    warn.hidden = true; warn.textContent = '';
     const ok = UI.el('btn-poach-ok');
     const skip = UI.el('btn-poach-skip');
     ok.textContent = more ? 'この内容で引き抜きチャレンジへ' : 'この内容で引き抜きチャレンジ';
@@ -639,9 +642,11 @@ const Screens = (() => {
         const short = !!picked && incoming.kind !== 'pitcher' && incoming.grade >= 3 &&
           picked.grade < 3 && own.filter((x) => x.grade < 3).length <= 10;
         ok.disabled = !picked || short;
-        if (short) UI.el('poach-lead').textContent =
-          '1・2年生の野手が10人を下回るため、' + picked.name + 'は放出できません。他の選手を選んでください。';
-        else if (picked) UI.el('poach-lead').textContent =
+        /* 放出できないときの理由は、押せなくなったボタンのすぐ下に赤字で出す */
+        warn.hidden = !short;
+        warn.textContent = short
+          ? '1・2年生の野手が10人を下回るため、' + picked.name + 'は放出できません。他の選手を選んでください。' : '';
+        if (picked && !short) UI.el('poach-lead').textContent =
           picked.name + '（' + UI.roleText(state.team, picked) + '）を放出して、挑戦します。';
       },
     });
@@ -653,6 +658,7 @@ const Screens = (() => {
   /** 引き抜きに成功したとき。放出はすでに選んであるので、結果を伝えるだけ */
   function poachSuccess(state, incoming, outgoing, onNext) {
     UI.el('poach-title').textContent = '引き抜き成功！';
+    UI.el('poach-warn').hidden = true;
     UI.el('poach-title').classList.remove('is-lose');
     UI.el('poach-title').classList.add('is-win');
     UI.el('poach-lead').textContent =
@@ -673,6 +679,7 @@ const Screens = (() => {
   /** 引き抜きに失敗したとき。相手に引き止められ、何も変わらずに次へ進む */
   function poachFailed(state, incoming, onNext) {
     UI.el('poach-title').textContent = '引き抜き失敗';
+    UI.el('poach-warn').hidden = true;
     UI.el('poach-title').classList.remove('is-win');
     UI.el('poach-title').classList.add('is-lose');
     UI.el('poach-lead').textContent = esc(state.opponent.name) + 'に引き止められてしまった。';
