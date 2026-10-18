@@ -86,9 +86,10 @@ const Tournament = (() => {
        優勝すれば神宮大会相当へ） */
     if (kind === 'fallDistrict') return ['1回戦', '準決勝', '決勝'];
     if (kind === 'fallJingu') return ['1回戦', '準決勝', '決勝'];
-    /* local・national・spring は同じ形（4回戦があるかどうかは半々） */
+    /* 夏の県大会・全国大会は、1〜3回戦・準々決勝・準決勝・決勝の6試合。
+       春の大会（spring）だけ、4回戦があるかどうかは半々 */
     const rounds = ['1回戦', '2回戦', '3回戦'];
-    if (RNG.chance(0.5)) rounds.push('4回戦');
+    if (kind === 'spring' && RNG.chance(0.5)) rounds.push('4回戦');
     rounds.push('準々決勝', '準決勝', '決勝');
     return rounds;
   }

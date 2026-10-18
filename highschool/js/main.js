@@ -1066,8 +1066,8 @@ const Game = (() => {
 
     on('btn-play', playGame);
     on('btn-verdict-next', toGrowth);
-    on('btn-verdict-share', () => Share.shareResult(state));
-    on('btn-verdict-save', () => Share.saveImage(state));
+    on('btn-verdict-share', () => Share.shareResult(state, lastSim));
+    on('btn-verdict-save', () => Share.saveImage(state, lastSim));
     on('btn-growth-next', toResult);
     const nextup = UI.el('screen-nextup');
     if (nextup) nextup.addEventListener('click', () => {

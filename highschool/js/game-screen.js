@@ -584,7 +584,13 @@ const GameScreen = (() => {
   function availablePitchers(t) {
     const out = retired();
     const nowId = currentPitcherId(t);
-    return t.pitchers.filter((p) => !out.has(p.id) && p.id !== nowId && !p.game.g);
+    /* 並びは、試合前に先発を選ぶ列の並び（1番手から順）のまま。
+       先発に選んだ投手は、すでに投げているので外れ、残りが1番手から順に並ぶ。
+       並びを持っていないチーム（相手など）は、起用順で並べる */
+    const base = (t.pitcherOrder && t.pitcherOrder.length ? t.pitcherOrder : t.rotation) || [];
+    const rank = (p) => { const i = base.indexOf(p.id); return i < 0 ? base.length : i; };
+    return t.pitchers.filter((p) => !out.has(p.id) && p.id !== nowId && !p.game.g)
+      .sort((a, b) => rank(a) - rank(b));
   }
 
   function currentPitcherId(t) {
