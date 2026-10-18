@@ -634,8 +634,14 @@ const Screens = (() => {
         body.querySelectorAll('tr.prow').forEach((x) => x.classList.remove('is-picked'));
         body.querySelectorAll('tr.prow[data-pid="' + pid + '"]').forEach((x) => x.classList.add('is-picked'));
         picked = Team.find(state.team, pid);
-        ok.disabled = !picked;
-        if (picked) UI.el('poach-lead').textContent =
+        /* 3年生を迎えるために1・2年生を放出すると、引退のあとに野手が
+           足りなくなる。1・2年生の野手が10人を下回る引き抜きはできない */
+        const short = !!picked && incoming.kind !== 'pitcher' && incoming.grade >= 3 &&
+          picked.grade < 3 && own.filter((x) => x.grade < 3).length <= 10;
+        ok.disabled = !picked || short;
+        if (short) UI.el('poach-lead').textContent =
+          '1・2年生の野手が10人を下回るため、' + picked.name + 'は放出できません。他の選手を選んでください。';
+        else if (picked) UI.el('poach-lead').textContent =
           picked.name + '（' + UI.roleText(state.team, picked) + '）を放出して、挑戦します。';
       },
     });
