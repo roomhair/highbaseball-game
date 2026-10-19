@@ -31,7 +31,7 @@ const Dataset = (() => {
     for (let i = 0; i < 8; i++) posList.push(RNG.pick(FIELD_POSITIONS));
 
     const players = posList.map((pos, i) =>
-      Player.newBatter({ grade: grades[i], pos }));
+      Player.newBatter({ grade: grades[i], pos, wide: true }));
 
     /* 学年の高い順に並べる。同じ学年の中は守備位置の順 */
     const rank = {};
@@ -43,7 +43,7 @@ const Dataset = (() => {
   /** 投手8人のセットを1つ作る */
   function pitcherSet() {
     const grades = RNG.shuffle(splitGrades([2, 3, 3]));
-    const players = grades.map((g) => Player.newPitcher({ grade: g }));
+    const players = grades.map((g) => Player.newPitcher({ grade: g, wide: true }));
     players.sort((a, b) => b.grade - a.grade || Player.rating(b) - Player.rating(a));
     return players;
   }

@@ -63,8 +63,9 @@ const Player = (() => {
       数字がバラバラになりにくい。才能（talent）による選手どうしの
       差はそのまま。相手校はここを変えない） */
   const SINGLE_DIGIT_LIFT = 0.97;
-  function makeStat(base, talent, bias, ownTeam) {
-    const sigma = ownTeam ? 9.0 : 11.4;
+  /* チーム作りの部員（wide）は、新入生より少しばらつきを大きくする */
+  function makeStat(base, talent, bias, ownTeam, wide) {
+    const sigma = ownTeam ? (wide ? 10.4 : 9.0) : 11.4;
     const v = RNG.stat(softClamp(base + talent * 4 + RNG.norm(0, sigma) + (bias || 0)));
     /* 自軍の入部時・新入生は、能力が一桁（1〜9）になることをほとんど無くす。
        一桁になりかけた分は、10〜14のあたりに引き上げる（ごくまれには残る） */
@@ -265,12 +266,12 @@ const Player = (() => {
       throws: hd.throws, bats: hd.bats,
       talent,
       traj: RNG.clamp(Math.round(RNG.norm(1.75 + talent * 0.20, 0.68)), 1, 4),
-      meet:  makeStat(base, talent, bias.meet, ownTeam),
-      power: makeStat(base, talent, bias.power, ownTeam),
-      speed: makeStat(base, talent, bias.speed, ownTeam),
-      arm:   makeStat(base, talent, bias.arm, ownTeam),
-      field: makeStat(base, talent, bias.field, ownTeam),
-      catch: makeStat(base, talent, bias.catch, ownTeam),
+      meet:  makeStat(base, talent, bias.meet, ownTeam, opt.wide),
+      power: makeStat(base, talent, bias.power, ownTeam, opt.wide),
+      speed: makeStat(base, talent, bias.speed, ownTeam, opt.wide),
+      arm:   makeStat(base, talent, bias.arm, ownTeam, opt.wide),
+      field: makeStat(base, talent, bias.field, ownTeam, opt.wide),
+      catch: makeStat(base, talent, bias.catch, ownTeam, opt.wide),
       /* 100に近いほど引っ張り、-100に近いほど流し打ち。0ならセンター返し */
       pull: Math.round(RNG.clamp(RNG.norm(20, 42), -100, 100)),
       apt: null,   // 利き腕が決まってから入れる
@@ -317,8 +318,8 @@ const Player = (() => {
       velo: Math.round(RNG.clamp(
         123 + (GRADE_VELO[grade] || 0) + (ownTeam ? (OWN_VELO_EXTRA[grade] || 0) : 0) + talent * 2.5 + levelShift * 0.26 +
         (opt.prestigeBonus || 0) * 0.3 + RNG.norm(0, 7.5), 100, 166)),
-      control: makeStat(base, talent, 0, ownTeam),
-      stamina: makeStat(base, talent, 0, ownTeam),
+      control: makeStat(base, talent, 0, ownTeam, opt.wide),
+      stamina: makeStat(base, talent, 0, ownTeam, opt.wide),
       pitches: rollPitches(talent, grade, levelShift / 12),
       /* 投手も打席に立つ。打撃は弱めに作る */
       meet:  RNG.stat(makeStat(base, talent, -14, ownTeam)),
