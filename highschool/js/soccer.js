@@ -53,6 +53,15 @@ const Soccer = (() => {
   const POS = ['GK', 'DF', 'MF', 'FW'];
   const POS_NAME = { GK: 'ゴールキーパー', DF: 'ディフェンダー', MF: 'ミッドフィルダー', FW: 'フォワード' };
   const FORMATION = { GK: 1, DF: 4, MF: 4, FW: 2 };
+  /* 自軍で選べるフォーメーション（DF-MF-FW の人数）。相手はいつも 4-4-2 */
+  const FORMATIONS = {
+    '4-4-2': { GK: 1, DF: 4, MF: 4, FW: 2 },
+    '4-3-3': { GK: 1, DF: 4, MF: 3, FW: 3 },
+    '3-5-2': { GK: 1, DF: 3, MF: 5, FW: 2 },
+    '4-5-1': { GK: 1, DF: 4, MF: 5, FW: 1 },
+    '5-3-2': { GK: 1, DF: 5, MF: 3, FW: 2 },
+  };
+  function formationOf(S) { return FORMATIONS[(S && S.formation) || '4-4-2'] || FORMATIONS['4-4-2']; }
   const REVIVE_SEASONS = 3;
 
   function rateFor(s, pos) {
@@ -151,16 +160,35 @@ const Soccer = (() => {
 
   /* ---------- 先発11人 ---------- */
 
-  function autoLineup(S) {
+  function autoLineup(S, formation) {
+    if (formation) S.formation = formation;
+    const F = formationOf(S);
     const pool = S.players.slice();
     const used = new Set();
     const out = [];
     ['GK', 'FW', 'DF', 'MF'].forEach((pos) => {
       const list = pool.filter((p) => !used.has(p.id)).sort((a, b) => rateFor(b.soc, pos) - rateFor(a.soc, pos));
-      list.slice(0, FORMATION[pos]).forEach((p) => { used.add(p.id); out.push({ pid: p.id, pos }); });
+      list.slice(0, F[pos]).forEach((p) => { used.add(p.id); out.push({ pid: p.id, pos }); });
     });
     const order = { GK: 0, DF: 1, MF: 2, FW: 3 };
     S.lineup = out.sort((a, b) => order[a.pos] - order[b.pos]);
+  }
+
+  /** 先発の組み方に足りないところ・多すぎるところ（オーダー変更の画面で使う） */
+  function lineupProblems(formation, lineup) {
+    const F = FORMATIONS[formation] || FORMATIONS['4-4-2'];
+    const cnt = { GK: 0, DF: 0, MF: 0, FW: 0 };
+    lineup.forEach((x) => { cnt[x.pos]++; });
+    return POS.filter((k) => cnt[k] !== F[k]).map((k) => ({ pos: k, now: cnt[k], need: F[k] }));
+  }
+
+  /** オーダーを決める。足りなければ false を返して何もしない */
+  function setLineup(S, formation, lineup) {
+    if (lineupProblems(formation, lineup).length) return false;
+    const order = { GK: 0, DF: 1, MF: 2, FW: 3 };
+    S.formation = formation;
+    S.lineup = lineup.slice().sort((a, b) => order[a.pos] - order[b.pos]);
+    return true;
   }
 
   function findP(S, pid) { return S.players.find((p) => p.id === pid) || null; }
@@ -430,7 +458,7 @@ const Soccer = (() => {
     const res = {
       home: homeIsMe, my, op, win, pk, extra, half, total,
       events, ups, oppName: round.schoolName, roundName: round.name, kind: S.tour.kind,
-      myLineup: lineupOf(mine), oppLineup: lineupOf(oppSide),
+      myLineup: lineupOf(mine), oppLineup: lineupOf(oppSide), formation: S.formation || '4-4-2',
     };
     S.lastMatch = res;
     return res;
@@ -584,7 +612,7 @@ const Soccer = (() => {
   }
 
   return {
-    STATS, FIELD_KEYS, GK_KEYS, MAIN_FIELD, MAIN_GK, mains, mainList, migrate, POS, POS_NAME, FORMATION, REVIVE_SEASONS,
+    STATS, FIELD_KEYS, GK_KEYS, MAIN_FIELD, MAIN_GK, mains, mainList, migrate, POS, POS_NAME, FORMATION, FORMATIONS, formationOf, lineupProblems, setLineup, REVIVE_SEASONS,
     convert, newRecruit, start, autoLineup, findP, mySide, strength, rating, rateFor,
     createTour, currentRound, playUser, buildOpp, halfLenFor, advance,
     startTraining, trainingChoose, trainingPass, canPass, trainingSummary,

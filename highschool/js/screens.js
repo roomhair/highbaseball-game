@@ -1009,14 +1009,6 @@ const Screens = (() => {
     UI.show('screen-opening');
   }
 
-  /** 試合の形式の説明（高校サッカーのルールに合わせてある） */
-  function socRuleText(roundName) {
-    const half = Soccer.halfLenFor(roundName);
-    return '前後半' + half + '分' + (roundName === '決勝'
-      ? '。同点なら10分ハーフの延長戦、それでも決まらなければPK戦。'
-      : '。同点ならPK戦。');
-  }
-
   function socOppRows(S) {
     return Soccer.buildOpp(S).side.map((x) => ({ p: { id: x.pid, name: x.name, grade: '', soc: x.s, num: x.num }, pos: x.pos }));
   }
@@ -1034,18 +1026,92 @@ const Screens = (() => {
     UI.el('pregame-title').textContent = Game.soccerLabel(S.tour.kind) + '　' + round.name;
     UI.html('pregame-body',
       '<p class="section-lead vs">' + esc(S.schoolName) + '　<i>対</i>　' + esc(opp.name || round.schoolName || '相手校') + '</p>' +
-      '<p class="note">フォーメーション 4-4-2。' + esc(socRuleText(round.name)) + '</p>' +
       '<div class="twocol"><div id="pregame-my">' +
-        '<div class="lineupcard"><h3 class="lineupcard__title">' + esc(S.schoolName) + '　チーム力 ' + Soccer.strength(S) + '</h3>' +
+        '<div class="lineupcard"><h3 class="lineupcard__title">' + esc(S.schoolName) + '　先発11人（' + esc(S.formation || '4-4-2') + '）</h3>' +
         socTable(S, socLineupRows(S)) + '</div>' +
         socSection(S, '控え', socBenchRows(S)) + '</div>' +
       '<div id="pregame-opp"><div class="lineupcard"><h3 class="lineupcard__title">' + esc(opp.name || '相手校') + '</h3>' +
         socOppTable(socOppRows(S)) + '</div></div></div>');
     bindSocRows(UI.el('pregame-my'), S);
     UI.el('btn-play').textContent = '試合開始';
-    UI.el('btn-pregame-lineup').hidden = true;
+    UI.el('btn-pregame-lineup').hidden = false;
     UI.el('btn-pregame-lineup').hidden = false;
     UI.show('screen-pregame');
+  }
+
+  /** サッカーのオーダー変更。フォーメーションを選び、選手ごとに位置（GK・DF・MF・FW・控え）を決める。
+      人数が合わないうちは決定できない */
+  function soccerLineupEditor(state, onDone) {
+    const S = state.soccer;
+    let formation = S.formation || '4-4-2';
+    const posOf = {};
+    S.players.forEach((p) => { posOf[p.id] = 'BENCH'; });
+    S.lineup.forEach((x) => { posOf[x.pid] = x.pos; });
+    let showBad = false;
+
+    const current = () => S.players.filter((p) => posOf[p.id] !== 'BENCH').map((p) => ({ pid: p.id, pos: posOf[p.id] }));
+
+    function render() {
+      const probs = Soccer.lineupProblems(formation, current());
+      const F = Soccer.FORMATIONS[formation];
+      const cnt = { GK: 0, DF: 0, MF: 0, FW: 0 };
+      current().forEach((x) => { cnt[x.pos]++; });
+      const chips = Object.keys(Soccer.FORMATIONS).map((f) =>
+        '<button type="button" class="spick__item soc-form' + (f === formation ? ' is-on' : '') + '" data-f="' + f + '">' + f + '</button>').join('');
+      const count = Soccer.POS.map((k) =>
+        '<span class="soc-cnt' + (cnt[k] !== F[k] ? ' is-bad' : '') + '">' + k + ' ' + cnt[k] + '/' + F[k] + '</span>').join('');
+      const order = { GK: 0, DF: 1, MF: 2, FW: 3, BENCH: 4 };
+      const rows = S.players.slice().sort((a, b) =>
+        (order[posOf[a.id]] - order[posOf[b.id]]) || (Soccer.rating(b) - Soccer.rating(a))).map((p) => {
+        const pos = posOf[p.id];
+        const opts = ['BENCH'].concat(Soccer.POS).map((k) =>
+          '<option value="' + k + '"' + (k === pos ? ' selected' : '') + '>' + (k === 'BENCH' ? '控' : k) + '</option>').join('');
+        const rate = pos === 'BENCH' ? '―' : Math.round(Soccer.rateFor(p.soc, pos));
+        return '<tr class="' + (pos === 'BENCH' ? 'is-bench' : '') + '">' +
+          '<td class="c"><select class="possel soc-pos" data-pid="' + p.id + '">' + opts + '</select></td>' +
+          '<td class="nm">' + esc(p.name) + '</td><td class="c">' + p.grade + '</td>' +
+          '<td class="c">' + esc(p.soc.pos) + '</td>' +
+          Soccer.mainList(p).map((v) => '<td class="c">' + UI.rankNum(v.value) + '</td>').join('') +
+          '<td class="c hl">' + rate + '</td></tr>';
+      }).join('');
+      const warn = showBad && probs.length
+        ? '<p class="luwarn">人数が合いません（' + probs.map((x) => x.pos + ' ' + x.now + '/' + x.need).join('・') + '）。直してから決定してください。</p>' : '';
+      return '<h3 class="modal__title">オーダー変更</h3>' +
+        '<p class="note">フォーメーションを選び、位置の欄で GK・DF・MF・FW・控 を決めます。評価は、いま選んでいる位置での強さです。</p>' +
+        '<div class="spick soc-forms">' + chips + '</div>' +
+        '<p class="soc-cnts">' + count + '</p>' + warn +
+        '<div class="tablewrap"><table class="growth"><thead><tr><th>位置</th><th class="nm">選手</th><th>年</th><th>適性</th>' +
+          Soccer.STATS.map((x) => '<th>' + esc(x.label) + '</th>').join('') + '<th>評価</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+        '<div class="actions actions--modal">' +
+          '<button type="button" class="btn" id="soc-auto">おまかせ</button>' +
+          '<button type="button" class="btn btn--primary" id="soc-done">決定</button>' +
+        '</div>';
+    }
+
+    function refresh() {
+      UI.html('modal-body', render());
+      wire(UI.el('modal-body'));
+    }
+
+    function wire(body) {
+      body.querySelectorAll('.soc-form').forEach((b) => b.addEventListener('click', () => { formation = b.dataset.f; refresh(); }));
+      body.querySelectorAll('.soc-pos').forEach((sel) => sel.addEventListener('change', () => { posOf[sel.dataset.pid] = sel.value; refresh(); }));
+      body.querySelector('#soc-auto').addEventListener('click', () => {
+        const tmp = { players: S.players, formation, lineup: [] };
+        Soccer.autoLineup(tmp, formation);
+        S.players.forEach((p) => { posOf[p.id] = 'BENCH'; });
+        tmp.lineup.forEach((x) => { posOf[x.pid] = x.pos; });
+        showBad = false;
+        refresh();
+      });
+      body.querySelector('#soc-done').addEventListener('click', () => {
+        if (!Soccer.setLineup(S, formation, current())) { showBad = true; refresh(); return; }
+        UI.closeModal();
+        if (onDone) onDone();
+      });
+    }
+
+    UI.modal(render(), { kind: 'lineup', onOpen: wire });
   }
 
   /** 勝敗（野球の勝敗画面と同じ形） */
@@ -1294,7 +1360,7 @@ const Screens = (() => {
     pick, ready, training, trainingResult, opening, pregame,
     poachWin, poachRelease, poachSuccess, poachFailed, champion, springResult, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
-    localWin, soccerStart, soccerOpening, soccerPregame, soccerVerdict, soccerGrowth, soccerMatchResult, soccerCelebrate, soccerOffseason,
+    localWin, soccerStart, soccerOpening, soccerPregame, soccerVerdict, soccerGrowth, soccerMatchResult, soccerLineupEditor, soccerCelebrate, soccerOffseason,
     soccerTraining, soccerTrainingResult, soccerSpringResult, soccerNewcomers,
   };
 })();

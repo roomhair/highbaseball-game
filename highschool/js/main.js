@@ -1197,7 +1197,9 @@ const Game = (() => {
     on('btn-train-done', () => (state.mode === 'soccer' ? soccerTrainingDone() : trainingDone()));
 
     on('btn-open-start', () => (state.mode === 'soccer' ? soccerToPregame() : toPregame()));
-    on('btn-open-lineup', () => UI.lineupEditor(state.team, () => { save(); Screens.opening(state); }));
+    on('btn-open-lineup', () => (state.mode === 'soccer'
+      ? Screens.soccerLineupEditor(state, () => { save(); Screens.soccerOpening(state); })
+      : UI.lineupEditor(state.team, () => { save(); Screens.opening(state); })));
 
     on('btn-play', () => (state.mode === 'soccer' ? soccerPlay() : playGame()));
     on('btn-verdict-next', () => (state.mode === 'soccer' ? soccerToGrowth() : toGrowth()));
@@ -1208,7 +1210,9 @@ const Game = (() => {
     if (nextup) nextup.addEventListener('click', () => {
       if (state && state.phase === 'nextup') toPregame();
     });
-    on('btn-pregame-lineup', () => UI.lineupEditor(state.team, () => { save(); Screens.pregame(state, { onChange: save }); }));
+    on('btn-pregame-lineup', () => (state.mode === 'soccer'
+      ? Screens.soccerLineupEditor(state, () => { save(); Screens.soccerPregame(state); })
+      : UI.lineupEditor(state.team, () => { save(); Screens.pregame(state, { onChange: save }); })));
 
     on('btn-skip', () => GameScreen.skip());
     on('btn-result-next', () => (state.mode === 'soccer' ? soccerAfterResult() : afterResult()));

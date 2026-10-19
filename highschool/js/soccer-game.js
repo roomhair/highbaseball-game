@@ -17,12 +17,6 @@ const SoccerGameScreen = (() => {
   const NS = 'http://www.w3.org/2000/svg';
   const W = 105, H = 68;
   const COLOR = { my: '#2f6fe4', op: '#e5483c', myGK: '#f2c14e', opGK: '#8a63e8' };
-  const BASE = {
-    GK: [[5, 34]],
-    DF: [[20, 11], [20, 25], [20, 43], [20, 57]],
-    MF: [[40, 9], [40, 24], [40, 44], [40, 59]],
-    FW: [[60, 27], [60, 41]],
-  };
 
   let res = null;
   let myName = '', oppName = '';
@@ -90,13 +84,26 @@ const SoccerGameScreen = (() => {
     });
   }
 
+  /** 列ごとの立ち位置。人数に合わせて横に等しく並べる（3バック・5バックなどにも合う） */
+  const LINE_X = { GK: 5, DF: 20, MF: 40, FW: 60 };
+  function slotsFor(lineup) {
+    const cnt = { GK: 0, DF: 0, MF: 0, FW: 0 };
+    lineup.forEach((p) => { cnt[p.pos]++; });
+    const seen = { GK: 0, DF: 0, MF: 0, FW: 0 };
+    return lineup.map((p) => {
+      const n = cnt[p.pos], i = seen[p.pos]++;
+      const y = p.pos === 'GK' ? H / 2 : (H - 14) * (i + 1) / (n + 1) + 7;
+      return [LINE_X[p.pos], y];
+    });
+  }
+
   function makeUnits(svg) {
     const sides = [['my', res.myLineup], ['op', res.oppLineup]];
     units = { my: [], op: [] };
     sides.forEach(([side, lineup]) => {
-      const cnt = { GK: 0, DF: 0, MF: 0, FW: 0 };
-      lineup.forEach((p) => {
-        const slot = BASE[p.pos][cnt[p.pos]++];
+      const slots = slotsFor(lineup);
+      lineup.forEach((p, k) => {
+        const slot = slots[k];
         const bx = side === 'my' ? slot[0] : W - slot[0];
         const g = el('g', { class: 'sp sp--' + side + (p.pos === 'GK' ? ' sp--gk' : '') }, svg);
         const fill = p.pos === 'GK' ? COLOR[side + 'GK'] : COLOR[side];
