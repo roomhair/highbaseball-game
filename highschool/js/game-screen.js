@@ -127,7 +127,6 @@ const GameScreen = (() => {
   }
 
   /* ---------- 小窓の動き（野球速報アプリや野球ゲームの試合画面を参考に） ----------
-     ・守備の9人を小さな点で置き、打球の方向の野手が落下点へ走る（アウトなら捕る）
      ・投球（マウンド→本塁）のあとに打球が飛ぶ。フライは高く上がる（大きく見える）
      ・走者は塁を回って次の塁へ。生還したら本塁で消え、アウトになった走者は消える
      ・ホームランは外野の先で光がはじける
@@ -176,20 +175,6 @@ const GameScreen = (() => {
     const kind = t ? flyKind(e) : null;
     const hr = isBat && e.code === 'HR';
     const flight = t ? (hr ? 0.9 : (kind === 'fly' ? 0.7 : (kind === 'liner' ? 0.42 : 0.5))) * k : 0;
-
-    /* 守備の9人（黒丸）。打球の方向の野手は落下点へ走る */
-    let fielders = '';
-    Object.keys(SPOT).forEach((pos) => {
-      const s = SPOT[pos];
-      let anim = '';
-      if (t && e.spot === pos && !hr) {
-        const out = e.code === 'OUT' || e.code === 'E';
-        const tx = out ? t[0] : s[0] + (t[0] - s[0]) * 0.7;
-        const ty = out ? t[1] : s[1] + (t[1] - s[1]) * 0.7;
-        anim = '<animateMotion path="M0,0 L' + (tx - s[0]).toFixed(1) + ',' + (ty - s[1]).toFixed(1) + '" begin="' + tPitch.toFixed(2) + 's" dur="' + (flight * 0.95).toFixed(2) + 's" fill="freeze"/>';
-      }
-      fielders += '<g transform="translate(' + s[0] + ' ' + s[1] + ')"><circle class="fv-fielder" r="4.6">' + anim + '</circle></g>';
-    });
 
     /* 投球。マウンドから本塁へ */
     const pitchBall = isBat
@@ -258,7 +243,6 @@ const GameScreen = (() => {
         '<rect class="fv-base' + b(1) + '" x="95.5" y="66" width="9" height="9" transform="rotate(45 100 70.5)"/>' +
         '<rect class="fv-base' + b(2) + '" x="54.5" y="107" width="9" height="9" transform="rotate(45 59 111.5)"/>' +
         '<polygon class="fv-home" points="100,147 105,152 100,157 95,152"/>' +
-        fielders +
         (showBatter === false ? '' : batterView(swingKindOf(e), e && e.batterBats)) +
         pitchBall + ball + runners +
       '</svg>' +
