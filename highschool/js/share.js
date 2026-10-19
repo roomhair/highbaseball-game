@@ -357,11 +357,8 @@ const Share = (() => {
         try { if (blob && pending && pending.dataUrl === dataUrl) pending.file = new File([blob], FILE_NAME, { type: 'image/png' }); } catch (e) { /* 保存リンクのほうを使う */ }
       }, 'image/png');
     }
-    const champ = state.lastResult.win && state.lastResult.last;
     const first = mode === 'save' ? 'save' : 'share';
     UI.modal(
-      '<h3 class="modal__title">' + (champ ? '優勝特別版の画像' : '作った画像') + '</h3>' +
-      '<p class="note">この画像を共有・保存できます。</p>' +
       '<div class="sharepv"><img alt="作った共有画像" src="' + dataUrl + '"></div>' +
       '<div class="actions actions--modal sharepv__actions">' +
         '<button type="button" class="btn' + (first === 'share' ? ' btn--primary' : '') + '" id="sh-share">共有</button>' +
