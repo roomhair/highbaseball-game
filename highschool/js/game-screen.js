@@ -133,7 +133,8 @@ const GameScreen = (() => {
      動きは SVG の animateMotion などで付ける（描き直すたびに最初から動く） */
 
   const BASE_PT = [[140.5, 111.5], [100, 70.5], [59, 111.5]];
-  const TEAM_COLOR = { my: '#2f6fe4', op: '#e5483c' };
+  /* 走者の色は、味方も相手も緑に統一 */
+  const TEAM_COLOR = { my: 'var(--accent)', op: 'var(--accent)' };
 
   function basePt(b) { return (b < 0 || b >= 3) ? HOME : BASE_PT[b]; }
 
@@ -158,7 +159,7 @@ const GameScreen = (() => {
     const fade = fadeAtEnd
       ? '<animate attributeName="opacity" from="1" to="0" begin="' + (begin + dur * pts.length).toFixed(2) + 's" dur="0.25s" fill="freeze"/>'
       : '';
-    return '<g transform="translate(' + start[0] + ' ' + start[1] + ')"><circle class="fv-runner" r="6" fill="' + color + '">' + anim + fade + '</circle></g>';
+    return '<g transform="translate(' + start[0] + ' ' + start[1] + ')"><circle class="fv-runner" r="6" style="fill:' + color + '">' + anim + fade + '</circle></g>';
   }
 
   function fieldView(bases, outs, e, showBatter) {
@@ -167,7 +168,10 @@ const GameScreen = (() => {
     const mine = ctx ? ctx.mySide : 'away';
     const offColor = offSide === mine ? TEAM_COLOR.my : TEAM_COLOR.op;
     const isBat = e && e.k === 'pa';
-    const b = (i) => (bases && bases[i] ? ' is-on' : '');
+    const prev = (ctx && ctx.prevBases) || [null, null, null];
+    const unitFallback = 0.24 * k;
+    const arrive = {};
+    const leave = {};
 
     /* 投球は描かない。打球は本塁からすぐに飛ぶ */
     const tPitch = 0;
@@ -205,7 +209,6 @@ const GameScreen = (() => {
 
     /* 走者。前の打席の塁と、この打席のあとの塁を比べて動かす */
     let runners = '';
-    const prev = (ctx && ctx.prevBases) || [null, null, null];
     const after = (e && e.bases) ? e.bases : [null, null, null];
     if (e && (e.k === 'pa' || e.k === 'steal')) {
       const begin = e.k === 'pa' ? tPitch + flight * 0.6 : 0;
@@ -214,13 +217,13 @@ const GameScreen = (() => {
       prev.forEach((id, base) => {
         if (!id) return;
         const nb = after.indexOf(id);
-        if (nb >= 0) runners += runnerSvg(base, nb, begin, unit, offColor, false);
+        if (nb >= 0) { runners += runnerSvg(base, nb, begin, unit, offColor, false); arrive[nb] = begin + unit * (nb - base); }
         else if (e.runs && scored < e.runs) { scored++; runners += runnerSvg(base, 3, begin, unit, offColor, true); }
         else runners += runnerSvg(base, base, begin, unit, offColor, true);
       });
       if (e.k === 'pa' && e.batter) {
         const nb = after.indexOf(e.batter);
-        if (nb >= 0 && prev.indexOf(e.batter) < 0) runners += runnerSvg(-1, nb, begin, unit, offColor, false);
+        if (nb >= 0 && prev.indexOf(e.batter) < 0) { runners += runnerSvg(-1, nb, begin, unit, offColor, false); arrive[nb] = begin + unit * (nb + 1); }
         else if (hr) runners += runnerSvg(-1, 3, begin, unit * 0.8, offColor, true);
       }
       // 名前のない走者（前の情報が無いとき）はそのまま置く
@@ -231,6 +234,19 @@ const GameScreen = (() => {
       (bases || []).forEach((on, base) => { if (on) runners += runnerSvg(base, base, 0, 0.2, offColor, false); });
     }
 
+    /* 塁の色は、動きの前の状態から始め、走者が着いた（離れた）ときに変える。
+       先に次の塁を緑にすると、結果が先にわかってしまうため */
+    const animated = !!(e && (e.k === 'pa' || e.k === 'steal'));
+    const b = (i) => {
+      const was = animated ? !!prev[i] : !!(bases && bases[i]);
+      const now = !!(bases && bases[i]);
+      let c = was ? ' is-on' : '';
+      if (animated && was !== now) {
+        const d = now ? (arrive[i] != null ? arrive[i] : unitFallback) : ((e.k === 'pa' ? flight * 0.6 : 0) + 0.02);
+        c += (now ? ' is-turn-on' : ' is-turn-off') + '" style="animation-delay:' + d.toFixed(2) + 's';
+      }
+      return c;
+    };
     return '<div class="fieldview">' +
       '<div class="fieldview__main">' +
       '<svg viewBox="0 0 200 188" aria-hidden="true">' +

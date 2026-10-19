@@ -1337,3 +1337,8 @@ tr.prow.is-picked .nmlink { color: inherit; }
 .sharepv__actions { display: flex; gap: 8px; }
 .sharepv__actions .btn { flex: 1 1 0; }
 .sharepv__actions .btn { padding-left: 4px; padding-right: 4px; white-space: nowrap; font-size: 14px; }
+
+@keyframes fvBaseOn { to { fill: var(--accent); stroke: var(--accent); } }
+@keyframes fvBaseOff { to { fill: var(--bg); stroke: var(--line); } }
+.fv-base.is-turn-on { animation: fvBaseOn .01s linear forwards; }
+.fv-base.is-turn-off { animation: fvBaseOff .01s linear forwards; }
