@@ -575,18 +575,6 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 /* グラウンドの絵。打球が飛んでいくのが見える */
 .fieldview { text-align: center; display: flex; align-items: center; gap: 6px; }
 .fieldview__main { text-align: center; }
-/* 9分割のストライクゾーン（最後の1球の位置） */
-.zone { width: 24px; height: 29px; overflow: visible; }
-@media (min-width: 720px) { .zone { width: 34px; height: 41px; } }
-.zone__box { fill: color-mix(in srgb, var(--accent) 8%, transparent); stroke: var(--line); stroke-width: 1; }
-.zone__grid line { stroke: var(--line); stroke-width: .6; }
-.zone__pt { stroke: var(--bg); stroke-width: .8; transform-box: fill-box; transform-origin: center; animation: zonept .35s cubic-bezier(.2,1.6,.4,1) both; }
-.zone__pt.is-hit { fill: var(--accent); }
-.zone__pt.is-hr { fill: var(--crimson); }
-.zone__pt.is-out { fill: var(--ink-mute); }
-.zone__pt.is-strike { fill: #e0a400; }
-.zone__pt.is-ball { fill: #2f6fe4; }
-@keyframes zonept { from { transform: scale(0); } to { transform: scale(1); } }
 /* 守備・走者・投球・打球 */
 .fv-fielder { fill: #1d2024; stroke: #fff; stroke-width: 1.2; }
 .fv-runner { stroke: #fff; stroke-width: 1.6; }

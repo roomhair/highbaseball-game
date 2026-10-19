@@ -131,7 +131,6 @@ const GameScreen = (() => {
      ・投球（マウンド→本塁）のあとに打球が飛ぶ。フライは高く上がる（大きく見える）
      ・走者は塁を回って次の塁へ。生還したら本塁で消え、アウトになった走者は消える
      ・ホームランは外野の先で光がはじける
-     ・横に、打席の最後の1球がストライクゾーンのどこだったかを9分割の図で出す
      動きは SVG の animateMotion などで付ける（描き直すたびに最初から動く） */
 
   const BASE_PT = [[140.5, 111.5], [100, 70.5], [59, 111.5]];
@@ -146,46 +145,6 @@ const GameScreen = (() => {
     if (e.code === 'HR' || t.indexOf('飛') >= 0) return 'fly';
     if (t.indexOf('直') >= 0 || e.code === '2B' || e.code === '3B') return 'liner';
     return 'ground';
-  }
-
-  /** 決まった種から 0〜1 を出す（同じ打席なら何度描いても同じ位置になる） */
-  function seeded(str) {
-    let h = 2166136261;
-    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-    return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; };
-  }
-
-  /** 最後の1球の位置（ゾーンの図用）。結果に合う場所に置く */
-  function pitchSpot(e) {
-    const r = seeded(String(e.batter) + e.inning + e.half + e.order + e.text);
-    const inZone = () => [7 + r() * 16, 7 + r() * 22];
-    if (e.code === 'BB' || e.code === 'HBP') {
-      const side = r() < 0.5;
-      return { p: side ? [r() < 0.5 ? 2 + r() * 3 : 25 + r() * 3, 6 + r() * 26] : [6 + r() * 18, r() < 0.5 ? 2 + r() * 3 : 33 + r() * 3], cls: 'is-ball' };
-    }
-    if (e.code === 'K') {
-      const looking = (e.text || '').indexOf('見') >= 0;
-      return looking
-        ? { p: [r() < 0.5 ? 7.5 + r() * 2 : 21 + r() * 2, r() < 0.5 ? 7.5 + r() * 3 : 26 + r() * 3], cls: 'is-strike' }
-        : { p: [6 + r() * 18, 27 + r() * 7], cls: 'is-strike' };
-    }
-    if (['1B', '2B', '3B', 'HR'].indexOf(e.code) >= 0) return { p: [11 + r() * 8, 12 + r() * 13], cls: e.code === 'HR' ? 'is-hr' : 'is-hit' };
-    return { p: inZone(), cls: 'is-out' };
-  }
-
-  function zoneView(e) {
-    const show = e && e.k === 'pa' && e.code !== 'SH' && e.code !== 'SQ' && e.code !== 'BE';
-    const spot = show ? pitchSpot(e) : null;
-    const grid = [];
-    for (let i = 1; i < 3; i++) {
-      grid.push('<line x1="' + (6 + 6 * i) + '" y1="6" x2="' + (6 + 6 * i) + '" y2="30"/>');
-      grid.push('<line x1="6" y1="' + (6 + 8 * i) + '" x2="24" y2="' + (6 + 8 * i) + '"/>');
-    }
-    return '<svg class="zone" viewBox="0 0 30 36" aria-hidden="true">' +
-      '<rect class="zone__box" x="6" y="6" width="18" height="24"/>' +
-      '<g class="zone__grid">' + grid.join('') + '</g>' +
-      (spot ? '<circle class="zone__pt ' + spot.cls + '" cx="' + spot.p[0].toFixed(1) + '" cy="' + spot.p[1].toFixed(1) + '" r="2.6"/>' : '') +
-    '</svg>';
   }
 
   /** 1人ぶんの走者。g を出発点に置き、そこから塁を順に回る */
@@ -290,7 +249,6 @@ const GameScreen = (() => {
     }
 
     return '<div class="fieldview">' +
-      zoneView(e) +
       '<div class="fieldview__main">' +
       '<svg viewBox="0 0 200 188" aria-hidden="true">' +
         '<path class="fv-grass" d="M100 152 L14 66 A122 122 0 0 1 186 66 Z"/>' +
