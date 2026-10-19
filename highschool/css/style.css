@@ -1320,3 +1320,35 @@ tr.prow.is-picked .nmlink { color: inherit; }
 .soc-forms { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .soc-cnts { display: flex; gap: 10px; flex-wrap: wrap; font-size: 13px; font-weight: 700; margin: 6px 0; }
 .soc-cnt.is-bad { color: var(--ng); }
+
+/* ===== 野球の試合中：大きい球場の絵（park.js） ===== */
+.park { margin: 6px 0 8px; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm); background: #2d6e3e; line-height: 0; }
+.park__svg { display: block; width: 100%; height: auto; max-height: 52vh; }
+.park .pk-stand { fill: #23402c; }
+.park .pk-track { fill: #b88a5a; }
+.park .pk-grass { fill: #3f9152; }
+.park .pk-mow { fill: none; stroke: rgba(255,255,255,.07); stroke-width: 8; }
+.park .pk-fence { fill: none; stroke: #1c3324; stroke-width: 2.4; }
+.park .pk-dirt { fill: #c49663; }
+.park .pk-infgrass { fill: #46a05b; }
+.park .pk-line { stroke: #fff; stroke-width: .9; opacity: .9; }
+.park .pk-mound { fill: #c9a06f; stroke: #e6c89c; stroke-width: .6; }
+.park .pk-base { fill: #fff; }
+.park .pk-homecircle { fill: #c49663; }
+.park .pk-plate { fill: #fff; }
+.park .pk-pltext { fill: #fff; font-size: 4.2px; font-weight: 800; font-family: sans-serif; pointer-events: none; }
+.park .pk-batter circle { stroke-width: 1.4; }
+.park .pk-ballbody { fill: #fff; stroke: #9a9a9a; stroke-width: .4; }
+.park .pk-ballbody, .park .pk-pop { transform-box: fill-box; transform-origin: center; }
+.park .pk-ballshadow { fill: rgba(0,0,0,.28); }
+.park .pk-outlabel { fill: #fff; font-size: 6px; font-weight: 800; font-family: sans-serif; }
+.park .pk-lamp { fill: rgba(255,255,255,.18); stroke: rgba(255,255,255,.5); stroke-width: .6; }
+.park .pk-lamp.is-on { fill: #ff5a4a; stroke: #ffb3aa; }
+.park .pk-pop { font-size: 13px; font-weight: 900; font-family: sans-serif; fill: #fff; paint-order: stroke; stroke: rgba(0,0,0,.55); stroke-width: 2.4px; letter-spacing: .04em; }
+.park .pk-pop--hr { fill: #ffe066; font-size: 17px; }
+.park .pk-pop--good { fill: #ffe9a8; }
+.park .pk-pop--bad { fill: #ffd2cd; }
+.park .pk-pop--run { fill: #ffe066; font-size: 10px; }
+.park .pk-pop--half { font-size: 10px; }
+/* 球場の絵を出したので、打席の欄の小さな図は隠す */
+#game-stage .fieldview { display: none; }

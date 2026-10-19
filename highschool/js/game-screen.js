@@ -286,9 +286,15 @@ const GameScreen = (() => {
     staminaMode = false;
     applySpeedButtons();
     UI.show('screen-game');
+    /* 大きい球場の絵。自軍は青、相手は赤 */
+    if (typeof Park !== 'undefined') Park.mount(UI.el('game-park'), { mySide: ctx.mySide });
     /* 中断から戻ったときは、見たところまでを黙って流してから続ける */
     let stage = '';
-    while (ctx.i < (gs.skipTo || 0) && pull()) stage = apply(ctx.live.log[ctx.i++]);
+    while (ctx.i < (gs.skipTo || 0) && pull()) {
+      const ev = ctx.live.log[ctx.i++];
+      stage = apply(ev);
+      if (typeof Park !== 'undefined') Park.play(ev, 1, false);
+    }
     render(stage);
     step();
   }
@@ -510,6 +516,7 @@ const GameScreen = (() => {
     const e = ctx.live.log[ctx.i++];
     const stage = apply(e);
     render(stage);
+    if (typeof Park !== 'undefined') Park.play(e, speed || 1, true);
     /* 回の変わり目ごとに、どこまで見たかを記録してもらう。
        1打席ごとに書くと保存が重いので、この粒度にしてある */
     if (e.k === 'half' && ctx.onProgress) ctx.onProgress(ctx.i);
@@ -533,7 +540,8 @@ const GameScreen = (() => {
       showTapHint(true);
       return;
     }
-    const wait = e.k === 'half' ? 620 : (e.k === 'pa' ? (e.runs ? 1000 : 760) : 700);
+    /* 球場の絵の動き（投球→打球→走塁）が見終わるくらいの間を取る */
+    const wait = e.k === 'half' ? 900 : (e.k === 'pa' ? (e.code === 'HR' ? 1900 : (e.runs ? 1600 : 1250)) : 1000);
     schedule(wait);
   }
 
@@ -544,6 +552,7 @@ const GameScreen = (() => {
     ctx.awaitTap = false;
     ctx.paused = false;
     while (pull()) apply(ctx.live.log[ctx.i++]);
+    if (typeof Park !== 'undefined') Park.finishAll();
     finish();
   }
 
