@@ -922,9 +922,10 @@ const Screens = (() => {
   function soccerStart(state) {
     const S = state.soccer;
     UI.el('soccer-eyebrow').textContent = state.year + '年目';
-    UI.el('soccer-title').textContent = '野球部、解散';
+    UI.el('soccer-title').textContent = 'サッカー転向';
     UI.html('soccer-body',
-      '<p class="section-lead">夏の県大会で2年連続の1回戦敗退。' + esc(S.schoolName) + '野球部は解散した。</p>' +
+      '<p class="section-lead">夏の県大会でコールド負け。' + esc(S.schoolName) +
+      '野球部の部員たちはすっかりやる気を無くし、サッカーを始めてしまった。</p>' +
       '<p class="section-lead">部員はそのままサッカー部に加わり、新しい挑戦が始まる。' +
       '都道府県大会を勝ち抜けば、全国大会に進める。</p>');
     UI.el('btn-soccer-primary').textContent = 'サッカー部の大会へ';

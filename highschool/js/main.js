@@ -44,8 +44,6 @@ const Game = (() => {
       springQualified: false,
       /* 学校の「格」の内部スコア（ユーザーには見せない。効果は新入生の強さだけ） */
       prestigeScore: 0,
-      /* 夏の地方大会1回戦で負けた連続回数。2になると野球部が解散する */
-      firstRoundLosses: 0,
       mode: 'baseball',    // 'baseball' か 'soccer'
       soccer: null,
       sets: null,          // いま選ばせているデータセット
@@ -455,7 +453,7 @@ const Game = (() => {
       last: isLast,
       /* 負けたときに次へ進む先の文言（大会によっては、負けても
          次の大会へ進むことがある） */
-      loseNext: win ? null : loseNextLabel(state.tour.kind, isLast),
+      loseNext: win ? null : loseNextLabel(state.tour.kind, isLast, res.cold),
       winPitcher: findPit('w'), losePitcher: findPit('l'), savePitcher: findPit('sv'),
       homers,
     };
@@ -499,7 +497,9 @@ const Game = (() => {
 
   /** 負けたときの結果画面に出す「次へ」の文言。大会によっては、
       負けても決勝（＝最後の回）まで来ていれば次の大会へ進む */
-  function loseNextLabel(kind, isLast) {
+  function loseNextLabel(kind, isLast, cold) {
+    /* 県大会でのコールド負けは、このあとサッカー転向の画面へ進む */
+    if (kind === 'local' && cold) return '次へ';
     if (kind === 'local' || kind === 'national') return 'オフシーズンへ';
     if (kind === 'fallPref' && isLast) return '秋季地区大会へ';
     return '特訓へ';
@@ -579,7 +579,6 @@ const Game = (() => {
     const kind = state.tour.kind;
     if (won && kind === 'local') {
       state.localFinalLevel = state.tour.finalLevel;
-      state.firstRoundLosses = 0;   // 1回戦で負けていないので、連敗は途切れる
       state.history.push({ year: state.year, tour: 'local', result: '優勝' });
       /* 投手の疲れを抜くのは、次の大会が始まる startTournament 側でまとめて行う */
       state.phase = 'localwin';
@@ -665,12 +664,9 @@ const Game = (() => {
     if (kind === 'fallJingu') { toPostFallTraining(); return; }
     if (kind === 'spring') { toPostSpringTraining(); return; }
 
-    /* 夏の地方大会1回戦で負けると、野球部存続の危機が1年ぶん進む。
-       2年連続で1回戦敗退すると、野球部は解散してサッカー部になる */
-    if (kind === 'local') {
-      state.firstRoundLosses = round === '1回戦' ? (state.firstRoundLosses || 0) + 1 : 0;
-      if (state.firstRoundLosses >= 2) { toSoccerConversion(); return; }
-    }
+    /* 夏の県大会でコールド負けすると、部員はやる気を無くし、野球部は
+       そのままサッカー部になる（試合のあと、サッカー転向の画面へ進む） */
+    if (kind === 'local' && state.lastResult.cold) { toSoccerConversion(); return; }
     toOffseason();
   }
 
@@ -681,7 +677,6 @@ const Game = (() => {
     state.mode = 'soccer';
     state.soccer = Soccer.start(team);
     state.team = null;
-    state.firstRoundLosses = 0;
     state.phase = 'soccer-start';
     save();
     Screens.soccerStart(state);
@@ -899,7 +894,6 @@ const Game = (() => {
     if (state.trainingNext == null) state.trainingNext = 'local';
     if (state.springQualified == null) state.springQualified = false;
     if (state.prestigeScore == null) state.prestigeScore = 0;
-    if (state.firstRoundLosses == null) state.firstRoundLosses = 0;
     if (state.mode == null) state.mode = 'baseball';
     if (state.training && state.training.pickLimit == null) {
       state.training.pickLimit = CONFIG.TRAINING.PICKS;
