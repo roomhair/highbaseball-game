@@ -1329,3 +1329,6 @@ tr.prow.is-picked .nmlink { color: inherit; }
 .soc-cnts { display: flex; gap: 10px; flex-wrap: wrap; font-size: 13px; font-weight: 700; margin: 6px 0; }
 .soc-cnt.is-bad { color: var(--ng); }
 
+
+/* 特訓のカードの名前は押すと詳細が開く（見た目は太字の名前のまま） */
+.tcard__name { font-weight: 800; font-size: 14.5px; color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }

@@ -261,8 +261,9 @@ const Screens = (() => {
         const ups = g.ups.map((t) =>
           esc(t.label) + ' +' + t.amount + (t.unit ? esc(t.unit) : '')).join('　');
         return '<li class="tcard">' +
-          '<div class="tcard__head"><b>' + esc(p.name) + '</b>' +
-            '<span>' + p.grade + '年・' + UI.roleText(state.team, p) + '</span>' +
+          '<div class="tcard__head"><button type="button" class="linkbtn tcard__name" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
+            '<span>' + p.grade + '年・' + UI.roleText(state.team, p) + '・' +
+              (p.kind === 'pitcher' ? (p.throws === 'L' ? '左投' : '右投') : UI.handMark(p)) + '</span>' +
             '<em class="tcard__up">' + ups + '</em>' +
           '</div>' +
           '<div class="tcard__stats">' + statChips(p, g.ups) + '</div>' +
@@ -277,6 +278,11 @@ const Screens = (() => {
           '</p>' +
           '<ul class="traincard__list">' + lines + '</ul>' +
         '</div>');
+      /* 名前を押すと選手の詳細が開く */
+      UI.el('train-card').querySelectorAll('.tcard__name').forEach((b) => b.addEventListener('click', () => {
+        const p = Team.find(state.team, b.dataset.pid);
+        if (p) UI.openPlayer(p, { team: state.team, onRename: () => training(state) });
+      }));
     } else {
       UI.html('train-card', '');
     }
@@ -1282,7 +1288,7 @@ const Screens = (() => {
             (up ? UI.rankNum(now) + '<em>→</em>' + UI.rankNum(after) : UI.rankNum(now)) + '</span>';
         }).join('');
         return '<li class="tcard">' +
-          '<div class="tcard__head"><b>' + esc(p.name) + '</b>' +
+          '<div class="tcard__head"><button type="button" class="linkbtn tcard__name" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
             '<span>' + p.grade + '年・' + esc(p.soc.pos) + '</span>' +
             '<em class="tcard__up">' + ups + '</em></div>' +
           '<div class="tcard__stats">' + chips + '</div></li>';
@@ -1294,6 +1300,7 @@ const Screens = (() => {
             (card.multi ? '<span class="traincard__multi">複数</span>' : '') +
             (card.tierLabel ? '<span class="traincard__tier">' + esc(card.tierLabel) + '</span>' : '') +
           '</p><ul class="traincard__list">' + lines + '</ul></div>');
+      bindSocRows(UI.el('train-card'), S);
     } else {
       UI.html('train-card', '');
     }
