@@ -406,9 +406,24 @@ const SoccerGameScreen = (() => {
     if (!on) { const rs = resumers; resumers = []; rs.forEach((f) => f()); }
   }
 
+  /** スキップ：試合の最後まで一気に進めて、結果へ */
+  function skip() {
+    if (!res || !doneCb) return;
+    runId++;                 // 動いている演出は止める
+    paused = false; resumers = [];
+    res.events.forEach((e) => { if (revealed.indexOf(e) < 0) revealed.push(e); });
+    score = [res.my, res.op];
+    renderScore();
+    renderLog();
+    renderClock(res.pk ? 'PK戦終了' : '試合終了');
+    UI.el('soccer-fx').hidden = true;
+    finish();
+  }
+
   function setSpeed(sp) {
+    if (sp === 'skip') { skip(); return; }
     if (sp === 'pause') { setPaused(!paused); return; }
-    document.querySelectorAll('#soccer-game-speed .speedbtn[data-sp]:not(#soccer-pause)').forEach((b) => b.classList.remove('is-on'));
+    document.querySelectorAll('#soccer-game-speed .speedbtn[data-sp]:not(#soccer-pause):not(#soccer-skip)').forEach((b) => b.classList.remove('is-on'));
     const btn = document.querySelector('#soccer-game-speed .speedbtn[data-sp="' + sp + '"]');
     if (btn) btn.classList.add('is-on');
     speed = Number(sp);
@@ -424,7 +439,7 @@ const SoccerGameScreen = (() => {
     revealed = []; score = [0, 0]; curMin = 0; clockAt = 0;
     speed = 1; resumers = []; doneCb = onDone;
     setPaused(false);
-    document.querySelectorAll('#soccer-game-speed .speedbtn[data-sp]:not(#soccer-pause)').forEach((b) =>
+    document.querySelectorAll('#soccer-game-speed .speedbtn[data-sp]:not(#soccer-pause):not(#soccer-skip)').forEach((b) =>
       b.classList.toggle('is-on', b.dataset.sp === '1'));
     const svg = UI.el('soccer-pitch');
     drawPitch(svg);
