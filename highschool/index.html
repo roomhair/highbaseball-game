@@ -310,6 +310,7 @@
   <section class="screen" id="screen-soccer-game">
     <div class="container container--wide">
       <div id="soccer-game-score" class="result-score"></div>
+      <div id="soccer-clock" class="sclock" aria-live="polite"></div>
       <div class="speedbar" id="soccer-game-speed" role="group" aria-label="試合の速さ">
         <span class="speedbar__label">速さ</span>
         <button type="button" class="speedbtn" data-sp="0">1つずつ</button>
@@ -317,8 +318,12 @@
         <button type="button" class="speedbtn" data-sp="3">×3</button>
         <button type="button" class="speedbtn speedbtn--chance" data-sp="goal">ゴールシーンまで飛ばす</button>
       </div>
-      <div id="soccer-game-log" class="soccer-log"></div>
+      <div id="soccer-stage" class="spitch">
+        <svg id="soccer-pitch" viewBox="-3 -3 111 74" role="img" aria-label="サッカーのフィールド"></svg>
+        <div id="soccer-fx" class="goalfx" hidden></div>
+      </div>
       <p class="taphint" id="soccer-game-taphint" hidden>タップで次の場面へ</p>
+      <div id="soccer-game-log" class="soccer-log"></div>
     </div>
   </section>
 

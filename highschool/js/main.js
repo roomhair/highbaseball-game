@@ -721,10 +721,22 @@ const Game = (() => {
     state.phase = 'soccer-game';
     save();
     SoccerGameScreen.start(state, res, () => {
-      state.phase = 'soccer-result';
+      state.phase = 'soccer-verdict';
       save();
-      Screens.soccerResult(state, res);
+      Screens.soccerVerdict(state, res);
     });
+  }
+
+  function soccerToGrowth() {
+    state.phase = 'soccer-growth';
+    save();
+    Screens.soccerGrowth(state, state.lastSoccerRes);
+  }
+
+  function soccerToMatchResult() {
+    state.phase = 'soccer-result';
+    save();
+    Screens.soccerMatchResult(state, state.lastSoccerRes);
   }
 
   function soccerAfterResult() {
@@ -1049,7 +1061,10 @@ const Game = (() => {
       case 'soccer-opening': Screens.soccerOpening(state); break;
       /* サッカーの試合の中身（試合中の演出・結果画面）は保存していないので、
          途中で閉じて開き直したときは次の試合の前まで戻す */
-      case 'soccer-pregame': case 'soccer-game': case 'soccer-result': Screens.soccerPregame(state); break;
+      case 'soccer-pregame': case 'soccer-game': Screens.soccerPregame(state); break;
+      case 'soccer-verdict': Screens.soccerVerdict(state, state.lastSoccerRes); break;
+      case 'soccer-growth': Screens.soccerGrowth(state, state.lastSoccerRes); break;
+      case 'soccer-result': Screens.soccerMatchResult(state, state.lastSoccerRes); break;
       case 'soccer-localwin': Screens.soccerCelebrate(state, 'local'); break;
       case 'soccer-champion': Screens.soccerCelebrate(state, 'national'); break;
       case 'soccer-offseason': Screens.soccerOffseason(state, Soccer.canRevive(state.soccer)); break;
@@ -1183,11 +1198,11 @@ const Game = (() => {
     on('btn-open-start', () => (state.mode === 'soccer' ? soccerToPregame() : toPregame()));
     on('btn-open-lineup', () => UI.lineupEditor(state.team, () => { save(); Screens.opening(state); }));
 
-    on('btn-play', playGame);
-    on('btn-verdict-next', toGrowth);
+    on('btn-play', () => (state.mode === 'soccer' ? soccerPlay() : playGame()));
+    on('btn-verdict-next', () => (state.mode === 'soccer' ? soccerToGrowth() : toGrowth()));
     on('btn-verdict-share', () => Share.shareResult(state, lastSim));
     on('btn-verdict-save', () => Share.saveImage(state, lastSim));
-    on('btn-growth-next', toResult);
+    on('btn-growth-next', () => (state.mode === 'soccer' ? soccerToMatchResult() : toResult()));
     const nextup = UI.el('screen-nextup');
     if (nextup) nextup.addEventListener('click', () => {
       if (state && state.phase === 'nextup') toPregame();
@@ -1195,7 +1210,7 @@ const Game = (() => {
     on('btn-pregame-lineup', () => UI.lineupEditor(state.team, () => { save(); Screens.pregame(state, { onChange: save }); }));
 
     on('btn-skip', () => GameScreen.skip());
-    on('btn-result-next', afterResult);
+    on('btn-result-next', () => (state.mode === 'soccer' ? soccerAfterResult() : afterResult()));
     on('btn-localwin-next', () => (state.mode === 'soccer' ? soccerStartTournament('national') : startTournament('national')));
     on('btn-champion-next', () => (state.mode === 'soccer' ? toSoccerOffseason() : toOffseason()));
     on('btn-spring-result-next', () => (state.mode === 'soccer' ? soccerAfterSpringResult() : afterSpringResult()));
@@ -1210,8 +1225,6 @@ const Game = (() => {
     on('btn-soccer-primary', () => {
       switch (state.phase) {
         case 'soccer-start': toSoccerOffseason(); break;
-        case 'soccer-pregame': soccerPlay(); break;
-        case 'soccer-result': soccerAfterResult(); break;
         case 'soccer-offseason': soccerAfterOffseason(); break;
       }
     });

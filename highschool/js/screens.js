@@ -472,6 +472,7 @@ const Screens = (() => {
     }
     renderMyCard();
 
+    UI.el('btn-pregame-lineup').hidden = false;
     UI.show('screen-pregame');
   }
 
@@ -494,6 +495,8 @@ const Screens = (() => {
                     : '<p class="verdict__lead">次の試合へ進む。</p>')
           : '<p class="verdict__lead">' + esc(r.loseNext || 'オフシーズンへ') + '。</p>') +
       '</div>');
+    UI.el('btn-verdict-share').hidden = false;
+    UI.el('btn-verdict-save').hidden = false;
     UI.show('screen-verdict');
   }
 
@@ -997,35 +1000,143 @@ const Screens = (() => {
     UI.show('screen-opening');
   }
 
+  /** 試合の形式の説明（高校サッカーのルールに合わせてある） */
+  function socRuleText(roundName) {
+    const half = Soccer.halfLenFor(roundName);
+    return '前後半' + half + '分' + (roundName === '決勝'
+      ? '。同点なら10分ハーフの延長戦、それでも決まらなければPK戦。'
+      : '。同点ならPK戦。');
+  }
+
+  function socOppRows(S) {
+    return Soccer.buildOpp(S).side.map((x) => ({ p: { id: x.pid, name: x.name, grade: '', soc: x.s, num: x.num }, pos: x.pos }));
+  }
+
+  /** 相手チームの表（相手は能力の目安だけ。学年は無い） */
+  function socOppTable(rows) {
+    const body = rows.map((x) =>
+      '<tr><td class="c">' + esc(x.pos) + '</td><td class="nm">' + esc(x.p.name) + '</td>' +
+      Soccer.STATS.map((st) => '<td class="c">' + UI.rankNum(x.p.soc[st.key]) + '</td>').join('') +
+      '<td class="c hl">' + Soccer.rateFor(x.p.soc, x.pos) .toFixed(0) + '</td></tr>').join('');
+    return '<div class="tablewrap"><table class="growth"><thead><tr><th>位置</th><th class="nm">選手</th>' +
+      Soccer.STATS.map((st) => '<th>' + esc(st.label) + '</th>').join('') + '<th>評価</th></tr></thead><tbody>' +
+      body + '</tbody></table></div>';
+  }
+
+  /** 試合開始前（野球の試合前画面と同じ並び：自軍と相手の先発） */
   function soccerPregame(state) {
     const S = state.soccer;
     const round = Soccer.currentRound(S.tour);
-    socShow(state, Game.soccerLabel(S.tour.kind) + '　' + round.name,
-      S.schoolName + '　対　' + (round.schoolName || '相手校'),
-      '<p class="section-lead">チーム力 <b>' + Soccer.strength(S) + '</b></p>' +
-      socSection(S, '先発11人', socLineupRows(S)) + socSection(S, '控え', socBenchRows(S)),
-      '試合開始');
+    const opp = Soccer.buildOpp(S);
+    UI.el('pregame-title').textContent = Game.soccerLabel(S.tour.kind) + '　' + round.name;
+    UI.html('pregame-body',
+      '<p class="section-lead vs">' + esc(S.schoolName) + '　<i>対</i>　' + esc(opp.name || round.schoolName || '相手校') + '</p>' +
+      '<p class="note">フォーメーション 4-4-2。' + esc(socRuleText(round.name)) + '</p>' +
+      '<div class="twocol"><div id="pregame-my">' +
+        '<div class="lineupcard"><h3 class="lineupcard__title">' + esc(S.schoolName) + '　チーム力 ' + Soccer.strength(S) + '</h3>' +
+        socTable(S, socLineupRows(S)) + '</div>' +
+        socSection(S, '控え', socBenchRows(S)) + '</div>' +
+      '<div id="pregame-opp"><div class="lineupcard"><h3 class="lineupcard__title">' + esc(opp.name || '相手校') + '</h3>' +
+        socOppTable(socOppRows(S)) + '</div></div></div>');
+    bindSocRows(UI.el('pregame-my'), S);
+    UI.el('btn-play').textContent = '試合開始';
+    UI.el('btn-pregame-lineup').hidden = true;
+    UI.el('btn-pregame-lineup').hidden = false;
+    UI.show('screen-pregame');
   }
 
-  function soccerResult(state, res) {
+  /** 勝敗（野球の勝敗画面と同じ形） */
+  function soccerVerdict(state, res) {
     const S = state.soccer;
-    const round = Soccer.currentRound(S.tour);
-    const mySideKey = res.home ? 'home' : 'away';
-    const scorers = res.events.filter((e) => e.kind === 'goal' && e.side === mySideKey).map((e) => e.name);
-    const isLastOfTour = S.tour.index >= S.tour.rounds.length - 1;
     const label = Game.soccerLabel(S.tour.kind);
-    const ups = (res.ups || []).map((u) =>
-      '<li><button type="button" class="linkbtn" data-pid="' + u.pid + '">' + esc(u.name) + '</button>　' +
-      u.ups.map((x) => esc(x.label) + ' +' + x.amount).join('　') + '</li>').join('');
-    socShow(state, label + '　' + round.name,
-      (res.win ? '勝利' : '敗戦') + '　' + res.my + ' − ' + res.op + (res.pk ? '（PK戦）' : ''),
-      '<p class="section-lead vs">' + esc(S.schoolName) + '　<i>対</i>　' + esc(res.oppName || round.schoolName || '相手校') + '</p>' +
-      (scorers.length ? '<p>得点: ' + scorers.map(esc).join('、') + '</p>' : '<p>得点者なし</p>') +
-      (ups ? '<h3 class="sub">成長した選手（' + (res.ups || []).length + '人）</h3><ul class="growthlist">' + ups + '</ul>' : '') +
-      '<p class="section-lead">' + (res.win
-        ? (isLastOfTour ? label + 'を制した！' : '次の試合へ進む。')
-        : (S.tour.kind === 'fallPref' && isLastOfTour ? '決勝で敗れたが、秋季地区大会へ進む。' : label + 'はここで敗退。')) + '</p>',
-      '次へ');
+    const isLast = S.tour.index >= S.tour.rounds.length - 1;
+    const myKey = res.home ? 'home' : 'away';
+    const goals = res.events.filter((e) => e.kind === 'goal' && e.side === myKey);
+    const scorers = {};
+    goals.forEach((e) => { scorers[e.name] = (scorers[e.name] || 0) + 1; });
+    const lead = res.win
+      ? (isLast ? label + '　優勝。' : '次の試合へ進む。')
+      : ((S.tour.kind === 'fallPref' && isLast) ? '秋季地区大会へ。' : (S.tour.kind === 'local' || S.tour.kind === 'national' ? 'オフシーズンへ。' : '特訓へ。'));
+    UI.html('verdict-body',
+      '<div class="verdict__box' + (res.win ? ' is-win' : ' is-lose') + '">' +
+        '<p class="verdict__where">' + esc(label) + '　' + esc(res.roundName) + '</p>' +
+        '<h2 class="verdict__word">' + (res.win ? '勝利' : '敗戦') + '</h2>' +
+        '<p class="verdict__score">' + esc(S.schoolName) + ' <b>' + res.my + '</b> - <b>' + res.op + '</b> ' + esc(res.oppName) + '</p>' +
+        (res.pk ? '<p class="verdict__note">PK戦 ' + (res.home ? res.pk.home : res.pk.away) + '−' + (res.home ? res.pk.away : res.pk.home) + '</p>'
+          : (res.extra ? '<p class="verdict__note">延長戦</p>' : '')) +
+        (Object.keys(scorers).length
+          ? '<p class="verdict__lead">得点　' + Object.keys(scorers).map((n) => esc(n) + (scorers[n] > 1 ? '×' + scorers[n] : '')).join('　') + '</p>' : '') +
+        '<p class="verdict__lead">' + esc(lead) + '</p>' +
+      '</div>');
+    UI.el('btn-verdict-share').hidden = true;
+    UI.el('btn-verdict-save').hidden = true;
+    UI.show('screen-verdict');
+  }
+
+  /** 試合後の成長（野球と同じ画面） */
+  function soccerGrowth(state, res) {
+    const ups = res.ups || [];
+    UI.html('growth-body', ups.length
+      ? '<div class="grlist">' + ups.map((r) =>
+        '<article class="gr"><header class="gr__head"><b>' + esc(r.name) + '</b><span>' + r.grade + '年・' + esc(r.pos) + '</span></header>' +
+        '<ul class="gr__list">' + r.ups.map((u) =>
+          '<li><span class="gr__label">' + esc(u.label) + '</span><span class="gr__up">+' + u.amount + '</span>' +
+          '<span class="gr__val"><span class="gr__from">' + UI.rankSpan(u.before).replace('</span>', ' ' + u.before + '</span>') +
+          '</span>→<span class="gr__to">' + UI.rankSpan(u.after).replace('</span>', ' ' + u.after + '</span>') + '</span></span></li>').join('') +
+        '</ul></article>').join('') + '</div>'
+      : '<p class="note">今回は伸びた選手がいませんでした。</p>');
+    UI.show('screen-growth');
+  }
+
+  /** 試合結果（野球と同じ画面：スコアボード・得点経過・出場選手・相手チーム） */
+  function soccerMatchResult(state, res) {
+    const S = state.soccer;
+    const label = Game.soccerLabel(S.tour.kind);
+    const myKey = res.home ? 'home' : 'away';
+    UI.el('result-title').textContent = label + '　' + res.roundName + '　' + (res.win ? '勝利' : '敗戦');
+    // 前半・後半・延長ごとの得点
+    const periods = [['前半', 1, res.half], ['後半', res.half + 1, res.total]];
+    if (res.extra) periods.push(['延長', res.total + 1, res.total + 20]);
+    const per = (side) => periods.map(([, a, b]) => res.events.filter((e) => e.kind === 'goal' && e.side === side && e.min >= a && e.min <= b).length);
+    const row = (name, side) => {
+      const g = per(side);
+      return '<tr><th class="sb-team">' + esc(name) + '</th>' + g.map((n) => '<td>' + n + '</td>').join('') +
+        '<td class="sb-tot">' + g.reduce((a, b) => a + b, 0) + '</td>' +
+        (res.pk ? '<td>' + res.pk[side] + '</td>' : '') + '</tr>';
+    };
+    const board = '<div class="tablewrap"><table class="scoreboard"><thead><tr><th class="sb-team"></th>' +
+      periods.map(([n]) => '<th>' + n + '</th>').join('') + '<th class="sb-tot">計</th>' + (res.pk ? '<th>PK</th>' : '') +
+      '</tr></thead><tbody>' + row(S.schoolName, myKey) + row(res.oppName, myKey === 'home' ? 'away' : 'home') + '</tbody></table></div>';
+    const goalLines = res.events.filter((e) => e.kind === 'goal').map((e) => {
+      const mine = e.side === myKey;
+      const ast = e.assist ? (res.myLineup.concat(res.oppLineup).find((p) => p.pid === e.assist) || {}).name : '';
+      return '<li class="soccer-log__item soccer-log__item--goal' + (mine ? ' is-mine' : '') + '"><span class="soccer-log__min">' + e.min + '分</span>' +
+        '<span class="soccer-log__text">' + esc(e.name) + '（' + esc(mine ? S.schoolName : res.oppName) + '）' + (ast ? '　アシスト ' + esc(ast) : '') + '</span></li>';
+    }).join('');
+    // 自軍の出場選手の内訳（得点・アシスト）
+    const stat = res.myLineup.map((p) => {
+      const g = res.events.filter((e) => e.kind === 'goal' && e.side === myKey && e.pid === p.pid).length;
+      const a = res.events.filter((e) => e.kind === 'goal' && e.side === myKey && e.assist === p.pid).length;
+      const sh = res.events.filter((e) => e.side === myKey && e.pid === p.pid).length;
+      return '<tr class="prow" data-pid="' + p.pid + '"><td class="c">' + p.num + '</td><td class="c">' + esc(p.pos) + '</td><td class="nm">' + esc(p.name) +
+        '</td><td class="c">' + sh + '</td><td class="c">' + g + '</td><td class="c">' + a + '</td></tr>';
+    }).join('');
+    UI.html('result-body',
+      '<p class="result-score' + (res.win ? ' is-win' : ' is-lose') + '">' + esc(S.schoolName) + ' <b>' + res.my + '</b> - <b>' + res.op + '</b> ' + esc(res.oppName) +
+        (res.pk ? '<i>（PK戦）</i>' : (res.extra ? '<i>（延長）</i>' : '')) + '</p>' +
+      board +
+      '<h4 class="sub">得点の経過</h4>' + (goalLines ? '<ul class="soccer-log__list">' + goalLines + '</ul>' : '<p class="note">得点はありませんでした。</p>') +
+      '<h4 class="sub">' + esc(S.schoolName) + '　出場選手</h4>' +
+      '<div class="tablewrap"><table class="growth"><thead><tr><th>番号</th><th>位置</th><th class="nm">選手</th><th>シュート</th><th>得点</th><th>アシスト</th></tr></thead><tbody>' + stat + '</tbody></table></div>' +
+      '<details class="rosterbox"><summary>' + esc(res.oppName) + 'の選手</summary>' +
+        socOppTable(res.oppLineup.map((x) => ({ p: { name: x.name, soc: x.s }, pos: x.pos }))) + '</details>');
+    bindSocRows(UI.el('result-body'), S);
+    const isLast = S.tour.index >= S.tour.rounds.length - 1;
+    UI.el('btn-result-next').textContent = res.win
+      ? (isLast ? '次へ' : '次の試合へ')
+      : ((S.tour.kind === 'local' || S.tour.kind === 'national') ? 'オフシーズンへ'
+        : (S.tour.kind === 'fallPref' && isLast ? '秋季地区大会へ' : '特訓へ'));
+    UI.show('screen-result');
   }
 
   /** 県大会優勝・全国大会優勝（野球と同じ画面を使う） */
@@ -1179,7 +1290,7 @@ const Screens = (() => {
     pick, ready, training, trainingResult, opening, pregame,
     poachWin, poachRelease, poachSuccess, poachFailed, champion, springResult, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
-    localWin, soccerStart, soccerOpening, soccerPregame, soccerResult, soccerCelebrate, soccerOffseason,
+    localWin, soccerStart, soccerOpening, soccerPregame, soccerVerdict, soccerGrowth, soccerMatchResult, soccerCelebrate, soccerOffseason,
     soccerTraining, soccerTrainingResult, soccerSpringResult, soccerNewcomers,
   };
 })();

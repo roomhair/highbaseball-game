@@ -117,7 +117,7 @@ const Soccer = (() => {
     return S.lineup.filter((x) => findP(S, x.pid)).map((x) => {
       const p = findP(S, x.pid);
       return { pid: p.id, name: p.name, pos: x.pos, s: p.soc, p };
-    });
+    }).map((x, i) => Object.assign(x, { num: i + 1 }));
   }
 
   function strength(S) {
@@ -148,28 +148,64 @@ const Soccer = (() => {
         const k = { GK: 'gk', DF: 'def', MF: 'pas', FW: 'atk' }[pos];
         s[k] = RNG.stat(s[k] + 10);
         const nm = NAMES.personName();
-        side.push({ pid: 'o' + pos + i, name: nm.last + nm.first, pos, s });
+        side.push({ pid: 'o' + pos + i, name: nm.last + nm.first, pos, s, num: side.length + 1 });
       }
     });
     return side;
   }
 
   /* ---------- 試合 ----------
-     90分を「攻め」の場面の積み重ねで決める。中盤で上回ったほうが攻める回数が
-     多く、攻撃力と相手の守備・GKの差でゴールになるかが決まる。 */
-  function playMatch(home, away) {
-    const H = lineRatings(home), A = lineRatings(away);
+     高校サッカーのルールに合わせてある。
+     ・前後半40分（準決勝・決勝は45分）。決勝だけは同点なら10分ハーフの延長戦。
+     ・それでも同点（決勝以外は80分で同点）ならPK戦。5人ずつ蹴り、決まらなければ
+       1人ずつ交互に、差がつくまで続ける。
+     攻めの場面（チャンス）の積み重ねで決める。中盤で上回ったほうが攻める回数が
+     多く、パスをつないでシュートまで持ち込み、攻撃力と相手の守備・GKの差で
+     ゴールになるかが決まる。各場面には、パスをつないだ選手の並びと、
+     シュートの結末（ゴール・セーブ・枠外・バー・ブロック）も入れてあり、
+     試合中の画面はそれをそのまま動きにする。 */
+
+  function halfLenFor(roundName) {
+    return (roundName === '準決勝' || roundName === '決勝') ? 45 : 40;
+  }
+
+  /** パスをつないだ選手の並び（後ろから前へ。最後がシュートを打つ選手） */
+  function buildUp(side, shooter) {
+    const rank = { GK: 0, DF: 1, MF: 2, FW: 3 };
+    const pool = side.filter((x) => x !== shooter && x.pos !== 'GK');
+    const n = Math.min(pool.length, RNG.range(2, 3));
+    const picked = [];
+    const left = pool.slice();
+    for (let i = 0; i < n; i++) {
+      const w = left.map((x) => ({ x, weight: x.pos === 'MF' ? 3 : (x.pos === 'DF' ? 1.5 : 1.5) }));
+      const x = RNG.weighted(w).x;
+      picked.push(x);
+      left.splice(left.indexOf(x), 1);
+    }
+    picked.sort((a, b) => rank[a.pos] - rank[b.pos]);
+    return picked.concat([shooter]).map((x) => x.pid);
+  }
+
+  const MISS_TEXT = {
+    save: ['シュートはGKがセーブ', 'ミドルシュートをGKが弾いた', 'ゴール前の一撃をGKが止めた'],
+    wide: ['シュートは枠の外', 'クロスに合わせたがわずかに外れた', 'ゴール上へ大きくふかした'],
+    bar: ['シュートはバーを叩いた', 'シュートはポストに嫌われた'],
+    block: ['シュートはDFがブロック', 'ミドルシュートはDFがブロック'],
+  };
+
+  /** minFrom〜minTo の間で、攻める回数を決めて場面を作る */
+  function makeChances(home, away, H, A, minFrom, minTo, scale, startScore) {
     const events = [];
-    let hg = 0, ag = 0;
+    let hg = startScore[0], ag = startScore[1];
     const scorers = (side) => {
       const w = side.map((x) => ({ x, weight: x.pos === 'FW' ? 5 + x.s.atk / 10 : x.pos === 'MF' ? 2 + x.s.atk / 20 : x.pos === 'DF' ? 0.6 : 0.02 }));
       return RNG.weighted(w).x;
     };
-    const chancesH = Math.max(3, Math.round(RNG.norm(9 + (H.mid - A.mid) * 0.18 + 0.6, 2.2)));
-    const chancesA = Math.max(3, Math.round(RNG.norm(9 + (A.mid - H.mid) * 0.18, 2.2)));
+    const chancesH = Math.max(1, Math.round(RNG.norm((6.2 + (H.mid - A.mid) * 0.12 + 0.4) * scale, 1.8 * Math.sqrt(scale))));
+    const chancesA = Math.max(1, Math.round(RNG.norm((6.2 + (A.mid - H.mid) * 0.12) * scale, 1.8 * Math.sqrt(scale))));
     const list = [];
-    for (let i = 0; i < chancesH; i++) list.push({ side: 'home', min: RNG.range(1, 90) });
-    for (let i = 0; i < chancesA; i++) list.push({ side: 'away', min: RNG.range(1, 90) });
+    for (let i = 0; i < chancesH; i++) list.push({ side: 'home', min: RNG.range(minFrom, minTo) });
+    for (let i = 0; i < chancesA; i++) list.push({ side: 'away', min: RNG.range(minFrom, minTo) });
     list.sort((a, b) => a.min - b.min);
     list.forEach((c) => {
       const atkSide = c.side === 'home' ? home : away;
@@ -177,18 +213,68 @@ const Soccer = (() => {
       const tired = c.min > 60 ? (R.sta - D.sta) * 0.004 : 0;
       const pGoal = RNG.clamp(0.13 + (R.atk - (D.def * 0.6 + D.gk * 0.4)) * 0.006 + tired, 0.03, 0.42);
       const shooter = scorers(atkSide);
+      const build = buildUp(atkSide, shooter);
       if (RNG.chance(pGoal)) {
         if (c.side === 'home') hg++; else ag++;
-        events.push({ min: c.min, side: c.side, kind: 'goal', pid: shooter.pid, name: shooter.name, score: [hg, ag] });
+        events.push({ min: c.min, side: c.side, kind: 'goal', outcome: 'goal', pid: shooter.pid, name: shooter.name,
+          build, assist: build.length > 1 ? build[build.length - 2] : null, score: [hg, ag] });
       } else {
-        const what = RNG.pick(['シュートはGKがセーブ', 'シュートは枠の外', 'シュートはバーを叩いた', 'クロスに合わせたがわずかに外れた', 'ミドルシュートはDFがブロック']);
-        events.push({ min: c.min, side: c.side, kind: 'chance', pid: shooter.pid, name: shooter.name, text: what, score: [hg, ag] });
+        const outcome = RNG.weighted([{ k: 'save', weight: 38 }, { k: 'wide', weight: 24 }, { k: 'bar', weight: 6 }, { k: 'block', weight: 22 }]).k;
+        events.push({ min: c.min, side: c.side, kind: 'chance', outcome, pid: shooter.pid, name: shooter.name,
+          text: RNG.pick(MISS_TEXT[outcome]), build, score: [hg, ag] });
       }
     });
-    events.sort((a, b) => a.min - b.min);
-    let s = [0, 0];
-    events.forEach((e) => { if (e.score) s = e.score; else e.score = s.slice(); });
-    return { hg, ag, events };
+    return { events, hg, ag };
+  }
+
+  function playMatch(home, away, opts) {
+    opts = opts || {};
+    const half = opts.halfLen || 40;
+    const total = half * 2;
+    const H = lineRatings(home), A = lineRatings(away);
+    const r = makeChances(home, away, H, A, 1, total, total / 90, [0, 0]);
+    r.events.sort((a, b) => a.min - b.min);
+    return { hg: r.hg, ag: r.ag, events: r.events, H, A };
+  }
+
+  /** 延長戦（決勝だけ）。10分ハーフの前後半。場面は少なめ */
+  function playExtra(home, away, H, A, startScore, total) {
+    const r = makeChances(home, away, H, A, total + 1, total + 20, 0.32, startScore);
+    r.events.sort((a, b) => a.min - b.min);
+    return r;
+  }
+
+  /** PK戦。5人ずつ交互に蹴り、決まらなければ1人ずつ、差がつくまで続ける */
+  function playPK(home, away, H, A) {
+    const order = (side) => side.filter((x) => x.pos !== 'GK')
+      .sort((a, b) => (b.s.atk * 0.7 + b.s.phy * 0.3) - (a.s.atk * 0.7 + a.s.phy * 0.3));
+    const sh = { home: order(home), away: order(away) };
+    const gk = { home: H.gk, away: A.gk };
+    const goals = { home: 0, away: 0 }, taken = { home: 0, away: 0 };
+    const kicks = [];
+    const kick = (side, i) => {
+      const x = sh[side][i % sh[side].length];
+      const other = side === 'home' ? 'away' : 'home';
+      const p = RNG.clamp(0.76 + (x.s.atk - 50) * 0.002 - (gk[other] - 50) * 0.0025, 0.55, 0.92);
+      const scored = RNG.chance(p);
+      taken[side]++;
+      if (scored) goals[side]++;
+      kicks.push({ side, pid: x.pid, name: x.name, scored, score: [goals.home, goals.away], round: i + 1 });
+    };
+    const decided = () => {
+      // 5本ずつの間は、残りの本数で追いつけなくなった時点で決まる
+      if (taken.home >= 5 && taken.away >= 5) return taken.home === taken.away && goals.home !== goals.away;
+      const left = (s) => 5 - taken[s];
+      return goals.home > goals.away + left('away') || goals.away > goals.home + left('home');
+    };
+    for (let i = 0; i < 5 && !decided(); i++) {
+      kick('home', i); if (decided()) break;
+      kick('away', i);
+    }
+    let i = 5;
+    while (!decided() && i < 30) { kick('home', i); kick('away', i); i++; }
+    if (goals.home === goals.away) goals[RNG.chance(0.5) ? 'home' : 'away']++;   // 念のため
+    return { kicks, home: goals.home, away: goals.away, winner: goals.home > goals.away ? 'home' : 'away' };
   }
 
   /* ---------- 大会（野球と同じ並び） ----------
@@ -227,42 +313,71 @@ const Soccer = (() => {
 
   function currentRound(tour) { return tour.rounds[tour.index] || null; }
 
+  /** 次の相手（11人）。試合前の画面で見せるため、先に作っておく。
+      同じ回の間は同じ顔ぶれ（試合の前後で変わらない） */
+  function buildOpp(S) {
+    const round = currentRound(S.tour);
+    if (!S.opp || S.opp.index !== S.tour.index || S.opp.kind !== S.tour.kind) {
+      S.opp = { kind: S.tour.kind, index: S.tour.index, name: round.schoolName, side: makeOpp(round.level) };
+    }
+    return S.opp;
+  }
+
   /** 自分の試合をする */
   function playUser(S) {
     const round = currentRound(S.tour);
-    const oppSide = makeOpp(round.level);
+    const oppSide = buildOpp(S).side;
     const mine = mySide(S);
     const homeIsMe = RNG.chance(0.5);
-    const r = homeIsMe ? playMatch(mine, oppSide) : playMatch(oppSide, mine);
-    const my = homeIsMe ? r.hg : r.ag, op = homeIsMe ? r.ag : r.hg;
-    /* トーナメントなので引き分けは無い。同点ならPK戦で決める
-       （GKの評価が高いほど少しだけ勝ちやすい） */
-    let win = my > op, pk = false;
-    if (my === op) {
-      pk = true;
-      const H = lineRatings(homeIsMe ? mine : oppSide), A = lineRatings(homeIsMe ? oppSide : mine);
-      const myGk = homeIsMe ? H.gk : A.gk, opGk = homeIsMe ? A.gk : H.gk;
-      win = RNG.chance(0.5 + (myGk - opGk) * 0.002);
+    const half = halfLenFor(round.name);
+    const total = half * 2;
+    const home = homeIsMe ? mine : oppSide, away = homeIsMe ? oppSide : mine;
+    const r = playMatch(home, away, { halfLen: half });
+    let events = r.events, hg = r.hg, ag = r.ag;
+    /* 決勝だけは、同点なら10分ハーフの延長戦 */
+    let extra = false;
+    if (hg === ag && round.name === '決勝') {
+      extra = true;
+      const ex = playExtra(home, away, r.H, r.A, [hg, ag], total);
+      events = events.concat(ex.events);
+      hg = ex.hg; ag = ex.ag;
     }
+    /* まだ同点ならPK戦（GKの評価・シュートの強さで決まる） */
+    let pk = false;
+    let win;
+    if (hg === ag) {
+      pk = playPK(home, away, r.H, r.A);
+      win = pk.winner === (homeIsMe ? 'home' : 'away');
+    } else {
+      win = homeIsMe ? hg > ag : ag > hg;
+    }
+    const my = homeIsMe ? hg : ag, op = homeIsMe ? ag : hg;
     const mySideKey = homeIsMe ? 'home' : 'away';
     const ups = [];
     mine.forEach((x) => {
       const p = x.p;
       p.socCareer.g++;
-      const goals = r.events.filter((e) => e.kind === 'goal' && e.side === mySideKey && e.pid === p.id).length;
+      const goals = events.filter((e) => e.kind === 'goal' && e.side === mySideKey && e.pid === p.id).length;
+      const assists = events.filter((e) => e.kind === 'goal' && e.side === mySideKey && e.assist === p.id).length;
       p.socCareer.goals += goals;
+      p.socCareer.assists = (p.socCareer.assists || 0) + assists;
       if (op === 0 && (x.pos === 'GK' || x.pos === 'DF')) p.socCareer.cs++;
-      const perf = goals * 1.5 + (op === 0 && x.pos !== 'FW' ? 1 : 0) + (win ? 0.5 : 0);
+      const perf = goals * 1.5 + assists * 0.6 + (op === 0 && x.pos !== 'FW' ? 1 : 0) + (win ? 0.5 : 0);
       const u = grow(p, 1.1 + perf * 0.5);
-      if (u.length) ups.push({ pid: p.id, name: p.name, ups: u });
+      if (u.length) ups.push({ pid: p.id, name: p.name, grade: p.grade, pos: p.soc.pos, ups: u });
     });
     S.players.forEach((p) => {
       if (!mine.some((x) => x.p === p)) {
         const u = grow(p, 0.35);
-        if (u.length) ups.push({ pid: p.id, name: p.name, ups: u });
+        if (u.length) ups.push({ pid: p.id, name: p.name, grade: p.grade, pos: p.soc.pos, ups: u });
       }
     });
-    const res = { home: homeIsMe, my, op, win, pk, events: r.events, ups, oppName: round.schoolName };
+    const lineupOf = (side) => side.map((x) => ({ pid: x.pid, name: x.name, pos: x.pos, num: x.num, s: x.s }));
+    const res = {
+      home: homeIsMe, my, op, win, pk, extra, half, total,
+      events, ups, oppName: round.schoolName, roundName: round.name, kind: S.tour.kind,
+      myLineup: lineupOf(mine), oppLineup: lineupOf(oppSide),
+    };
     S.lastMatch = res;
     return res;
   }
@@ -274,7 +389,7 @@ const Soccer = (() => {
       const before = p.soc[key];
       const room = Math.max(0, 100 - before) / 22;
       const add = Math.round(points * RNG.clamp(RNG.norm(0.9, 0.4), 0, 2) * Math.min(1, Math.pow(room, 1.9)));
-      if (add > 0) { p.soc[key] = RNG.stat(before + add); ups.push({ key, label: STATS.find((s) => s.key === key).label, amount: p.soc[key] - before }); }
+      if (add > 0) { p.soc[key] = RNG.stat(before + add); ups.push({ key, label: STATS.find((s) => s.key === key).label, amount: p.soc[key] - before, before, after: p.soc[key] }); }
     });
     return ups;
   }
@@ -417,7 +532,7 @@ const Soccer = (() => {
   return {
     STATS, POS, POS_NAME, FORMATION, REVIVE_SEASONS,
     convert, newRecruit, start, autoLineup, findP, mySide, strength, rating, rateFor,
-    createTour, currentRound, playUser, advance,
+    createTour, currentRound, playUser, buildOpp, halfLenFor, advance,
     startTraining, trainingChoose, trainingPass, canPass, trainingSummary,
     retiring, retire, promote, freshSets, enroll, canRevive,
   };
