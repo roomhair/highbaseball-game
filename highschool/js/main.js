@@ -670,21 +670,46 @@ const Game = (() => {
     toOffseason();
   }
 
-  /* ---------- サッカー部（野球部解散後の第二の物語） ---------- */
+  /* ---------- サッカー部（野球部のコールド負けのあとの第二の物語） ----------
+     流れは野球と同じ。夏の県大会 → 夏の全国大会 → オフシーズン（3年生引退）→
+     特訓 → 秋の県大会 → 秋の地区大会 → 神宮大会相当 → 特訓 →
+     春の大会の出場発表（出られれば春の大会）→ 新入生 → 特訓 → 夏の県大会 */
+
+  /** サッカー部の大会名（野球の tourLabel と同じ呼び方） */
+  function soccerLabel(kind) {
+    switch (kind) {
+      case 'national': return state.settings.nationalName;
+      case 'fallPref': return '秋季県大会';
+      case 'fallDistrict': return '秋季地区大会';
+      case 'fallJingu': return state.settings.jinguName;
+      case 'spring': return state.settings.springName;
+      default: return '県大会';
+    }
+  }
 
   function toSoccerConversion() {
     const team = state.team;
     state.mode = 'soccer';
     state.soccer = Soccer.start(team);
+    state.soccer.springQualified = false;
     state.team = null;
     state.phase = 'soccer-start';
     save();
     Screens.soccerStart(state);
   }
 
-  /** 都道府県大会の山を組んで始める（サッカー部転換直後だけここから入る） */
-  function soccerStartTournament() {
-    state.soccer.tour = Soccer.createRegional(Soccer.strength(state.soccer));
+  /** 大会を新しく始める（野球の startTournament と同じ入口） */
+  function soccerStartTournament(kind) {
+    const S = state.soccer;
+    if (kind === 'fallPref') S.springQualified = false;
+    S.tour = Soccer.createTour(S, kind);
+    state.phase = 'soccer-opening';
+    save();
+    Screens.soccerOpening(state);
+    UI.curtain('<b>' + UI.esc(soccerLabel(kind)) + '</b><span>開幕</span>', function () {});
+  }
+
+  function soccerToPregame() {
     state.phase = 'soccer-pregame';
     save();
     Screens.soccerPregame(state);
@@ -703,80 +728,169 @@ const Game = (() => {
   }
 
   function soccerAfterResult() {
+    const S = state.soccer;
     const res = state.lastSoccerRes;
     if (res.win) {
-      const done = Soccer.advance(state.soccer);
-      if (done) {
-        if (state.soccer.tour.stage === 'regional') {
-          /* 都道府県大会を勝ち抜いた。全国大会までの特訓をはさむ */
-          state.soccer.regionalFinalLevel = state.soccer.tour.finalLevel;
-          soccerToTraining('national');
-          return;
-        }
-        /* 全国大会を勝ち抜いて優勝 */
-        state.soccer.titles++;
-        state.soccer.everChampion = true;
-        toSoccerOffseason(true);
-        return;
-      }
-      state.phase = 'soccer-pregame';
-      save();
-      Screens.soccerPregame(state);
+      if (Soccer.advance(S)) { soccerFinishTournament(); return; }
+      soccerToPregame();
     } else {
-      toSoccerOffseason(false);
+      soccerLose();
     }
   }
 
-  function toSoccerOffseason(champion) {
-    state.soccer.seasons++;
-    state.soccer.lastChampion = !!champion;
-    Soccer.endRetirement(state.soccer);
-    Soccer.fillRecruits(state.soccer);
-    state.phase = 'soccer-offseason';
-    save();
-    Screens.soccerOffseason(state, Soccer.canRevive(state.soccer));
+  /** 山を勝ち切ったとき（野球の finishTournament と同じ分かれ方） */
+  function soccerFinishTournament() {
+    const S = state.soccer;
+    const kind = S.tour.kind;
+    if (kind === 'local') {
+      S.localFinalLevel = S.tour.finalLevel;
+      state.phase = 'soccer-localwin';
+      save();
+      Screens.soccerCelebrate(state, 'local');
+    } else if (kind === 'national') {
+      S.titles++;
+      S.everChampion = true;
+      S.lastChampion = true;
+      state.phase = 'soccer-champion';
+      save();
+      Screens.soccerCelebrate(state, 'national');
+    } else if (kind === 'fallPref') {
+      S.fallPrefFinalLevel = S.tour.finalLevel;
+      soccerStartTournament('fallDistrict');
+    } else if (kind === 'fallDistrict') {
+      S.fallDistrictFinalLevel = S.tour.finalLevel;
+      S.springQualified = true;
+      soccerStartTournament('fallJingu');
+    } else if (kind === 'fallJingu') {
+      soccerToPostFallTraining();
+    } else {
+      soccerToNewSeason();
+    }
   }
 
-  /** シーズンの合間の特訓。next は特訓のあとに向かう先
-      （'national' は全国大会、'regional' は来季の都道府県大会） */
-  function soccerToTraining(next) {
-    state.soccer.trainingNext = next;
-    state.soccer.training = Soccer.startTraining(state.soccer);
+  /** 負けたとき（野球の lose と同じ分かれ方。秋は決勝まで来ていれば次の大会へ） */
+  function soccerLose() {
+    const S = state.soccer;
+    const kind = S.tour.kind;
+    const isLast = S.tour.index >= S.tour.rounds.length - 1;
+    if (kind === 'local' || kind === 'national') { toSoccerOffseason(false); return; }
+    if (kind === 'fallPref') {
+      S.fallPrefFinalLevel = S.tour.finalLevel;
+      if (isLast) { soccerStartTournament('fallDistrict'); return; }
+      soccerToPostFallTraining();
+      return;
+    }
+    if (kind === 'fallDistrict') {
+      S.fallDistrictFinalLevel = S.tour.finalLevel;
+      if (isLast) S.springQualified = true;
+      soccerToPostFallTraining();
+      return;
+    }
+    if (kind === 'fallJingu') { soccerToPostFallTraining(); return; }
+    soccerToNewSeason();
+  }
+
+  /** 夏が終わったあとのオフシーズン（3年生の引退を見せる） */
+  function toSoccerOffseason() {
+    const S = state.soccer;
+    S.seasons++;
+    state.phase = 'soccer-offseason';
+    save();
+    Screens.soccerOffseason(state, Soccer.canRevive(S));
+  }
+
+  /** オフシーズンのあと。3年生が抜けて、特訓から秋の大会へ */
+  function soccerAfterOffseason() {
+    Soccer.retire(state.soccer);
+    state.soccer.lastChampion = false;
+    soccerToTraining('fallPref', TRAIN_LIMITS.short);
+  }
+
+  function soccerToTraining(next, limits) {
+    const S = state.soccer;
+    S.trainingNext = next;
+    S.training = Soccer.startTraining(S, limits);
     state.phase = 'soccer-training';
     save();
     Screens.soccerTraining(state);
   }
 
-  function soccerTrainingChoose() {
-    const t = state.soccer.training;
-    Soccer.trainingChoose(t, state.soccer);
-    save();
-    if (t.done) soccerTrainingDone(); else Screens.soccerTraining(state);
+  function soccerToPostFallTraining() {
+    soccerToTraining('springOrNextSummer', TRAIN_LIMITS.normal);
   }
 
-  function soccerTrainingPass() {
-    const t = state.soccer.training;
-    Soccer.trainingPass(t, state.soccer);
+  function soccerTrainingLabel() {
+    switch (state.soccer.trainingNext) {
+      case 'fallPref': return '秋の大会へ';
+      case 'springOrNextSummer': return state.settings.springName + 'へ';
+      default: return '夏の大会へ';
+    }
+  }
+
+  function soccerTrainTake() {
+    const S = state.soccer;
+    Soccer.trainingChoose(S.training, S);
     save();
-    if (t.done) soccerTrainingDone(); else Screens.soccerTraining(state);
+    if (S.training.done) {
+      state.phase = 'soccer-training-result';
+      save();
+      Screens.soccerTrainingResult(state, soccerTrainingLabel());
+    } else {
+      Screens.soccerTraining(state);
+    }
+  }
+
+  function soccerTrainPass() {
+    const S = state.soccer;
+    Soccer.trainingPass(S.training, S);
+    save();
+    Screens.soccerTraining(state);
   }
 
   function soccerTrainingDone() {
-    const next = state.soccer.trainingNext;
-    state.soccer.training = null;
-    if (next === 'national') {
-      state.soccer.tour = Soccer.createNational(Soccer.strength(state.soccer), state.soccer.regionalFinalLevel);
-    } else {
-      state.soccer.tour = Soccer.createRegional(Soccer.strength(state.soccer));
-    }
-    state.phase = 'soccer-pregame';
-    save();
-    Screens.soccerPregame(state);
+    const S = state.soccer;
+    const next = S.trainingNext;
+    S.training = null;
+    if (next === 'fallPref') soccerStartTournament('fallPref');
+    else if (next === 'springOrNextSummer') soccerShowSpringResult();
+    else soccerStartTournament('local');
   }
 
-  function soccerContinue() {
+  function soccerShowSpringResult() {
+    state.phase = 'soccer-spring-result';
+    save();
+    Screens.soccerSpringResult(state, state.soccer.springQualified);
+  }
+
+  function soccerAfterSpringResult() {
+    if (state.soccer.springQualified) soccerStartTournament('spring'); else soccerToNewSeason();
+  }
+
+  /** 春の大会まで終わったあと。学年を上げて新入生を迎える */
+  function soccerToNewSeason() {
+    const S = state.soccer;
+    S.need = Soccer.promote(S);
     state.year++;
-    soccerToTraining('regional');
+    S.sets = null;
+    soccerNewcomers();
+  }
+
+  function soccerNewcomers() {
+    const S = state.soccer;
+    if (!S.need) { soccerAfterNewcomers(); return; }
+    state.phase = 'soccer-new';
+    if (!S.sets) S.sets = Soccer.freshSets(S, S.need, CONFIG.NEWCOMER_SETS);
+    save();
+    Screens.soccerNewcomers(state, (i) => {
+      Soccer.enroll(S, S.sets[i]);
+      S.sets = null;
+      soccerAfterNewcomers();
+    });
+  }
+
+  function soccerAfterNewcomers() {
+    state.soccer.springQualified = false;
+    soccerToTraining('nextSummer', TRAIN_LIMITS.short);
   }
 
   function reviveBaseball() {
@@ -899,6 +1013,13 @@ const Game = (() => {
       state.training.pickLimit = CONFIG.TRAINING.PICKS;
       state.training.passLimit = CONFIG.TRAINING.PASSES;
     }
+    /* 古い保存データの移行。サッカー部の大会の形・特訓の形が変わる前のもの */
+    if (state.soccer) {
+      const S = state.soccer;
+      if (S.tour && !S.tour.kind) S.tour.kind = S.tour.stage === 'national' ? 'national' : 'local';
+      if (S.training && !S.training.log) S.training = Soccer.startTraining(S, null);
+      if (S.springQualified == null) S.springQualified = false;
+    }
     applySettings();
     switch (state.phase) {
       case 'pick-bat': pickBatters(); break;
@@ -925,13 +1046,17 @@ const Game = (() => {
       case 'new-pit': newcomerPitchers(); break;
       case 'train-intro': Screens.trainingIntro(state); break;
       case 'soccer-start': Screens.soccerStart(state); break;
-      case 'soccer-pregame': Screens.soccerPregame(state); break;
+      case 'soccer-opening': Screens.soccerOpening(state); break;
       /* サッカーの試合の中身（試合中の演出・結果画面）は保存していないので、
          途中で閉じて開き直したときは次の試合の前まで戻す */
-      case 'soccer-game': case 'soccer-result': Screens.soccerPregame(state); break;
+      case 'soccer-pregame': case 'soccer-game': case 'soccer-result': Screens.soccerPregame(state); break;
+      case 'soccer-localwin': Screens.soccerCelebrate(state, 'local'); break;
+      case 'soccer-champion': Screens.soccerCelebrate(state, 'national'); break;
+      case 'soccer-offseason': Screens.soccerOffseason(state, Soccer.canRevive(state.soccer)); break;
       case 'soccer-training': Screens.soccerTraining(state); break;
-      case 'soccer-offseason':
-        Screens.soccerOffseason(state, Soccer.canRevive(state.soccer)); break;
+      case 'soccer-training-result': Screens.soccerTrainingResult(state, soccerTrainingLabel()); break;
+      case 'soccer-spring-result': Screens.soccerSpringResult(state, state.soccer.springQualified); break;
+      case 'soccer-new': soccerNewcomers(); break;
       default: UI.show('screen-top');
     }
   }
@@ -1051,11 +1176,11 @@ const Game = (() => {
     on('btn-ready-lineup', () => UI.lineupEditor(state.team, () => { save(); Screens.ready(state); }));
     on('btn-ready-next', () => startTraining());
 
-    on('btn-train-take', trainTake);
-    on('btn-train-pass', trainPass);
-    on('btn-train-done', () => trainingDone());
+    on('btn-train-take', () => (state.mode === 'soccer' ? soccerTrainTake() : trainTake()));
+    on('btn-train-pass', () => (state.mode === 'soccer' ? soccerTrainPass() : trainPass()));
+    on('btn-train-done', () => (state.mode === 'soccer' ? soccerTrainingDone() : trainingDone()));
 
-    on('btn-open-start', toPregame);
+    on('btn-open-start', () => (state.mode === 'soccer' ? soccerToPregame() : toPregame()));
     on('btn-open-lineup', () => UI.lineupEditor(state.team, () => { save(); Screens.opening(state); }));
 
     on('btn-play', playGame);
@@ -1071,9 +1196,9 @@ const Game = (() => {
 
     on('btn-skip', () => GameScreen.skip());
     on('btn-result-next', afterResult);
-    on('btn-localwin-next', () => startTournament('national'));
-    on('btn-champion-next', toOffseason);
-    on('btn-spring-result-next', afterSpringResult);
+    on('btn-localwin-next', () => (state.mode === 'soccer' ? soccerStartTournament('national') : startTournament('national')));
+    on('btn-champion-next', () => (state.mode === 'soccer' ? toSoccerOffseason() : toOffseason()));
+    on('btn-spring-result-next', () => (state.mode === 'soccer' ? soccerAfterSpringResult() : afterSpringResult()));
     const intro = UI.el('screen-trainintro');
     if (intro) intro.addEventListener('click', (e) => {
       /* キャプテンを決めるボタンを押したときは、特訓に入らない */
@@ -1084,22 +1209,20 @@ const Game = (() => {
 
     on('btn-soccer-primary', () => {
       switch (state.phase) {
-        case 'soccer-start': soccerStartTournament(); break;
+        case 'soccer-start': toSoccerOffseason(); break;
         case 'soccer-pregame': soccerPlay(); break;
         case 'soccer-result': soccerAfterResult(); break;
-        case 'soccer-training': soccerTrainingChoose(); break;
-        case 'soccer-offseason': soccerContinue(); break;
+        case 'soccer-offseason': soccerAfterOffseason(); break;
       }
     });
     on('btn-soccer-secondary', () => {
-      if (state.phase === 'soccer-training') soccerTrainingPass();
-      else if (state.phase === 'soccer-offseason') reviveBaseball();
+      if (state.phase === 'soccer-offseason') reviveBaseball();
     });
 
     if (typeof ADS !== 'undefined') ADS.init();
   }
 
-  return { boot, start, resume, tourLabel, get state() { return state; } };
+  return { boot, start, resume, tourLabel, soccerLabel, get state() { return state; } };
 })();
 
 document.addEventListener('DOMContentLoaded', Game.boot);

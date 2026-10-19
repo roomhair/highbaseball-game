@@ -93,6 +93,7 @@ const Soccer = (() => {
       tour: null, lastMatch: null, schoolName: team.name,
     };
     autoLineup(S);
+    S.baseLevel = strength(S) - 3;
     return S;
   }
 
@@ -190,43 +191,38 @@ const Soccer = (() => {
     return { hg, ag, events };
   }
 
-  /* ---------- 大会（トーナメント。野球の地方大会・全国大会と同じ考え方） ----------
-     実際の全国高校サッカー選手権と同じ2段階にしてある。
-     ・都道府県大会（regional）を勝ち抜いた代表校だけが、全国大会
-       （national、48校規模のノックアウト方式）に進める。
-     ・都道府県大会は3試合（1回戦・準決勝・決勝）、全国大会は6試合
-       （1回戦〜3回戦・準々決勝・準決勝・決勝）。
-     都道府県大会で負けたらその年のシーズンはそこで終わり（野球の
-     地方大会で負けたときと同じ）。 */
+  /* ---------- 大会（野球と同じ並び） ----------
+     夏の県大会 → 夏の全国大会 → オフシーズン → 特訓 → 秋の県大会 →
+     秋の地区大会 → 神宮大会相当 → 特訓 → 春の大会（出場できれば）→ 新入生。
+     山の組み方は野球と同じ Tournament.create を使い、1回戦の強さだけ
+     サッカー部の強さ（部員の評価の平均）を目安に決める。 */
 
-  const REGIONAL_ROUNDS = ['1回戦', '準決勝', '決勝'];
-  const NATIONAL_ROUNDS = ['1回戦', '2回戦', '3回戦', '準々決勝', '準決勝', '決勝'];
+  const F = () => CONFIG.FIELD;
 
-  function ladder(from, roundNames, riseFrom, nameKind) {
-    const levels = [RNG.clamp(from, 10, 90)];
-    for (let i = 1; i < roundNames.length; i++) {
-      const mustRise = i >= roundNames.length - riseFrom;
-      let add = RNG.range(-2, 7);
-      if (mustRise && add < 1) add = 1 + Math.random() * 4;
-      levels.push(RNG.clamp(levels[i - 1] + add, 10, 97));
+  /* 相手の強さは自軍に合わせて動かさない（野球と同じ）。転向したときの
+     チーム力を目安にした固定の値から始まるので、特訓や新入生で部員が
+     強くなれば、そのぶん勝ち上がりやすくなる。大会ごとの差は野球の表と同じ */
+  function baseLevel(S) {
+    if (S.baseLevel == null) S.baseLevel = strength(S) - 3;
+    return S.baseLevel;
+  }
+
+  function tourFrom(S, kind) {
+    const base = baseLevel(S);
+    const off = (k) => (F()[k].from - F().local.from);
+    switch (kind) {
+      case 'national': return (S.localFinalLevel != null ? S.localFinalLevel : base) + Tournament.rollDrift();
+      case 'fallPref': return base + off('fallPref');
+      case 'fallDistrict': return (S.fallPrefFinalLevel != null ? S.fallPrefFinalLevel : base) + F().fallDistrict.bonus;
+      case 'fallJingu': return (S.fallDistrictFinalLevel != null ? S.fallDistrictFinalLevel : base) + F().fallJingu.bonus;
+      case 'spring': return base + off('spring');
+      default: return base;
     }
-    const used = new Set();
-    return roundNames.map((name, i) =>
-      ({ name, level: Math.round(levels[i]), schoolName: NAMES.schoolName(used, nameKind) }));
   }
 
-  /** 都道府県大会の山を組む。1回戦の強さは自軍の強さに合わせる */
-  function createRegional(myStrength) {
-    const from = myStrength + RNG.range(-8, 2);
-    const rounds = ladder(from, REGIONAL_ROUNDS, 2, 'regional');
-    return { stage: 'regional', rounds, index: 0, finalLevel: rounds[rounds.length - 1].level };
-  }
-
-  /** 全国大会の山を組む。都道府県大会の決勝の強さの続きから始まる */
-  function createNational(myStrength, fromLevel) {
-    const from = (fromLevel != null ? fromLevel : myStrength) + RNG.range(0, 6);
-    const rounds = ladder(from, NATIONAL_ROUNDS, 2, 'national');
-    return { stage: 'national', rounds, index: 0, finalLevel: rounds[rounds.length - 1].level };
+  /** 大会の山を組む。kind は野球と同じ（local・national・fallPref・fallDistrict・fallJingu・spring） */
+  function createTour(S, kind) {
+    return Tournament.create(kind, tourFrom(S, kind), 1, new Set());
   }
 
   function currentRound(tour) { return tour.rounds[tour.index] || null; }
@@ -290,62 +286,126 @@ const Soccer = (() => {
     return false;
   }
 
-  /* ---------- 特訓（都道府県大会→全国大会の間、シーズンの合間） ----------
-     野球ほど細かい仕組みにはせず、カードを選ぶ・見送るだけの
-     簡単な特訓にしてある。能力は7つ（STATS）のどれかが伸びる */
+  /* ---------- 特訓（野球と同じ作り） ----------
+     カードは「強さの段階」を持つ。人数と、1人あたりの上がり幅が段階で決まり、
+     1人に複数の能力が同時に上がることもある。選手と上がる能力は
+     カードに全部出して、選ぶ前に分かるようにする。 */
 
-  function trainingCard(S) {
-    const n = RNG.range(2, 6);
-    const pool = RNG.shuffle(S.players.slice()).slice(0, Math.min(n, S.players.length));
-    const stat = RNG.pick(STATS);
-    const amount = RNG.range(4, 12);
-    return { key: stat.key, label: stat.label, amount, pids: pool.map((p) => p.id), count: pool.length };
+  const TIERS = [
+    { key: 's',  weight: 30, label: '',        people: [1, 2],  amt: [3, 6],   stats: [80, 18, 2] },
+    { key: 'm',  weight: 40, label: '',        people: [2, 3],  amt: [5, 8],  stats: [60, 33, 7] },
+    { key: 'l',  weight: 22, label: 'みっちり', people: [3, 5],  amt: [8, 13], stats: [40, 45, 15] },
+    { key: 'xl', weight: 4,  label: '猛特訓',   people: [6, 9],  amt: [12, 20], stats: [0, 40, 60] },
+  ];
+
+  function pickTier() {
+    let r = Math.random() * TIERS.reduce((a, t) => a + t.weight, 0);
+    for (const t of TIERS) { r -= t.weight; if (r <= 0) return t; }
+    return TIERS[0];
   }
 
-  /** 特訓の状態を作る。選択3回・見送り2回で終わる */
-  function startTraining(S) {
-    return { picks: 0, passes: 0, pickLimit: 3, passLimit: 2, done: false, card: trainingCard(S) };
+  /** 上がる能力の数（1〜3） */
+  function statCount(t) {
+    const r = Math.random() * 100;
+    return r < t.stats[0] ? 1 : (r < t.stats[0] + t.stats[1] ? 2 : 3);
+  }
+
+  function trainingCard(S) {
+    const tier = pickTier();
+    const n = Math.min(S.players.length, RNG.range(tier.people[0], tier.people[1]));
+    const pool = RNG.shuffle(S.players.slice()).slice(0, n);
+    const lead = RNG.pick(STATS);
+    const targets = [];
+    pool.forEach((p) => {
+      const keys = [lead.key].concat(RNG.shuffle(STATS.filter((x) => x.key !== lead.key).map((x) => x.key)));
+      keys.slice(0, statCount(tier)).forEach((key) => {
+        targets.push({
+          pid: p.id, key, label: STATS.find((x) => x.key === key).label,
+          amount: RNG.range(tier.amt[0], tier.amt[1]),
+        });
+      });
+    });
+    return {
+      tier: tier.key, tierLabel: tier.label, title: lead.label + 'の練習',
+      multi: targets.length > pool.length, targets,
+    };
+  }
+
+  /** 特訓の状態を作る。limits は { picks, passes }（野球と同じ回数） */
+  function startTraining(S, limits) {
+    const l = limits || { picks: 5, passes: 3 };
+    return { picks: 0, passes: 0, pickLimit: l.picks, passLimit: l.passes, done: false, card: trainingCard(S), log: [] };
   }
 
   function nextCardOrDone(t, S) {
-    if (t.picks >= t.pickLimit || t.passes >= t.passLimit) { t.done = true; return; }
+    if (t.picks >= t.pickLimit) { t.done = true; t.card = null; return; }
     t.card = trainingCard(S);
   }
 
-  /** カードを選ぶ。対象の選手ぶん、能力が伸びる */
+  /** カードを選ぶ。対象の選手の能力が上がる */
   function trainingChoose(t, S) {
-    if (t.done) return;
-    t.card.pids.forEach((pid) => {
-      const p = findP(S, pid);
-      if (p) p.soc[t.card.key] = RNG.stat(p.soc[t.card.key] + t.card.amount);
+    if (t.done || !t.card) return;
+    t.card.targets.forEach((x) => {
+      const p = findP(S, x.pid);
+      if (!p) return;
+      const before = p.soc[x.key];
+      p.soc[x.key] = RNG.stat(before + x.amount);
+      t.log.push({ pid: p.id, name: p.name, grade: p.grade, label: x.label, before, after: p.soc[x.key], amount: p.soc[x.key] - before });
     });
     t.picks++;
     nextCardOrDone(t, S);
   }
 
+  function canPass(t) { return !t.done && t.passes < t.passLimit; }
+
   /** カードを見送る */
   function trainingPass(t, S) {
-    if (t.done) return;
+    if (!canPass(t)) return;
     t.passes++;
-    nextCardOrDone(t, S);
+    t.card = trainingCard(S);
   }
 
-  /* ---------- 引退・新入部員 ---------- */
+  /** 特訓の成果（結果画面用）。上がった能力だけ、選手ごとにまとめて並べる */
+  function trainingSummary(t) {
+    return (t.log || []).filter((r) => r.amount > 0);
+  }
+
+  /* ---------- 引退・新入部員 ----------
+     野球と同じ。3年生は夏が終わった時点で引退し、学年はまだ上げない
+     （秋・春の大会は引退後の部員で戦う）。春の大会まで終わってから
+     学年を1つ上げ、空いた人数ぶんの新入生を迎える。 */
 
   function retiring(S) { return S.players.filter((p) => p.grade >= 3); }
 
-  function endRetirement(S) {
+  /** 3年生を外す（学年はまだ上げない） */
+  function retire(S) {
     const gone = new Set(retiring(S).map((p) => p.id));
     S.players = S.players.filter((p) => !gone.has(p.id));
-    S.players.forEach((p) => { p.grade++; });
     autoLineup(S);
   }
 
-  /** 卒業した分だけ新入部員を迎える（部員は20人を保つ） */
-  function fillRecruits(S) {
-    const need = Math.max(0, 20 - S.players.length);
+  /** 学年を1つ上げる。戻り値は必要な新入生の人数（部員は20人を保つ） */
+  function promote(S) {
+    S.players.forEach((p) => { p.grade++; });
+    return Math.max(0, 20 - S.players.length);
+  }
+
+  /** 新入生の候補を、野球と同じく何組か用意する */
+  function freshSets(S, need, count) {
     const avg = strength(S);
-    for (let i = 0; i < need; i++) S.players.push(newRecruit(RNG.clamp(avg - 10 + RNG.range(-5, 8), 15, 70)));
+    const sets = [];
+    for (let k = 0; k < count; k++) {
+      const level = RNG.clamp(avg - 8 + RNG.range(-4, 8), 15, 70);
+      const list = [];
+      for (let i = 0; i < need; i++) list.push(newRecruit(level));
+      list.sort((a, b) => rating(b) - rating(a));
+      sets.push(list);
+    }
+    return sets;
+  }
+
+  function enroll(S, players) {
+    players.forEach((p) => S.players.push(p));
     autoLineup(S);
   }
 
@@ -355,10 +415,10 @@ const Soccer = (() => {
   }
 
   return {
-    STATS, POS, POS_NAME, FORMATION, REVIVE_SEASONS, REGIONAL_ROUNDS, NATIONAL_ROUNDS,
+    STATS, POS, POS_NAME, FORMATION, REVIVE_SEASONS,
     convert, newRecruit, start, autoLineup, findP, mySide, strength, rating, rateFor,
-    createRegional, createNational, currentRound, playUser, advance,
-    startTraining, trainingChoose, trainingPass,
-    retiring, endRetirement, fillRecruits, canRevive,
+    createTour, currentRound, playUser, advance,
+    startTraining, trainingChoose, trainingPass, canPass, trainingSummary,
+    retiring, retire, promote, freshSets, enroll, canRevive,
   };
 })();

@@ -899,72 +899,112 @@ const Screens = (() => {
     UI.show('screen-settings');
   }
 
-  /* ---------- サッカー部（野球部解散後の第二の物語） ---------- */
+  /* ---------- サッカー部（野球部のコールド負けのあとの第二の物語） ----------
+     流れも画面も野球に合わせてある。能力は7つ（攻撃・守備・パス・スピード・
+     フィジカル・スタミナ・GK）で、どこでも名前を押せば詳細が開く。 */
 
-  function soccerLineupTable(S) {
-    const order = { GK: 0, DF: 1, MF: 2, FW: 3 };
-    const rows = S.lineup.slice().sort((a, b) => order[a.pos] - order[b.pos]).map((x) => {
-      const p = Soccer.findP(S, x.pid);
-      if (!p) return '';
-      return '<tr><td class="c">' + esc(x.pos) + '</td><td class="nm">' + esc(p.name) +
-        '</td><td class="c">' + p.grade + '</td><td class="c">' + Soccer.rating(p) + '</td></tr>';
+  const SOC_POS_ORDER = { GK: 0, DF: 1, MF: 2, FW: 3 };
+
+  /** サッカー部員の表。行を押すと詳細が開く */
+  function socTable(S, rows) {
+    const body = rows.map((x) => {
+      const p = x.p;
+      return '<tr class="prow" data-pid="' + p.id + '"><td class="c">' + esc(x.pos || p.soc.pos) + '</td>' +
+        '<td class="nm">' + esc(p.name) + '</td><td class="c">' + p.grade + '</td>' +
+        Soccer.STATS.map((st) => '<td class="c">' + UI.rankNum(p.soc[st.key]) + '</td>').join('') +
+        '<td class="c hl">' + Soccer.rating(p) + '</td></tr>';
     }).join('');
-    return '<div class="tablewrap"><table class="growth"><thead><tr><th>位置</th><th class="nm">選手</th><th>年</th><th>評価</th></tr></thead><tbody>' +
-      rows + '</tbody></table></div>';
+    return '<div class="tablewrap"><table class="growth"><thead><tr><th>位置</th><th class="nm">選手</th><th>年</th>' +
+      Soccer.STATS.map((st) => '<th>' + esc(st.label) + '</th>').join('') + '<th>評価</th></tr></thead><tbody>' +
+      body + '</tbody></table></div>';
   }
 
-  /** 大会の呼び名。実際の全国高校サッカー選手権と同じ2段構え
-      （都道府県大会を勝ち抜いた代表校だけが全国大会へ進める）にしてある */
-  function soccerStageName(stage) {
-    return stage === 'national' ? '全国大会' : '都道府県大会';
+  /** サッカー選手の詳細（野球の詳細と同じ並び：能力・通算成績） */
+  function socDetail(p) {
+    const c = p.socCareer || { g: 0, goals: 0, assists: 0, cs: 0 };
+    return '<div class="pdetail">' +
+      '<div class="pdetail__head"><div class="pdetail__name">' + esc(p.name) + '</div>' +
+      '<div class="pdetail__meta">' + p.grade + '年　' + esc(Soccer.POS_NAME[p.soc.pos] || '') +
+      '　評価 <b>' + Soccer.rating(p) + '</b></div>' +
+      (p.from ? '<div class="pdetail__from">' + p.from.year + '年目に ' + esc(p.from.school) + ' から加入</div>' : '') +
+      '</div>' +
+      '<div class="stats">' + Soccer.STATS.map((st) => UI.stat(st.label, p.soc[st.key])).join('') + '</div>' +
+      '<h4 class="sub">サッカー部での成績</h4>' +
+      '<p class="note">' + c.g + '試合　得点 ' + c.goals + '　無失点 ' + c.cs + '</p>' +
+      (p.career
+        ? '<h4 class="sub">高校野球での通算成績</h4>' +
+          (p.kind === 'pitcher' ? UI.careerPitLine(p.career) : UI.careerBatLine(p.career))
+        : '') +
+      '</div>';
+  }
+
+  /** 表や一覧の名前（data-pid）を押したら詳細を開く */
+  function bindSocRows(root, S, extraPlayers) {
+    root.querySelectorAll('[data-pid]').forEach((el) => el.addEventListener('click', () => {
+      const pid = el.dataset.pid;
+      let p = Soccer.findP(S, pid);
+      if (!p && extraPlayers) p = extraPlayers.find((x) => x.id === pid);
+      if (p) UI.modal(socDetail(p), { kind: 'player' });
+    }));
+  }
+
+  function socLineupRows(S) {
+    return S.lineup.slice().sort((a, b) => SOC_POS_ORDER[a.pos] - SOC_POS_ORDER[b.pos])
+      .map((x) => ({ p: Soccer.findP(S, x.pid), pos: x.pos })).filter((x) => x.p);
+  }
+
+  function socBenchRows(S) {
+    const used = new Set(S.lineup.map((x) => x.pid));
+    return S.players.filter((p) => !used.has(p.id)).sort((a, b) => Soccer.rating(b) - Soccer.rating(a))
+      .map((p) => ({ p, pos: p.soc.pos }));
+  }
+
+  function socSection(S, title, rows) {
+    return '<h3 class="sub">' + esc(title) + '</h3>' + (rows.length ? socTable(S, rows) : '<p class="note">いません。</p>');
+  }
+
+  function socShow(state, eyebrow, title, bodyHtml, primary, secondary) {
+    const S = state.soccer;
+    UI.el('soccer-eyebrow').textContent = eyebrow;
+    UI.el('soccer-title').textContent = title;
+    UI.html('soccer-body', bodyHtml);
+    UI.el('btn-soccer-primary').textContent = primary;
+    const sec = UI.el('btn-soccer-secondary');
+    sec.hidden = !secondary;
+    if (secondary) sec.textContent = secondary;
+    bindSocRows(UI.el('soccer-body'), S);
+    UI.show('screen-soccer');
   }
 
   function soccerStart(state) {
     const S = state.soccer;
-    UI.el('soccer-eyebrow').textContent = state.year + '年目';
-    UI.el('soccer-title').textContent = 'サッカー転向';
-    UI.html('soccer-body',
+    socShow(state, state.year + '年目', 'サッカー転向',
       '<p class="section-lead">夏の県大会でコールド負け。' + esc(S.schoolName) +
       '野球部の部員たちはすっかりやる気を無くし、サッカーを始めてしまった。</p>' +
       '<p class="section-lead">部員はそのままサッカー部に加わり、新しい挑戦が始まる。' +
-      '都道府県大会を勝ち抜けば、全国大会に進める。</p>');
-    UI.el('btn-soccer-primary').textContent = 'サッカー部の大会へ';
-    UI.el('btn-soccer-secondary').hidden = true;
-    UI.show('screen-soccer');
+      'シーズンの流れは野球と同じ。まずは3年生の引退から。</p>' +
+      socSection(S, '部員（名前を押すと能力が見られます）', socLineupRows(S).concat(socBenchRows(S))),
+      'オフシーズンへ');
+  }
+
+  /** 大会開幕（野球の開幕画面と同じ） */
+  function soccerOpening(state) {
+    const S = state.soccer;
+    const label = Game.soccerLabel(S.tour.kind);
+    UI.el('opening-year').textContent = state.year + '年目';
+    UI.el('opening-title').textContent = label + ' 開幕';
+    UI.el('opening-lead').textContent = S.schoolName + 'サッカー部、' + label + 'へ。';
+    UI.show('screen-opening');
   }
 
   function soccerPregame(state) {
     const S = state.soccer;
     const round = Soccer.currentRound(S.tour);
-    UI.el('soccer-eyebrow').textContent = soccerStageName(S.tour.stage) + '　' + round.name;
-    UI.el('soccer-title').textContent = esc(S.schoolName) + '　対　' + esc(round.schoolName || '相手校');
-    UI.html('soccer-body',
-      '<p class="section-lead">自軍の強さの目安: ' + Soccer.strength(S) + '</p>' +
-      soccerLineupTable(S));
-    UI.el('btn-soccer-primary').textContent = '試合開始';
-    UI.el('btn-soccer-secondary').hidden = true;
-    UI.show('screen-soccer');
-  }
-
-  /** 特訓（都道府県大会と全国大会の間、シーズンの合間） */
-  function soccerTraining(state) {
-    const S = state.soccer;
-    const t = S.training;
-    const nextLabel = S.trainingNext === 'national' ? '全国大会' : (state.year + 1) + '年目の都道府県大会';
-    UI.el('soccer-eyebrow').textContent = '特訓';
-    UI.el('soccer-title').textContent = nextLabel + 'に向けて';
-    const c = t.card;
-    UI.html('soccer-body',
-      '<p class="note">選択 残り' + (t.pickLimit - t.picks) + '回　見送り 残り' + (t.passLimit - t.passes) + '回</p>' +
-      '<div class="traincard">' +
-        '<p class="traincard__kind">' + esc(c.label) + 'の練習<span class="traincard__n">' + c.count + '人</span></p>' +
-        '<p class="note">対象: ' + c.pids.map((pid) => esc(Soccer.findP(S, pid).name)).join('、') + '</p>' +
-      '</div>');
-    UI.el('btn-soccer-primary').textContent = '選ぶ';
-    const sec = UI.el('btn-soccer-secondary');
-    sec.hidden = false;
-    sec.textContent = '見送る';
-    UI.show('screen-soccer');
+    socShow(state, Game.soccerLabel(S.tour.kind) + '　' + round.name,
+      S.schoolName + '　対　' + (round.schoolName || '相手校'),
+      '<p class="section-lead">チーム力 <b>' + Soccer.strength(S) + '</b></p>' +
+      socSection(S, '先発11人', socLineupRows(S)) + socSection(S, '控え', socBenchRows(S)),
+      '試合開始');
   }
 
   function soccerResult(state, res) {
@@ -972,50 +1012,174 @@ const Screens = (() => {
     const round = Soccer.currentRound(S.tour);
     const mySideKey = res.home ? 'home' : 'away';
     const scorers = res.events.filter((e) => e.kind === 'goal' && e.side === mySideKey).map((e) => e.name);
-    const isLastOfStage = S.tour.index >= S.tour.rounds.length - 1;
-    UI.el('soccer-eyebrow').textContent = soccerStageName(S.tour.stage) + '　' + round.name;
-    UI.el('soccer-title').textContent = (res.win ? '勝利' : '敗戦') + '　' + res.my + ' − ' + res.op +
-      (res.pk ? '（PK戦）' : '');
-    UI.html('soccer-body',
+    const isLastOfTour = S.tour.index >= S.tour.rounds.length - 1;
+    const label = Game.soccerLabel(S.tour.kind);
+    const ups = (res.ups || []).map((u) =>
+      '<li><button type="button" class="linkbtn" data-pid="' + u.pid + '">' + esc(u.name) + '</button>　' +
+      u.ups.map((x) => esc(x.label) + ' +' + x.amount).join('　') + '</li>').join('');
+    socShow(state, label + '　' + round.name,
+      (res.win ? '勝利' : '敗戦') + '　' + res.my + ' − ' + res.op + (res.pk ? '（PK戦）' : ''),
       '<p class="section-lead vs">' + esc(S.schoolName) + '　<i>対</i>　' + esc(res.oppName || round.schoolName || '相手校') + '</p>' +
       (scorers.length ? '<p>得点: ' + scorers.map(esc).join('、') + '</p>' : '<p>得点者なし</p>') +
-      (res.win
-        ? '<p class="section-lead">' +
-          (isLastOfStage
-            ? (S.tour.stage === 'regional' ? '都道府県大会を勝ち抜いた。全国大会に進む。' : '全国大会を制した！')
-            : '次の試合へ進む。') +
-          '</p>'
-        : '<p class="section-lead">サッカー部のシーズンが終わった。</p>'));
-    UI.el('btn-soccer-primary').textContent = res.win ? '次へ' : 'シーズン終了へ';
-    UI.el('btn-soccer-secondary').hidden = true;
-    UI.show('screen-soccer');
+      (ups ? '<h3 class="sub">成長した選手（' + (res.ups || []).length + '人）</h3><ul class="growthlist">' + ups + '</ul>' : '') +
+      '<p class="section-lead">' + (res.win
+        ? (isLastOfTour ? label + 'を制した！' : '次の試合へ進む。')
+        : (S.tour.kind === 'fallPref' && isLastOfTour ? '決勝で敗れたが、秋季地区大会へ進む。' : label + 'はここで敗退。')) + '</p>',
+      '次へ');
   }
 
+  /** 県大会優勝・全国大会優勝（野球と同じ画面を使う） */
+  function soccerCelebrate(state, kind) {
+    const S = state.soccer;
+    const year = '<p class="champ__eyebrow">' + state.year + '年目</p>';
+    if (kind === 'national') {
+      UI.html('champion-body',
+        '<div class="champ champ--grand">' +
+          confetti(28, ['#d4af37', '#e23b3b', '#3b7fe2', '#ffffff', '#ffd54f']) + year +
+          '<h2 class="champ__title">' + esc(state.settings.nationalName) + ' 優勝</h2>' +
+          '<p class="champ__school">' + esc(S.schoolName) + ' サッカー部</p>' +
+          '<div class="champ__rays" aria-hidden="true"></div>' +
+          '<p class="champ__lead">サッカー部が、全国の頂点に立った。</p>' +
+          '<p class="champ__note">' + state.year + '年目の夏、日本一。</p>' +
+        '</div>');
+      UI.show('screen-champion');
+    } else {
+      UI.html('localwin-body',
+        '<div class="champ champ--local">' +
+          confetti(18, ['#6bbf8a', '#ffd54f', '#81c7e8', '#ffffff']) + year +
+          '<h2 class="champ__title">県大会 優勝</h2>' +
+          '<p class="champ__school">' + esc(S.schoolName) + ' サッカー部</p>' +
+          '<div class="champ__rays" aria-hidden="true"></div>' +
+          '<p class="champ__lead">サッカー部が県の代表として、' + esc(state.settings.nationalName) + 'へ駒を進めた。</p>' +
+        '</div>');
+      UI.show('screen-localwin');
+    }
+  }
+
+  /** 夏のあとのオフシーズン。3年生の引退（能力つき） */
   function soccerOffseason(state, canRevive) {
     const S = state.soccer;
-    const retired = Soccer.retiring(S);
-    UI.el('soccer-eyebrow').textContent = state.year + '年目　オフシーズン';
-    UI.el('soccer-title').textContent = esc(S.schoolName) + '　シーズン終了';
-    UI.html('soccer-body',
+    const out = Soccer.retiring(S).sort((a, b) => Soccer.rating(b) - Soccer.rating(a))
+      .map((p) => ({ p, pos: p.soc.pos }));
+    const rest = S.players.filter((p) => p.grade < 3).sort((a, b) => Soccer.rating(b) - Soccer.rating(a))
+      .map((p) => ({ p, pos: p.soc.pos }));
+    socShow(state, state.year + '年目　オフシーズン', S.schoolName + '　サッカー部',
       (S.lastChampion ? '<p class="section-lead">サッカー部として優勝した！</p>' : '') +
-      '<p>サッカー部として' + S.seasons + 'シーズン目を終えた。' + (S.titles ? '（優勝' + S.titles + '回）' : '') + '</p>' +
-      (retired.length ? '<p>卒業: ' + retired.map((p) => esc(p.name)).join('、') + '</p>' : '') +
-      (canRevive ? '<p class="section-lead">野球部を復活させられる。</p>' : ''));
-    UI.el('btn-soccer-primary').textContent = 'サッカー部を続ける';
-    const sec = UI.el('btn-soccer-secondary');
-    if (canRevive) {
-      sec.hidden = false;
-      sec.textContent = '野球部を復活させる';
+      '<p>サッカー部として' + S.seasons + 'シーズン目の夏を終えた。' + (S.titles ? '（優勝' + S.titles + '回）' : '') + '</p>' +
+      socSection(S, '引退する3年生（' + out.length + '人）', out) +
+      socSection(S, '残る部員', rest) +
+      (canRevive ? '<p class="section-lead">野球部を復活させられる。</p>' : ''),
+      '特訓へ', canRevive ? '野球部を復活させる' : '');
+  }
+
+  /** 特訓の画面（野球と同じ画面。誰がどの能力で上がるかを、いまの能力と並べて見せる） */
+  function soccerTraining(state) {
+    const S = state.soccer;
+    const st = S.training;
+    UI.el('train-picks').textContent = Math.min(st.picks + 1, st.pickLimit);
+    UI.el('train-picks-max').textContent = st.pickLimit;
+    UI.el('train-passes').textContent = st.passes;
+    UI.el('train-passes-max').textContent = st.passLimit;
+    const card = st.card;
+    if (card) {
+      const groups = [];
+      const seen = new Map();
+      card.targets.forEach((t) => {
+        if (!seen.has(t.pid)) { const g = { pid: t.pid, ups: [] }; seen.set(t.pid, g); groups.push(g); }
+        seen.get(t.pid).ups.push(t);
+      });
+      const lines = groups.map((g) => {
+        const p = Soccer.findP(S, g.pid);
+        if (!p) return '';
+        const ups = g.ups.map((t) => esc(t.label) + ' +' + t.amount).join('　');
+        const chips = Soccer.STATS.map((stt) => {
+          const t = g.ups.find((x) => x.key === stt.key);
+          const now = p.soc[stt.key];
+          const after = t ? RNG.stat(now + t.amount) : null;
+          const up = after != null && after !== now;
+          return '<span class="ts' + (up ? ' is-up' : '') + '"><i>' + esc(stt.label) + '</i>' +
+            (up ? UI.rankNum(now) + '<em>→</em>' + UI.rankNum(after) : UI.rankNum(now)) + '</span>';
+        }).join('');
+        return '<li class="tcard">' +
+          '<div class="tcard__head"><b>' + esc(p.name) + '</b>' +
+            '<span>' + p.grade + '年・' + esc(p.soc.pos) + '</span>' +
+            '<em class="tcard__up">' + ups + '</em></div>' +
+          '<div class="tcard__stats">' + chips + '</div></li>';
+      }).join('');
+      UI.html('train-card',
+        '<div class="traincard traincard--' + card.tier + (card.multi ? ' is-multi' : '') + '">' +
+          '<p class="traincard__kind">' + esc(card.title) +
+            '<span class="traincard__n">' + groups.length + '人</span>' +
+            (card.multi ? '<span class="traincard__multi">複数</span>' : '') +
+            (card.tierLabel ? '<span class="traincard__tier">' + esc(card.tierLabel) + '</span>' : '') +
+          '</p><ul class="traincard__list">' + lines + '</ul></div>');
     } else {
-      sec.hidden = true;
+      UI.html('train-card', '');
     }
-    UI.show('screen-soccer');
+    const passBtn = UI.el('btn-train-pass');
+    const left = st.passLimit - st.passes;
+    passBtn.disabled = !Soccer.canPass(st);
+    passBtn.textContent = left > 0 ? '見送る（あと' + left + '回）' : '見送れません';
+    UI.show('screen-training');
+  }
+
+  function soccerTrainingResult(state, nextLabel) {
+    const rows = Soccer.trainingSummary(state.soccer.training);
+    UI.html('train-result', rows.length
+      ? '<div class="tablewrap"><table class="growth"><thead><tr><th class="nm">選手</th><th>年</th><th>項目</th><th>上がり幅</th><th>変化</th></tr></thead><tbody>' +
+        rows.map((r) => '<tr><td class="nm">' + esc(r.name) + '</td><td class="c">' + r.grade + '</td>' +
+          '<td>' + esc(r.label) + '</td><td class="c up"><b class="gr__up">+' + r.amount + '</b></td>' +
+          '<td class="c">' + UI.rankNum(r.before) + '<em>→</em>' + UI.rankNum(r.after) + '</td></tr>').join('') +
+        '</tbody></table></div>'
+      : '<p class="note">今回は伸びた選手がいませんでした。</p>');
+    UI.el('btn-train-done').textContent = nextLabel;
+    UI.show('screen-training-result');
+  }
+
+  /** 春の大会に出られるかどうかの発表（野球と同じ） */
+  function soccerSpringResult(state, qualified) {
+    const S = state.soccer;
+    const name = state.settings.springName;
+    const body = qualified
+      ? '<div class="champ champ--spring">' +
+          confetti(16, ['#3b7fe2', '#81c7e8', '#ffffff', '#ffd54f']) +
+          '<p class="champ__eyebrow">' + state.year + '年目</p>' +
+          '<h2 class="champ__title">' + esc(name) + ' 出場決定</h2>' +
+          '<p class="champ__school">' + esc(S.schoolName) + ' サッカー部</p>' +
+          '<div class="champ__rays" aria-hidden="true"></div>' +
+          '<p class="champ__lead">秋の大会の成績が認められ、来年の' + esc(name) + 'への出場が決まった。</p></div>'
+      : '<div class="champ champ--miss"><p class="champ__eyebrow">' + state.year + '年目</p>' +
+          '<h2 class="champ__title">' + esc(name) + ' 出場ならず</h2>' +
+          '<p class="champ__school">' + esc(S.schoolName) + ' サッカー部</p>' +
+          '<p class="champ__lead">今回は選ばれなかった。新しい仲間を迎えて、また夏を目指そう。</p></div>';
+    UI.html('spring-result-body', body);
+    UI.el('btn-spring-result-next').textContent = qualified ? (name + 'へ') : '新入生の入部';
+    UI.show('screen-spring-result');
+  }
+
+  /** 新入生の候補（野球と同じ、何組かから1組を選ぶ） */
+  function soccerNewcomers(state, onSelect) {
+    const S = state.soccer;
+    UI.el('pick-title').textContent = '新入生（サッカー部）';
+    UI.el('pick-lead').textContent = S.need + '人ひと組の候補が' + S.sets.length + 'つ。入部させる組を選んでください。';
+    const html = S.sets.map((players, i) =>
+      '<article class="dataset"><header class="dataset__head">' +
+        '<h3 class="dataset__no">候補 ' + (i + 1) + '</h3>' +
+        '<p class="dataset__meta">' + players.length + '人　注目： ' + esc(players[0].name) + '</p>' +
+        '<button type="button" class="btn btn--primary dataset__pick" data-i="' + i + '">この新入生たちを迎える</button>' +
+      '</header>' + socTable(S, players.map((p) => ({ p, pos: p.soc.pos }))) + '</article>').join('');
+    UI.html('pick-list', html);
+    const list = UI.el('pick-list');
+    list.querySelectorAll('.dataset__pick').forEach((b) => b.addEventListener('click', () => onSelect(+b.dataset.i)));
+    bindSocRows(list, S, [].concat.apply([], S.sets));
+    UI.show('screen-pick');
   }
 
   return {
     pick, ready, training, trainingResult, opening, pregame,
     poachWin, poachRelease, poachSuccess, poachFailed, champion, springResult, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
-    localWin, soccerStart, soccerPregame, soccerResult, soccerTraining, soccerOffseason,
+    localWin, soccerStart, soccerOpening, soccerPregame, soccerResult, soccerCelebrate, soccerOffseason,
+    soccerTraining, soccerTrainingResult, soccerSpringResult, soccerNewcomers,
   };
 })();
