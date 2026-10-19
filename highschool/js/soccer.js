@@ -19,58 +19,35 @@
 const Soccer = (() => {
 
   /* ---------- 能力 ----------
-     世の中のサッカーゲーム（EA SPORTS FC・eFootball）にならって、
-     細かい能力（決定力・ドリブル・ショートパス・タックル…）を持たせ、
-     FCのように6つの主要能力（スピード・シュート・パス・ドリブル・守備・フィジカル）に
-     まとめて見せる。GKは専用の能力（反応・ハンドリング・1対1・キック）を持つ。 */
+     世の中のサッカーゲーム（EA SPORTS FC・eFootball）の主要能力のうち、
+     大事なものだけを8つ持たせる。フィールドの選手は7つ、GKはそれに
+     キーパーの能力が加わる（GKも足・パス・体は試合に効く）。 */
 
   const STATS = [
-    { key: 'fin', label: '決定力',         group: '攻撃' },
-    { key: 'hea', label: 'ヘディング',     group: '攻撃' },
-    { key: 'dri', label: 'ドリブル',       group: '技術' },
-    { key: 'bco', label: 'ボールコントロール', group: '技術' },
-    { key: 'spa', label: 'ショートパス',   group: 'パス' },
-    { key: 'lpa', label: 'ロングパス',     group: 'パス' },
-    { key: 'vis', label: '視野',           group: 'パス' },
-    { key: 'daw', label: '守備意識',       group: '守備' },
-    { key: 'tac', label: 'タックル',       group: '守備' },
-    { key: 'spd', label: 'スピード',       group: '身体' },
-    { key: 'sta', label: 'スタミナ',       group: '身体' },
-    { key: 'str', label: 'フィジカル',     group: '身体' },
-    { key: 'gkr', label: 'GK反応',         group: 'GK' },
-    { key: 'gkh', label: 'GKハンドリング', group: 'GK' },
-    { key: 'gkd', label: 'GK1対1',         group: 'GK' },
-    { key: 'gkk', label: 'GKキック',       group: 'GK' },
+    { key: 'sho', label: 'シュート' },
+    { key: 'pas', label: 'パス' },
+    { key: 'dri', label: 'ドリブル' },
+    { key: 'def', label: '守備' },
+    { key: 'spd', label: 'スピード' },
+    { key: 'sta', label: 'スタミナ' },
+    { key: 'str', label: 'フィジカル' },
+    { key: 'gk',  label: 'キーパー' },
   ];
-  const FIELD_KEYS = STATS.filter((x) => x.group !== 'GK').map((x) => x.key);
-  const GK_KEYS = STATS.filter((x) => x.group === 'GK').map((x) => x.key).concat(['spd', 'sta', 'str']);
+  const FIELD_KEYS = ['sho', 'pas', 'dri', 'def', 'spd', 'sta', 'str'];
+  const GK_KEYS = ['gk', 'pas', 'spd', 'sta', 'str'];
   const ALL_KEYS = STATS.map((x) => x.key);
+  /* 表に並べる能力（全員同じ並び） */
+  const MAIN_FIELD = STATS;
+  const MAIN_GK = STATS;
 
-  /* 主要能力（FCの6つ。GKは専用の6つ）。細かい能力から計算する */
-  const MAIN_FIELD = [
-    { key: 'spd', label: 'スピード' }, { key: 'sho', label: 'シュート' }, { key: 'pas', label: 'パス' },
-    { key: 'dri', label: 'ドリブル' }, { key: 'def', label: '守備' }, { key: 'phy', label: 'フィジカル' },
-  ];
-  const MAIN_GK = [
-    { key: 'gkr', label: '反応' }, { key: 'gkh', label: 'ハンドリング' }, { key: 'gkd', label: '1対1' },
-    { key: 'gkk', label: 'キック' }, { key: 'spd', label: 'スピード' }, { key: 'phy', label: 'フィジカル' },
-  ];
-
+  /** 試合の計算で使う形にそろえる */
   function mains(s) {
-    return {
-      spd: s.spd,
-      sho: s.fin * 0.8 + s.hea * 0.2,
-      pas: s.spa * 0.4 + s.lpa * 0.3 + s.vis * 0.3,
-      dri: s.dri * 0.6 + s.bco * 0.4,
-      def: s.daw * 0.4 + s.tac * 0.4 + s.hea * 0.2,
-      phy: s.str * 0.5 + s.sta * 0.5,
-      gkr: s.gkr, gkh: s.gkh, gkd: s.gkd, gkk: s.gkk,
-    };
+    return { spd: s.spd, sho: s.sho, pas: s.pas, dri: s.dri, def: s.def, phy: (s.str + s.sta) / 2, sta: s.sta, str: s.str, gk: s.gk };
   }
 
-  function mainList(p, pos) {
-    const m = mains(p.soc || p.s || p);
-    return ((pos || p.soc.pos) === 'GK' ? MAIN_GK : MAIN_FIELD).map((x) => ({ key: x.key, label: x.label, value: Math.round(m[x.key]) }));
+  function mainList(p) {
+    const s = p.soc || p.s || p;
+    return STATS.map((x) => ({ key: x.key, label: x.label, value: Math.round(s[x.key]) }));
   }
 
   const POS = ['GK', 'DF', 'MF', 'FW'];
@@ -80,7 +57,7 @@ const Soccer = (() => {
 
   function rateFor(s, pos) {
     const m = mains(s);
-    if (pos === 'GK') return m.gkr * 0.35 + m.gkh * 0.3 + m.gkd * 0.25 + m.gkk * 0.1;
+    if (pos === 'GK') return m.gk * 0.8 + m.pas * 0.1 + m.str * 0.1;
     if (pos === 'DF') return m.def * 0.45 + m.phy * 0.2 + m.spd * 0.15 + m.pas * 0.1 + m.dri * 0.1;
     if (pos === 'MF') return m.pas * 0.35 + m.dri * 0.2 + m.def * 0.15 + m.phy * 0.15 + m.sho * 0.15;
     return m.sho * 0.4 + m.spd * 0.2 + m.dri * 0.2 + m.phy * 0.1 + m.pas * 0.1;
@@ -104,22 +81,14 @@ const Soccer = (() => {
     const t = p.talent || 0;
     const sp = p.speed || 45, pw = p.power || 45, mt = p.meet || 45, fd = p.field || 45, ar = p.arm || 45, ct = p.catch || 45;
     const s = {
-      spd: n(sp * 0.55 + 18),
-      str: n(pw * 0.35 + 20),
-      sta: n((isPit ? p.stamina : 45) * 0.4 + 20),
-      fin: n(34 + t * 4 + (mt - 45) * 0.15, 12),
-      hea: n(30 + pw * 0.2, 11),
+      sho: n(32 + t * 4 + (mt - 45) * 0.15 + pw * 0.06, 12),
+      pas: n(34 + ar * 0.12 + t * 2, 11),
       dri: n(32 + sp * 0.15 + mt * 0.1, 11),
-      bco: n(34 + fd * 0.12 + mt * 0.1, 11),
-      spa: n(38 + ar * 0.08 + mt * 0.05, 11),
-      lpa: n(34 + ar * 0.2, 11),
-      vis: n(36 + t * 3, 11),
-      daw: n(fd * 0.3 + 24, 11),
-      tac: n(fd * 0.25 + pw * 0.1 + 22, 11),
-      gkr: n(ct * 0.4 + (p.pos === 'C' ? 12 : 0) + 10, 11),
-      gkh: n(ct * 0.45 + (p.pos === 'C' ? 12 : 0) + 8, 11),
-      gkd: n(fd * 0.2 + ar * 0.15 + 14, 11),
-      gkk: n(ar * 0.3 + 14, 11),
+      def: n(fd * 0.3 + 24, 11),
+      spd: n(sp * 0.55 + 18),
+      sta: n((isPit ? p.stamina : 45) * 0.4 + 20),
+      str: n(pw * 0.35 + 20),
+      gk: n(ct * 0.42 + (p.pos === 'C' ? 12 : 0) + 9, 11),
     };
     s.pos = bestPos(s);
     p.soc = s;
@@ -127,20 +96,25 @@ const Soccer = (() => {
     return p;
   }
 
-  /** 古い保存データ（7つの能力）を新しい能力に作り直す */
+  /** 古い保存データの能力（7つ・16個の版）を、いまの8つに作り直す */
   function migrate(S) {
     if (!S || !S.players) return;
     S.players.forEach((p) => {
       const o = p.soc;
-      if (!o || o.fin != null) return;
-      const n = (v) => RNG.stat(v);
-      p.soc = {
-        spd: o.spd, str: o.phy, sta: o.sta,
-        fin: o.atk, hea: n((o.atk + o.phy) / 2), dri: n((o.atk + o.spd) / 2), bco: n((o.pas + o.def) / 2),
-        spa: o.pas, lpa: n(o.pas * 0.9), vis: n(o.pas * 0.95), daw: o.def, tac: o.def,
-        gkr: o.gk, gkh: o.gk, gkd: n(o.gk * 0.9), gkk: n(o.gk * 0.8),
-      };
-      p.soc.pos = bestPos(p.soc);
+      if (!o || o.sho != null) return;
+      const r = (v) => RNG.stat(Math.round(v));
+      let s;
+      if (o.fin != null) {
+        s = {
+          sho: r(o.fin * 0.8 + o.hea * 0.2), pas: r(o.spa * 0.4 + o.lpa * 0.3 + o.vis * 0.3),
+          dri: r(o.dri * 0.6 + o.bco * 0.4), def: r(o.daw * 0.4 + o.tac * 0.4 + o.hea * 0.2),
+          spd: o.spd, sta: o.sta, str: o.str, gk: r(o.gkr * 0.35 + o.gkh * 0.3 + o.gkd * 0.25 + o.gkk * 0.1),
+        };
+      } else {
+        s = { sho: o.atk, pas: o.pas, dri: r((o.atk + o.spd) / 2), def: o.def, spd: o.spd, sta: o.sta, str: o.phy, gk: o.gk };
+      }
+      s.pos = bestPos(s);
+      p.soc = s;
     });
     S.opp = null;
   }
@@ -151,11 +125,11 @@ const Soccer = (() => {
     p.name = NAMES.personName ? (NAMES.personName().last + NAMES.personName().first) : p.name;
     const n = (sd) => RNG.stat(RNG.norm(level, sd || 9));
     p.soc = {};
-    ALL_KEYS.forEach((k) => { p.soc[k] = n(k.indexOf('gk') === 0 ? 12 : 9); });
+    ALL_KEYS.forEach((k) => { p.soc[k] = n(k === 'gk' ? 12 : 9); });
     const want = RNG.pick(['GK', 'DF', 'DF', 'MF', 'MF', 'FW', 'FW']);
-    const boost = { GK: ['gkr', 'gkh', 'gkd'], DF: ['daw', 'tac', 'str'], MF: ['spa', 'lpa', 'vis'], FW: ['fin', 'dri', 'spd'] }[want];
+    const boost = { GK: ['gk'], DF: ['def', 'str'], MF: ['pas', 'dri'], FW: ['sho', 'spd'] }[want];
     boost.forEach((k) => { p.soc[k] = RNG.stat(p.soc[k] + 12); });
-    if (want !== 'GK') ['gkr', 'gkh', 'gkd', 'gkk'].forEach((k) => { p.soc[k] = RNG.stat(p.soc[k] - 8); });
+    if (want !== 'GK') p.soc.gk = RNG.stat(p.soc.gk - 8);
     p.soc.pos = bestPos(p.soc);
     p.socCareer = { g: 0, goals: 0, assists: 0, cs: 0 };
     return p;
@@ -171,7 +145,7 @@ const Soccer = (() => {
       tour: null, lastMatch: null, schoolName: team.name,
     };
     autoLineup(S);
-    S.baseLevel = strength(S) - 6;
+    S.baseLevel = strength(S) - 3;
     return S;
   }
 
@@ -211,7 +185,7 @@ const Soccer = (() => {
            avg(g('MF'), (m) => m.sho * 0.4 + m.pas * 0.3 + m.dri * 0.3) * 0.35,
       mid: avg(g('MF'), (m) => m.pas * 0.5 + m.dri * 0.15 + m.phy * 0.2 + m.def * 0.15),
       def: avg(g('DF'), (m) => m.def * 0.6 + m.phy * 0.2 + m.spd * 0.2) * 0.75 + avg(g('MF'), (m) => m.def) * 0.25,
-      gk: avg(g('GK'), (m) => m.gkr * 0.4 + m.gkh * 0.3 + m.gkd * 0.3),
+      gk: avg(g('GK'), (m) => m.gk),
       sta: avg(side, (m) => m.phy),
     };
   }
@@ -224,9 +198,9 @@ const Soccer = (() => {
         const n = (sd) => RNG.stat(RNG.norm(level, sd || 7));
         const s = {};
         ALL_KEYS.forEach((k) => { s[k] = n(); });
-        const boost = { GK: ['gkr', 'gkh', 'gkd', 'gkk'], DF: ['daw', 'tac'], MF: ['spa', 'lpa', 'vis'], FW: ['fin', 'dri'] }[pos];
+        const boost = { GK: ['gk'], DF: ['def'], MF: ['pas'], FW: ['sho'] }[pos];
         boost.forEach((k) => { s[k] = RNG.stat(s[k] + 10); });
-        if (pos !== 'GK') ['gkr', 'gkh', 'gkd', 'gkk'].forEach((k) => { s[k] = RNG.stat(s[k] - 12); });
+        if (pos !== 'GK') s.gk = RNG.stat(s.gk - 12);
         const nm = NAMES.personName();
         side.push({ pid: 'o' + pos + i, name: nm.last + nm.first, pos, s, num: side.length + 1 });
       }
@@ -369,7 +343,7 @@ const Soccer = (() => {
      チーム力を目安にした固定の値から始まるので、特訓や新入生で部員が
      強くなれば、そのぶん勝ち上がりやすくなる。大会ごとの差は野球の表と同じ */
   function baseLevel(S) {
-    if (S.baseLevel == null) S.baseLevel = strength(S) - 6;
+    if (S.baseLevel == null) S.baseLevel = strength(S) - 3;
     return S.baseLevel;
   }
 
@@ -487,10 +461,10 @@ const Soccer = (() => {
      カードに全部出して、選ぶ前に分かるようにする。 */
 
   const TIERS = [
-    { key: 's',  weight: 30, label: '',        people: [2, 3],  amt: [5, 9],   stats: [80, 18, 2] },
-    { key: 'm',  weight: 40, label: '',        people: [3, 5],  amt: [8, 12],  stats: [60, 33, 7] },
-    { key: 'l',  weight: 22, label: 'みっちり', people: [5, 8],  amt: [12, 19], stats: [40, 45, 15] },
-    { key: 'xl', weight: 4,  label: '猛特訓',   people: [9, 13], amt: [18, 28], stats: [0, 40, 60] },
+    { key: 's',  weight: 30, label: '',        people: [1, 2],  amt: [3, 6],   stats: [80, 18, 2] },
+    { key: 'm',  weight: 40, label: '',        people: [2, 3],  amt: [5, 8],  stats: [60, 33, 7] },
+    { key: 'l',  weight: 22, label: 'みっちり', people: [3, 5],  amt: [8, 13], stats: [40, 45, 15] },
+    { key: 'xl', weight: 4,  label: '猛特訓',   people: [6, 9],  amt: [12, 20], stats: [0, 40, 60] },
   ];
 
   function pickTier() {
@@ -509,7 +483,7 @@ const Soccer = (() => {
     const tier = pickTier();
     const n = Math.min(S.players.length, RNG.range(tier.people[0], tier.people[1]));
     const pool = RNG.shuffle(S.players.slice()).slice(0, n);
-    const lead = RNG.pick(STATS.filter((x) => x.group !== 'GK'));
+    const lead = RNG.pick(STATS.filter((x) => x.key !== 'gk'));
     const label = (k) => STATS.find((x) => x.key === k).label;
     const targets = [];
     pool.forEach((p) => {

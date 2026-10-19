@@ -916,7 +916,7 @@ const Screens = (() => {
       const heads = (gk ? Soccer.MAIN_GK : Soccer.MAIN_FIELD).map((x) => '<th>' + esc(x.label) + '</th>').join('');
       const body = list.map((x) => {
         const p = x.p;
-        const vals = Soccer.mainList({ soc: p.soc }, gk ? 'GK' : 'MF').map((v) => '<td class="c">' + UI.rankNum(v.value) + '</td>').join('');
+        const vals = Soccer.mainList({ soc: p.soc }).map((v) => '<td class="c">' + UI.rankNum(v.value) + '</td>').join('');
         const rate = opts.noRate ? '' : '<td class="c hl">' + Math.round(Soccer.rateFor(p.soc, x.pos || p.soc.pos)) + '</td>';
         return '<tr' + (opts.noClick ? '' : ' class="prow" data-pid="' + p.id + '"') + '><td class="c">' + esc(x.pos || p.soc.pos) + '</td>' +
           '<td class="nm">' + esc(p.name) + '</td>' + (p.grade === '' || p.grade == null ? '' : '<td class="c">' + p.grade + '</td>') + vals + rate + '</tr>';
@@ -925,9 +925,7 @@ const Screens = (() => {
       return '<div class="tablewrap"><table class="growth"><thead><tr><th>位置</th><th class="nm">' + (gk ? 'GK' : '選手') + '</th>' +
         (hasGrade ? '<th>年</th>' : '') + heads + (opts.noRate ? '' : '<th>評価</th>') + '</tr></thead><tbody>' + body + '</tbody></table></div>';
     };
-    const gks = rows.filter((x) => (x.pos || x.p.soc.pos) === 'GK');
-    const fld = rows.filter((x) => (x.pos || x.p.soc.pos) !== 'GK');
-    return part(fld, false) + part(gks, true);
+    return part(rows, false);
   }
 
   /** サッカー選手の詳細（FCと同じ主要能力と、細かい能力） */
@@ -935,21 +933,14 @@ const Screens = (() => {
     const c = p.socCareer || { g: 0, goals: 0, assists: 0, cs: 0 };
     const isGK = p.soc.pos === 'GK';
     const mainsHtml = '<div class="stats">' +
-      Soccer.mainList(p).map((m) => UI.stat(m.label, m.value)).join('') + '</div>';
-    const groups = {};
-    Soccer.STATS.forEach((st) => {
-      if ((st.group === 'GK') !== isGK && !(isGK && ['spd', 'sta', 'str'].indexOf(st.key) >= 0)) return;
-      (groups[st.group] = groups[st.group] || []).push(st);
-    });
-    const subHtml = Object.keys(groups).map((g) =>
-      '<h4 class="sub">' + esc(g) + '</h4><div class="stats">' +
-      groups[g].map((st) => UI.stat(st.label, p.soc[st.key])).join('') + '</div>').join('');
+      Soccer.mainList(p).filter((m) => isGK || m.key !== 'gk').map((m) => UI.stat(m.label, m.value)).join('') + '</div>';
+    const subHtml = '';
     return '<div class="pdetail">' +
       '<div class="pdetail__head"><div class="pdetail__name">' + esc(p.name) + '</div>' +
       '<div class="pdetail__meta">' + p.grade + '年　' + esc(Soccer.POS_NAME[p.soc.pos] || '') +
       '　総合 <b>' + Soccer.rating(p) + '</b></div>' +
       (p.from ? '<div class="pdetail__from">' + p.from.year + '年目に ' + esc(p.from.school) + ' から加入</div>' : '') +
-      '</div><h4 class="sub">主要能力</h4>' + mainsHtml + subHtml +
+      '</div><h4 class="sub">能力</h4>' + mainsHtml + subHtml +
       '<h4 class="sub">サッカー部での成績</h4>' +
       '<p class="note">' + c.g + '試合　得点 ' + c.goals + '　アシスト ' + (c.assists || 0) + '　無失点 ' + c.cs + '</p>' +
       (p.career
