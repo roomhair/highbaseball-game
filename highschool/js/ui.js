@@ -188,14 +188,30 @@ const UI = (() => {
     return (p.throws === 'L' ? '左' : '右') + '投' + (p.bats === 'L' ? '左' : '右') + '打';
   }
 
+  /** 投手の番手の並び。試合前に先発を選んでも番手は動かさないので、
+      並びを持っていればそれ、なければ起用順 */
+  function pitOrderOf(team) {
+    const ids = new Set((team.pitchers || []).map((p) => p.id));
+    const base = ((team.pitcherOrder && team.pitcherOrder.length ? team.pitcherOrder : team.rotation) || [])
+      .filter((id) => ids.has(id));
+    (team.rotation || []).forEach((id) => { if (base.indexOf(id) < 0) base.push(id); });
+    return base;
+  }
+  /** 並びを保存し、先発（いまの rotation[0]）を頭にした起用順を作る */
+  function setPitOrder(team, order) {
+    const starter = (team.rotation || [])[0];
+    team.pitcherOrder = order.slice();
+    team.rotation = order.indexOf(starter) < 0 ? order.slice()
+      : [starter].concat(order.filter((id) => id !== starter));
+  }
+
   /** その選手がオーダーのどこにいるか。控えなら「控え」 */
   function roleText(team, p) {
     if (!team) return '';
     if (p.kind === 'pitcher') {
-      const i = (team.rotation || []).indexOf(p.id);
-      if (i === 0) return '先発';
-      if (i > 0) return (i + 1) + '番手';
-      return '投手';
+      const i = pitOrderOf(team).indexOf(p.id);
+      if (i < 0) return '投手';
+      return (i + 1) + '番手' + ((team.rotation || [])[0] === p.id ? '・先発' : '');
     }
     const i = (team.lineup || []).findIndex((s) => s.pid === p.id);
     if (i < 0) return '控え';
@@ -269,7 +285,7 @@ const UI = (() => {
   function roleRank(team, p) {
     if (!team) return 50;
     if (p.kind === 'pitcher') {
-      const i = (team.rotation || []).indexOf(p.id);
+      const i = pitOrderOf(team).indexOf(p.id);
       return i < 0 ? 90 : i;
     }
     const i = (team.lineup || []).findIndex((sl) => sl.pid === p.id);
@@ -631,7 +647,7 @@ const UI = (() => {
       if (!p) return '';
       return '<li class="lurow" data-pid="' + p.id + '">' +
         '<span class="lugrip" aria-hidden="true"><i></i><i></i><i></i></span>' +
-        '<span class="luno luno--wide">' + (i === 0 ? '先発' : (i + 1) + '番手') + '</span>' +
+        '<span class="luno luno--wide">' + (i + 1) + '番手' + (team.rotation[0] === p.id ? '<br><small>先発</small>' : '') + '</span>' +
         '<span class="lumain">' +
           '<button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
           '<span class="tiny">' + p.grade + '年 ' + handMark(p) + '</span>' +
@@ -659,14 +675,14 @@ const UI = (() => {
         ? '<p class="luwarn">' + msgs.join('。') + '。直してから決定してください。</p>' : '';
       const hint = tab === 'bat'
         ? '守備位置の欄で<b>「控」を選べば外れ、守備位置を選べばスタメンに入ります</b>。'
-        : '左はしの取っ手をつまんで、投げる順番を並べ替えられます。<b>いちばん上が先発</b>です。';
+        : '左はしの取っ手をつまんで、投げる順番を並べ替えられます。先発は試合前の画面で選べます。';
       let no = 0;
       const list = tab === 'bat'
         ? '<ul class="lulist" id="lu-bat">' + ids.map((pid, i) => {
             if (posOf[pid] !== BENCH) no++;
             return batRow(pid, no, prob, i);
           }).join('') + '</ul>'
-        : '<ul class="lulist" id="lu-pit">' + team.rotation.map(pitRow).join('') + '</ul>';
+        : '<ul class="lulist" id="lu-pit">' + pitOrderOf(team).map(pitRow).join('') + '</ul>';
       return '<div class="lineup-edit">' +
         '<h3 class="modal__title">オーダー変更</h3>' +
         '<div class="lutabs">' +
@@ -689,7 +705,10 @@ const UI = (() => {
       Array.from(list.children).forEach((li, i) => {
         const no = li.querySelector('.luno');
         if (!no) return;
-        if (list.id === 'lu-pit') { no.textContent = i === 0 ? '先発' : (i + 1) + '番手'; return; }
+        if (list.id === 'lu-pit') {
+          no.innerHTML = (i + 1) + '番手' + (team.rotation[0] === li.dataset.pid ? '<br><small>先発</small>' : '');
+          return;
+        }
         if (posOf[li.dataset.pid] !== BENCH) { n++; no.textContent = n; }
         else no.textContent = '控';
       });
@@ -734,7 +753,7 @@ const UI = (() => {
       const pit = body.querySelector('#lu-pit');
       if (pit) makeSortable(pit, {
         onMove: relabel,
-        onDone: (order) => { team.rotation = order.slice(); team.pitcherOrder = null; refresh(); },
+        onDone: (order) => { setPitOrder(team, order); refresh(); },
       });
 
       const move = (list, i, d) => {
@@ -753,12 +772,12 @@ const UI = (() => {
         if (next) applyBatters(next);
       }));
       body.querySelectorAll('.pup').forEach((b) => b.addEventListener('click', () => {
-        const next = move(team.rotation, +b.dataset.i, -1);
-        if (next) { team.rotation = next; team.pitcherOrder = null; refresh(); }
+        const next = move(pitOrderOf(team), +b.dataset.i, -1);
+        if (next) { setPitOrder(team, next); refresh(); }
       }));
       body.querySelectorAll('.pdown').forEach((b) => b.addEventListener('click', () => {
-        const next = move(team.rotation, +b.dataset.i, 1);
-        if (next) { team.rotation = next; team.pitcherOrder = null; refresh(); }
+        const next = move(pitOrderOf(team), +b.dataset.i, 1);
+        if (next) { setPitOrder(team, next); refresh(); }
       }));
 
       /* 守備位置を変えるのは、その選手だけ。
