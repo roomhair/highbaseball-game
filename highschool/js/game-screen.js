@@ -394,6 +394,15 @@ const GameScreen = (() => {
     let stage = '';
     while (ctx.i < (gs.skipTo || 0) && pull()) stage = apply(ctx.live.log[ctx.i++]);
     render(stage);
+    /* 試合開始のボタンを押したら、試合の画面のいちばん上から見せる。
+       押したボタンにフォーカスが残っていると、スマホのブラウザがその位置へ
+       スクロールを戻してしまうことがあるので、外してから、描き終わったあとにも
+       もう一度いちばん上へ送る */
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    const toTop = () => window.scrollTo(0, 0);
+    toTop();
+    requestAnimationFrame(toTop);
+    setTimeout(toTop, 120);
     step();
   }
 

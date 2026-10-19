@@ -455,6 +455,11 @@ const SoccerGameScreen = (() => {
     renderScore();
     renderLog();
     UI.show('screen-soccer-game');
+    /* 試合開始のボタンを押したら、試合の画面のいちばん上から見せる */
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    const toTop = () => window.scrollTo(0, 0);
+    requestAnimationFrame(toTop);
+    setTimeout(toTop, 120);
     const my = runId;
     matchFlow(my).catch((err) => { if (!(err instanceof Cancel)) throw err; });
   }
