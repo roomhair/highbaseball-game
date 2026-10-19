@@ -803,8 +803,10 @@ const UI = (() => {
         } else {
           /* autoLineup は投げる順番まで組み直すので、そこは戻しておく */
           const keep = (team.rotation || []).slice();
+          const keepOrder = team.pitcherOrder ? team.pitcherOrder.slice() : null;
           Team.autoLineup(team);
           if (keep.length) team.rotation = keep;
+          team.pitcherOrder = keepOrder;
           team.batters.forEach((p) => { posOf[p.id] = BENCH; });
           team.lineup.forEach((sl) => { posOf[sl.pid] = sl.pos; });
           order = team.lineup.map((sl) => sl.pid)

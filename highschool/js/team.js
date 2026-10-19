@@ -163,6 +163,8 @@ const Team = (() => {
     team.rotation = team.pitchers.slice()
       .sort((a, b) => Player.rating(b) - Player.rating(a))
       .map((p) => p.id);
+    /* 番手の並びも組み直す。古い並びが残ると、新しい先発が「2番手」などと出る */
+    team.pitcherOrder = null;
     return team.rotation;
   }
 
