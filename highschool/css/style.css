@@ -573,7 +573,27 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .stage__runs { display: inline-block; margin-left: 10px; font-size: 16px; color: var(--crimson); }
 
 /* グラウンドの絵。打球が飛んでいくのが見える */
-.fieldview { text-align: center; }
+.fieldview { text-align: center; display: flex; align-items: center; gap: 6px; }
+.fieldview__main { text-align: center; }
+/* 9分割のストライクゾーン（最後の1球の位置） */
+.zone { width: 24px; height: 29px; overflow: visible; }
+@media (min-width: 720px) { .zone { width: 34px; height: 41px; } }
+.zone__box { fill: color-mix(in srgb, var(--accent) 8%, transparent); stroke: var(--line); stroke-width: 1; }
+.zone__grid line { stroke: var(--line); stroke-width: .6; }
+.zone__pt { stroke: var(--bg); stroke-width: .8; transform-box: fill-box; transform-origin: center; animation: zonept .35s cubic-bezier(.2,1.6,.4,1) both; }
+.zone__pt.is-hit { fill: var(--accent); }
+.zone__pt.is-hr { fill: var(--crimson); }
+.zone__pt.is-out { fill: var(--ink-mute); }
+.zone__pt.is-strike { fill: #e0a400; }
+.zone__pt.is-ball { fill: #2f6fe4; }
+@keyframes zonept { from { transform: scale(0); } to { transform: scale(1); } }
+/* 守備・走者・投球・打球 */
+.fv-fielder { stroke: var(--bg); stroke-width: 1.2; opacity: .85; }
+.fv-runner { stroke: #fff; stroke-width: 1.6; }
+.fv-pitch { fill: var(--ink); }
+.fv-hit { fill: var(--ink); stroke: var(--bg); stroke-width: 1.4; }
+.fv-hit.is-hr { fill: var(--crimson); }
+.fv-burst { fill: none; stroke: #ffc94a; stroke-width: 2.4; opacity: 0; }
 .fieldview svg { width: 60px; height: 56px; overflow: visible; }
 @media (max-width: 399px) { .fieldview svg { width: 52px; height: 49px; } }
 @media (min-width: 720px) { .fieldview svg { width: 92px; height: 86px; } }
@@ -1321,34 +1341,3 @@ tr.prow.is-picked .nmlink { color: inherit; }
 .soc-cnts { display: flex; gap: 10px; flex-wrap: wrap; font-size: 13px; font-weight: 700; margin: 6px 0; }
 .soc-cnt.is-bad { color: var(--ng); }
 
-/* ===== 野球の試合中：大きい球場の絵（park.js） ===== */
-.park { margin: 6px 0 8px; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm); background: #2d6e3e; line-height: 0; }
-.park__svg { display: block; width: 100%; height: auto; max-height: 52vh; }
-.park .pk-stand { fill: #23402c; }
-.park .pk-track { fill: #b88a5a; }
-.park .pk-grass { fill: #3f9152; }
-.park .pk-mow { fill: none; stroke: rgba(255,255,255,.07); stroke-width: 8; }
-.park .pk-fence { fill: none; stroke: #1c3324; stroke-width: 2.4; }
-.park .pk-dirt { fill: #c49663; }
-.park .pk-infgrass { fill: #46a05b; }
-.park .pk-line { stroke: #fff; stroke-width: .9; opacity: .9; }
-.park .pk-mound { fill: #c9a06f; stroke: #e6c89c; stroke-width: .6; }
-.park .pk-base { fill: #fff; }
-.park .pk-homecircle { fill: #c49663; }
-.park .pk-plate { fill: #fff; }
-.park .pk-pltext { fill: #fff; font-size: 4.2px; font-weight: 800; font-family: sans-serif; pointer-events: none; }
-.park .pk-batter circle { stroke-width: 1.4; }
-.park .pk-ballbody { fill: #fff; stroke: #9a9a9a; stroke-width: .4; }
-.park .pk-ballbody, .park .pk-pop { transform-box: fill-box; transform-origin: center; }
-.park .pk-ballshadow { fill: rgba(0,0,0,.28); }
-.park .pk-outlabel { fill: #fff; font-size: 6px; font-weight: 800; font-family: sans-serif; }
-.park .pk-lamp { fill: rgba(255,255,255,.18); stroke: rgba(255,255,255,.5); stroke-width: .6; }
-.park .pk-lamp.is-on { fill: #ff5a4a; stroke: #ffb3aa; }
-.park .pk-pop { font-size: 13px; font-weight: 900; font-family: sans-serif; fill: #fff; paint-order: stroke; stroke: rgba(0,0,0,.55); stroke-width: 2.4px; letter-spacing: .04em; }
-.park .pk-pop--hr { fill: #ffe066; font-size: 17px; }
-.park .pk-pop--good { fill: #ffe9a8; }
-.park .pk-pop--bad { fill: #ffd2cd; }
-.park .pk-pop--run { fill: #ffe066; font-size: 10px; }
-.park .pk-pop--half { font-size: 10px; }
-/* 球場の絵を出したので、打席の欄の小さな図は隠す */
-#game-stage .fieldview { display: none; }

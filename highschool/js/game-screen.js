@@ -126,28 +126,173 @@ const GameScreen = (() => {
     '</g>';
   }
 
+  /* ---------- 小窓の動き（野球速報アプリや野球ゲームの試合画面を参考に） ----------
+     ・守備の9人を小さな点で置き、打球の方向の野手が落下点へ走る（アウトなら捕る）
+     ・投球（マウンド→本塁）のあとに打球が飛ぶ。フライは高く上がる（大きく見える）
+     ・走者は塁を回って次の塁へ。生還したら本塁で消え、アウトになった走者は消える
+     ・ホームランは外野の先で光がはじける
+     ・横に、打席の最後の1球がストライクゾーンのどこだったかを9分割の図で出す
+     動きは SVG の animateMotion などで付ける（描き直すたびに最初から動く） */
+
+  const BASE_PT = [[140.5, 111.5], [100, 70.5], [59, 111.5]];
+  const MOUND = [100, 112];
+  const TEAM_COLOR = { my: '#2f6fe4', op: '#e5483c' };
+
+  function basePt(b) { return (b < 0 || b >= 3) ? HOME : BASE_PT[b]; }
+
+  /** 打球の種類（ゴロ・ライナー・フライ）。高さの出し方に使う */
+  function flyKind(e) {
+    const t = e.text || '';
+    if (e.code === 'HR' || t.indexOf('飛') >= 0) return 'fly';
+    if (t.indexOf('直') >= 0 || e.code === '2B' || e.code === '3B') return 'liner';
+    return 'ground';
+  }
+
+  /** 決まった種から 0〜1 を出す（同じ打席なら何度描いても同じ位置になる） */
+  function seeded(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; };
+  }
+
+  /** 最後の1球の位置（ゾーンの図用）。結果に合う場所に置く */
+  function pitchSpot(e) {
+    const r = seeded(String(e.batter) + e.inning + e.half + e.order + e.text);
+    const inZone = () => [7 + r() * 16, 7 + r() * 22];
+    if (e.code === 'BB' || e.code === 'HBP') {
+      const side = r() < 0.5;
+      return { p: side ? [r() < 0.5 ? 2 + r() * 3 : 25 + r() * 3, 6 + r() * 26] : [6 + r() * 18, r() < 0.5 ? 2 + r() * 3 : 33 + r() * 3], cls: 'is-ball' };
+    }
+    if (e.code === 'K') {
+      const looking = (e.text || '').indexOf('見') >= 0;
+      return looking
+        ? { p: [r() < 0.5 ? 7.5 + r() * 2 : 21 + r() * 2, r() < 0.5 ? 7.5 + r() * 3 : 26 + r() * 3], cls: 'is-strike' }
+        : { p: [6 + r() * 18, 27 + r() * 7], cls: 'is-strike' };
+    }
+    if (['1B', '2B', '3B', 'HR'].indexOf(e.code) >= 0) return { p: [11 + r() * 8, 12 + r() * 13], cls: e.code === 'HR' ? 'is-hr' : 'is-hit' };
+    return { p: inZone(), cls: 'is-out' };
+  }
+
+  function zoneView(e) {
+    const show = e && e.k === 'pa' && e.code !== 'SH' && e.code !== 'SQ' && e.code !== 'BE';
+    const spot = show ? pitchSpot(e) : null;
+    const grid = [];
+    for (let i = 1; i < 3; i++) {
+      grid.push('<line x1="' + (6 + 6 * i) + '" y1="6" x2="' + (6 + 6 * i) + '" y2="30"/>');
+      grid.push('<line x1="6" y1="' + (6 + 8 * i) + '" x2="24" y2="' + (6 + 8 * i) + '"/>');
+    }
+    return '<svg class="zone" viewBox="0 0 30 36" aria-hidden="true">' +
+      '<rect class="zone__box" x="6" y="6" width="18" height="24"/>' +
+      '<g class="zone__grid">' + grid.join('') + '</g>' +
+      (spot ? '<circle class="zone__pt ' + spot.cls + '" cx="' + spot.p[0].toFixed(1) + '" cy="' + spot.p[1].toFixed(1) + '" r="2.6"/>' : '') +
+    '</svg>';
+  }
+
+  /** 1人ぶんの走者。g を出発点に置き、そこから塁を順に回る */
+  function runnerSvg(from, to, begin, dur, color, fadeAtEnd) {
+    const start = basePt(from);
+    const pts = [];
+    for (let b = from + 1; b <= to; b++) pts.push(basePt(b));
+    let anim = '';
+    if (pts.length) {
+      const path = 'M0,0 ' + pts.map((p) => 'L' + (p[0] - start[0]).toFixed(1) + ',' + (p[1] - start[1]).toFixed(1)).join(' ');
+      anim = '<animateMotion path="' + path + '" begin="' + begin.toFixed(2) + 's" dur="' + (dur * pts.length).toFixed(2) + 's" fill="freeze"/>';
+    }
+    const fade = fadeAtEnd
+      ? '<animate attributeName="opacity" from="1" to="0" begin="' + (begin + dur * pts.length).toFixed(2) + 's" dur="0.25s" fill="freeze"/>'
+      : '';
+    return '<g transform="translate(' + start[0] + ' ' + start[1] + ')"><circle class="fv-runner" r="6" fill="' + color + '">' + anim + fade + '</circle></g>';
+  }
+
   function fieldView(bases, outs, e, showBatter) {
-    const t = ballTarget(e);
+    const k = 1 / Math.max(1, speed || 1);
+    const offSide = e && e.half ? (e.half === 'top' ? 'away' : 'home') : (ctx && ctx.cur ? ctx.cur.side : 'away');
+    const mine = ctx ? ctx.mySide : 'away';
+    const offColor = offSide === mine ? TEAM_COLOR.my : TEAM_COLOR.op;
+    const defColor = offSide === mine ? TEAM_COLOR.op : TEAM_COLOR.my;
+    const isBat = e && e.k === 'pa';
     const b = (i) => (bases && bases[i] ? ' is-on' : '');
-    /* 打球は「本塁から飛んでいく」ことが分かるように、
-       本塁からの軌跡の線を先に引き、その上をボールが走る。
-       点が現れて移動するだけだと、どこから飛んだのか読み取れない。 */
+
+    const tPitch = isBat ? 0.24 * k : 0;
+    const t = isBat ? ballTarget(e) : null;
+    const kind = t ? flyKind(e) : null;
+    const hr = isBat && e.code === 'HR';
+    const flight = t ? (hr ? 0.9 : (kind === 'fly' ? 0.7 : (kind === 'liner' ? 0.42 : 0.5))) * k : 0;
+
+    /* 守備の9人。打球の方向の野手は落下点へ走る */
+    let fielders = '';
+    Object.keys(SPOT).forEach((pos) => {
+      const s = SPOT[pos];
+      let anim = '';
+      if (t && e.spot === pos && !hr) {
+        const out = e.code === 'OUT' || e.code === 'E';
+        const tx = out ? t[0] : s[0] + (t[0] - s[0]) * 0.7;
+        const ty = out ? t[1] : s[1] + (t[1] - s[1]) * 0.7;
+        anim = '<animateMotion path="M0,0 L' + (tx - s[0]).toFixed(1) + ',' + (ty - s[1]).toFixed(1) + '" begin="' + tPitch.toFixed(2) + 's" dur="' + (flight * 0.95).toFixed(2) + 's" fill="freeze"/>';
+      }
+      fielders += '<g transform="translate(' + s[0] + ' ' + s[1] + ')"><circle class="fv-fielder" r="4.6" fill="' + defColor + '">' + anim + '</circle></g>';
+    });
+
+    /* 投球。マウンドから本塁へ */
+    const pitchBall = isBat
+      ? '<g transform="translate(' + MOUND[0] + ' ' + MOUND[1] + ')"><circle class="fv-pitch" r="3">' +
+        '<animateMotion path="M0,0 L0,' + (HOME[1] - 4 - MOUND[1]) + '" begin="0s" dur="' + tPitch.toFixed(2) + 's" fill="freeze"/>' +
+        '<animate attributeName="opacity" from="1" to="0" begin="' + tPitch.toFixed(2) + 's" dur="0.05s" fill="freeze"/></circle></g>'
+      : '';
+
+    /* 打球。本塁から落ちどころへ。フライは途中で大きく（高く）見せる */
     let ball = '';
     if (t) {
       const dx = t[0] - HOME[0], dy = t[1] - HOME[1];
       const len = Math.sqrt(dx * dx + dy * dy);
-      const hr = e.code === 'HR';
+      const big = hr ? 8 : (kind === 'fly' ? 7 : (kind === 'liner' ? 5 : 4.2));
       ball =
-        '<line class="balltrail' + (hr ? ' is-hr' : '') + '" ' +
-          'x1="' + HOME[0] + '" y1="' + HOME[1] + '" x2="' + t[0] + '" y2="' + t[1] + '" ' +
-          'style="--len:' + len.toFixed(1) + '"></line>' +
-        '<circle class="ballfrom' + (hr ? ' is-hr' : '') + '" ' +
-          'cx="' + HOME[0] + '" cy="' + HOME[1] + '" r="3"></circle>' +
-        '<circle class="ball' + (hr ? ' is-hr' : '') + '" ' +
-          'cx="' + HOME[0] + '" cy="' + HOME[1] + '" r="4.4" ' +
-          'style="--dx:' + dx + ';--dy:' + dy + '"></circle>';
+        '<line class="balltrail' + (hr ? ' is-hr' : '') + '" x1="' + HOME[0] + '" y1="' + HOME[1] + '" x2="' + t[0] + '" y2="' + t[1] + '" ' +
+          'style="--len:' + len.toFixed(1) + ';animation-delay:' + tPitch.toFixed(2) + 's;animation-duration:' + flight.toFixed(2) + 's"></line>' +
+        '<g transform="translate(' + HOME[0] + ' ' + HOME[1] + ')"><circle class="fv-hit' + (hr ? ' is-hr' : '') + '" r="4.2">' +
+          '<animateMotion path="M0,0 L' + dx.toFixed(1) + ',' + dy.toFixed(1) + '" begin="' + tPitch.toFixed(2) + 's" dur="' + flight.toFixed(2) + 's" fill="freeze"/>' +
+          '<animate attributeName="r" values="4.2;' + big + ';4.2" begin="' + tPitch.toFixed(2) + 's" dur="' + flight.toFixed(2) + 's" fill="freeze"/>' +
+        '</circle></g>';
+      if (hr) {
+        const at = (tPitch + flight).toFixed(2);
+        ball += [0, 1, 2].map((i) =>
+          '<circle class="fv-burst" cx="' + (t[0] + (i - 1) * 14) + '" cy="' + (t[1] + (i % 2) * 6) + '" r="2">' +
+          '<animate attributeName="r" from="2" to="20" begin="' + (Number(at) + i * 0.12).toFixed(2) + 's" dur="0.55s" fill="freeze"/>' +
+          '<animate attributeName="opacity" values="0;1;0" begin="' + (Number(at) + i * 0.12).toFixed(2) + 's" dur="0.55s" fill="freeze"/></circle>').join('');
+      }
     }
+
+    /* 走者。前の打席の塁と、この打席のあとの塁を比べて動かす */
+    let runners = '';
+    const prev = (ctx && ctx.prevBases) || [null, null, null];
+    const after = (e && e.bases) ? e.bases : [null, null, null];
+    if (e && (e.k === 'pa' || e.k === 'steal')) {
+      const begin = e.k === 'pa' ? tPitch + flight * 0.6 : 0;
+      const unit = 0.24 * k;
+      let scored = 0;
+      prev.forEach((id, base) => {
+        if (!id) return;
+        const nb = after.indexOf(id);
+        if (nb >= 0) runners += runnerSvg(base, nb, begin, unit, offColor, false);
+        else if (e.runs && scored < e.runs) { scored++; runners += runnerSvg(base, 3, begin, unit, offColor, true); }
+        else runners += runnerSvg(base, base, begin, unit, offColor, true);
+      });
+      if (e.k === 'pa' && e.batter) {
+        const nb = after.indexOf(e.batter);
+        if (nb >= 0 && prev.indexOf(e.batter) < 0) runners += runnerSvg(-1, nb, begin, unit, offColor, false);
+        else if (hr) runners += runnerSvg(-1, 3, begin, unit * 0.8, offColor, true);
+      }
+      // 名前のない走者（前の情報が無いとき）はそのまま置く
+      after.forEach((id, base) => {
+        if (id && prev.indexOf(id) < 0 && !(e.k === 'pa' && id === e.batter)) runners += runnerSvg(base, base, 0, unit, offColor, false);
+      });
+    } else {
+      (bases || []).forEach((on, base) => { if (on) runners += runnerSvg(base, base, 0, 0.2, offColor, false); });
+    }
+
     return '<div class="fieldview">' +
+      zoneView(e) +
+      '<div class="fieldview__main">' +
       '<svg viewBox="0 0 200 188" aria-hidden="true">' +
         '<path class="fv-grass" d="M100 152 L14 66 A122 122 0 0 1 186 66 Z"/>' +
         '<path class="fv-fence" d="M14 66 A122 122 0 0 1 186 66"/>' +
@@ -156,11 +301,13 @@ const GameScreen = (() => {
         '<rect class="fv-base' + b(1) + '" x="95.5" y="66" width="9" height="9" transform="rotate(45 100 70.5)"/>' +
         '<rect class="fv-base' + b(2) + '" x="54.5" y="107" width="9" height="9" transform="rotate(45 59 111.5)"/>' +
         '<polygon class="fv-home" points="100,147 105,152 100,157 95,152"/>' +
+        fielders +
         (showBatter === false ? '' : batterView(swingKindOf(e), e && e.batterBats)) +
-        ball +
+        pitchBall + ball + runners +
       '</svg>' +
       '<div class="outs">' + [0, 1, 2].map((i) =>
         '<i class="out' + (i < outs ? ' is-on' : '') + '"></i>').join('') + '<span>OUT</span></div>' +
+      '</div>' +
     '</div>';
   }
 
@@ -286,15 +433,9 @@ const GameScreen = (() => {
     staminaMode = false;
     applySpeedButtons();
     UI.show('screen-game');
-    /* 大きい球場の絵。自軍は青、相手は赤 */
-    if (typeof Park !== 'undefined') Park.mount(UI.el('game-park'), { mySide: ctx.mySide });
     /* 中断から戻ったときは、見たところまでを黙って流してから続ける */
     let stage = '';
-    while (ctx.i < (gs.skipTo || 0) && pull()) {
-      const ev = ctx.live.log[ctx.i++];
-      stage = apply(ev);
-      if (typeof Park !== 'undefined') Park.play(ev, 1, false);
-    }
+    while (ctx.i < (gs.skipTo || 0) && pull()) stage = apply(ctx.live.log[ctx.i++]);
     render(stage);
     step();
   }
@@ -442,6 +583,7 @@ const GameScreen = (() => {
          回が終わってはじめて 0 を入れる */
       closeHalf(st);
       st.openHalf = { side: cur.side, inning: e.inning };
+      ctx.prevBases = [e.tie ? 'tie1' : null, e.tie ? 'tie2' : null, null];
       /* イニングの変わり目では、まだ誰も打席に入っていないので
          打者の絵は出さない */
       return '<div class="stage__half">' + halfLabel(e) + (e.tie ? '　タイブレーク' : '') + '</div>' +
@@ -454,10 +596,12 @@ const GameScreen = (() => {
     }
 
     if (e.k === 'steal') {
-      return '<div class="stage__play' + (e.ok ? ' is-good' : ' is-bad') + '">' +
+      const html = '<div class="stage__play' + (e.ok ? ' is-good' : ' is-bad') + '">' +
         '<span class="stage__meta">' + halfLabel(e) + '</span>' +
         '<span class="stage__text">' + esc(e.text) + '</span></div>' +
         fieldView(e.bases.map(Boolean), e.outs, e);
+      ctx.prevBases = e.bases.slice();
+      return html;
     }
 
     if (e.k === 'pa') {
@@ -485,12 +629,14 @@ const GameScreen = (() => {
         ? '<span class="stage__ball">' + esc(e.pitch) +
           (e.pitchSpeed ? ' <b>' + e.pitchSpeed + '</b>km/h' : '') + '</span>'
         : '';
-      return '<div class="stage__play' + (e.code === 'HR' ? ' is-hr' : (good ? ' is-good' : '')) + '">' +
+      const playHtml = '<div class="stage__play' + (e.code === 'HR' ? ' is-hr' : (good ? ' is-good' : '')) + '">' +
         '<span class="stage__meta">' + halfLabel(e) + '　' + e.order + '番 ' + esc(e.batterName) + '</span>' +
         ball +
         '<span class="stage__text">' + esc(e.text) +
           (e.runs ? '<b class="stage__runs">+' + e.runs + '点</b>' : '') + '</span>' +
         '</div>' + fieldView(e.bases.map(Boolean), e.outs, e);
+      ctx.prevBases = e.bases.slice();
+      return playHtml;
     }
 
     if (e.k === 'end') {
@@ -516,7 +662,6 @@ const GameScreen = (() => {
     const e = ctx.live.log[ctx.i++];
     const stage = apply(e);
     render(stage);
-    if (typeof Park !== 'undefined') Park.play(e, speed || 1, true);
     /* 回の変わり目ごとに、どこまで見たかを記録してもらう。
        1打席ごとに書くと保存が重いので、この粒度にしてある */
     if (e.k === 'half' && ctx.onProgress) ctx.onProgress(ctx.i);
@@ -540,8 +685,8 @@ const GameScreen = (() => {
       showTapHint(true);
       return;
     }
-    /* 球場の絵の動き（投球→打球→走塁）が見終わるくらいの間を取る */
-    const wait = e.k === 'half' ? 900 : (e.k === 'pa' ? (e.code === 'HR' ? 1900 : (e.runs ? 1600 : 1250)) : 1000);
+    /* グラウンドの小窓の動き（投球→打球→走塁）が見終わるくらいの間を取る */
+    const wait = e.k === 'half' ? 700 : (e.k === 'pa' ? (e.code === 'HR' ? 1350 : (e.runs ? 1200 : 950)) : 800);
     schedule(wait);
   }
 
@@ -552,7 +697,6 @@ const GameScreen = (() => {
     ctx.awaitTap = false;
     ctx.paused = false;
     while (pull()) apply(ctx.live.log[ctx.i++]);
-    if (typeof Park !== 'undefined') Park.finishAll();
     finish();
   }
 
