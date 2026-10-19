@@ -790,7 +790,8 @@ const GameScreen = (() => {
         (fielding ?
           '<button type="button" class="btn btn--wide" id="tm-sub">守備を交代する</button>' : '') +
         '<button type="button" class="btn btn--wide" id="tm-pos">守備位置を変える</button>' +
-        '<button type="button" class="btn btn--wide" id="tm-pit">投手を交代する</button>' +
+        /* 投手交代は守備中だけ。攻撃中は出さない */
+        (fielding ? '<button type="button" class="btn btn--wide" id="tm-pit">投手を交代する</button>' : '') +
       '</div>' +
       '<div class="actions actions--modal">' +
         '<button type="button" class="btn btn--primary btn--wide" id="tm-close">試合に戻る</button>' +
@@ -803,7 +804,7 @@ const GameScreen = (() => {
           on('#tm-pr', () => pinchRun());
           on('#tm-sub', () => subPlayer());
           on('#tm-pos', () => changePos());
-          on('#tm-pit', () => changePitcher());
+          on('#tm-pit', () => { if (iAmFielding()) changePitcher(); });
           on('#tm-close', closeTime);
         },
       }
