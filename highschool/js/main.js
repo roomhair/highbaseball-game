@@ -1031,6 +1031,7 @@ const Game = (() => {
       if (S.tour && !S.tour.kind) S.tour.kind = S.tour.stage === 'national' ? 'national' : 'local';
       if (S.training && !S.training.log) S.training = Soccer.startTraining(S, null);
       if (S.springQualified == null) S.springQualified = false;
+      Soccer.migrate(S);
     }
     applySettings();
     switch (state.phase) {

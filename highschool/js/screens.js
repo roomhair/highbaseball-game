@@ -908,32 +908,50 @@ const Screens = (() => {
 
   const SOC_POS_ORDER = { GK: 0, DF: 1, MF: 2, FW: 3 };
 
-  /** サッカー部員の表。行を押すと詳細が開く */
-  function socTable(S, rows) {
-    const body = rows.map((x) => {
-      const p = x.p;
-      return '<tr class="prow" data-pid="' + p.id + '"><td class="c">' + esc(x.pos || p.soc.pos) + '</td>' +
-        '<td class="nm">' + esc(p.name) + '</td><td class="c">' + p.grade + '</td>' +
-        Soccer.STATS.map((st) => '<td class="c">' + UI.rankNum(p.soc[st.key]) + '</td>').join('') +
-        '<td class="c hl">' + Soccer.rating(p) + '</td></tr>';
-    }).join('');
-    return '<div class="tablewrap"><table class="growth"><thead><tr><th>位置</th><th class="nm">選手</th><th>年</th>' +
-      Soccer.STATS.map((st) => '<th>' + esc(st.label) + '</th>').join('') + '<th>評価</th></tr></thead><tbody>' +
-      body + '</tbody></table></div>';
+  /** サッカー部員の表。FCと同じ6つの主要能力で見せる（GKだけ専用の表）。行を押すと詳細が開く */
+  function socTable(S, rows, opts) {
+    opts = opts || {};
+    const part = (list, gk) => {
+      if (!list.length) return '';
+      const heads = (gk ? Soccer.MAIN_GK : Soccer.MAIN_FIELD).map((x) => '<th>' + esc(x.label) + '</th>').join('');
+      const body = list.map((x) => {
+        const p = x.p;
+        const vals = Soccer.mainList({ soc: p.soc }, gk ? 'GK' : 'MF').map((v) => '<td class="c">' + UI.rankNum(v.value) + '</td>').join('');
+        const rate = opts.noRate ? '' : '<td class="c hl">' + Math.round(Soccer.rateFor(p.soc, x.pos || p.soc.pos)) + '</td>';
+        return '<tr' + (opts.noClick ? '' : ' class="prow" data-pid="' + p.id + '"') + '><td class="c">' + esc(x.pos || p.soc.pos) + '</td>' +
+          '<td class="nm">' + esc(p.name) + '</td>' + (p.grade === '' || p.grade == null ? '' : '<td class="c">' + p.grade + '</td>') + vals + rate + '</tr>';
+      }).join('');
+      const hasGrade = list[0].p.grade !== '' && list[0].p.grade != null;
+      return '<div class="tablewrap"><table class="growth"><thead><tr><th>位置</th><th class="nm">' + (gk ? 'GK' : '選手') + '</th>' +
+        (hasGrade ? '<th>年</th>' : '') + heads + (opts.noRate ? '' : '<th>評価</th>') + '</tr></thead><tbody>' + body + '</tbody></table></div>';
+    };
+    const gks = rows.filter((x) => (x.pos || x.p.soc.pos) === 'GK');
+    const fld = rows.filter((x) => (x.pos || x.p.soc.pos) !== 'GK');
+    return part(fld, false) + part(gks, true);
   }
 
-  /** サッカー選手の詳細（野球の詳細と同じ並び：能力・通算成績） */
+  /** サッカー選手の詳細（FCと同じ主要能力と、細かい能力） */
   function socDetail(p) {
     const c = p.socCareer || { g: 0, goals: 0, assists: 0, cs: 0 };
+    const isGK = p.soc.pos === 'GK';
+    const mainsHtml = '<div class="stats">' +
+      Soccer.mainList(p).map((m) => UI.stat(m.label, m.value)).join('') + '</div>';
+    const groups = {};
+    Soccer.STATS.forEach((st) => {
+      if ((st.group === 'GK') !== isGK && !(isGK && ['spd', 'sta', 'str'].indexOf(st.key) >= 0)) return;
+      (groups[st.group] = groups[st.group] || []).push(st);
+    });
+    const subHtml = Object.keys(groups).map((g) =>
+      '<h4 class="sub">' + esc(g) + '</h4><div class="stats">' +
+      groups[g].map((st) => UI.stat(st.label, p.soc[st.key])).join('') + '</div>').join('');
     return '<div class="pdetail">' +
       '<div class="pdetail__head"><div class="pdetail__name">' + esc(p.name) + '</div>' +
       '<div class="pdetail__meta">' + p.grade + '年　' + esc(Soccer.POS_NAME[p.soc.pos] || '') +
-      '　評価 <b>' + Soccer.rating(p) + '</b></div>' +
+      '　総合 <b>' + Soccer.rating(p) + '</b></div>' +
       (p.from ? '<div class="pdetail__from">' + p.from.year + '年目に ' + esc(p.from.school) + ' から加入</div>' : '') +
-      '</div>' +
-      '<div class="stats">' + Soccer.STATS.map((st) => UI.stat(st.label, p.soc[st.key])).join('') + '</div>' +
+      '</div><h4 class="sub">主要能力</h4>' + mainsHtml + subHtml +
       '<h4 class="sub">サッカー部での成績</h4>' +
-      '<p class="note">' + c.g + '試合　得点 ' + c.goals + '　無失点 ' + c.cs + '</p>' +
+      '<p class="note">' + c.g + '試合　得点 ' + c.goals + '　アシスト ' + (c.assists || 0) + '　無失点 ' + c.cs + '</p>' +
       (p.career
         ? '<h4 class="sub">高校野球での通算成績</h4>' +
           (p.kind === 'pitcher' ? UI.careerPitLine(p.career) : UI.careerBatLine(p.career))
@@ -1012,15 +1030,9 @@ const Screens = (() => {
     return Soccer.buildOpp(S).side.map((x) => ({ p: { id: x.pid, name: x.name, grade: '', soc: x.s, num: x.num }, pos: x.pos }));
   }
 
-  /** 相手チームの表（相手は能力の目安だけ。学年は無い） */
+  /** 相手チームの表（相手は能力だけ。学年は無い） */
   function socOppTable(rows) {
-    const body = rows.map((x) =>
-      '<tr><td class="c">' + esc(x.pos) + '</td><td class="nm">' + esc(x.p.name) + '</td>' +
-      Soccer.STATS.map((st) => '<td class="c">' + UI.rankNum(x.p.soc[st.key]) + '</td>').join('') +
-      '<td class="c hl">' + Soccer.rateFor(x.p.soc, x.pos) .toFixed(0) + '</td></tr>').join('');
-    return '<div class="tablewrap"><table class="growth"><thead><tr><th>位置</th><th class="nm">選手</th>' +
-      Soccer.STATS.map((st) => '<th>' + esc(st.label) + '</th>').join('') + '<th>評価</th></tr></thead><tbody>' +
-      body + '</tbody></table></div>';
+    return socTable(null, rows.map((x) => ({ p: { id: x.p.id || '', name: x.p.name, grade: '', soc: x.p.soc }, pos: x.pos })), { noClick: true });
   }
 
   /** 試合開始前（野球の試合前画面と同じ並び：自軍と相手の先発） */
@@ -1203,7 +1215,8 @@ const Screens = (() => {
         const p = Soccer.findP(S, g.pid);
         if (!p) return '';
         const ups = g.ups.map((t) => esc(t.label) + ' +' + t.amount).join('　');
-        const chips = Soccer.STATS.map((stt) => {
+        const keys = p.soc.pos === 'GK' ? Soccer.GK_KEYS : Soccer.FIELD_KEYS;
+        const chips = Soccer.STATS.filter((stt) => keys.indexOf(stt.key) >= 0).map((stt) => {
           const t = g.ups.find((x) => x.key === stt.key);
           const now = p.soc[stt.key];
           const after = t ? RNG.stat(now + t.amount) : null;
