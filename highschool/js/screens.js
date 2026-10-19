@@ -1143,8 +1143,8 @@ const Screens = (() => {
           ? '<p class="verdict__lead">得点　' + Object.keys(scorers).map((n) => esc(n) + (scorers[n] > 1 ? '×' + scorers[n] : '')).join('　') + '</p>' : '') +
         '<p class="verdict__lead">' + esc(lead) + '</p>' +
       '</div>');
-    UI.el('btn-verdict-share').hidden = true;
-    UI.el('btn-verdict-save').hidden = true;
+    UI.el('btn-verdict-share').hidden = false;
+    UI.el('btn-verdict-save').hidden = false;
     UI.show('screen-verdict');
   }
 

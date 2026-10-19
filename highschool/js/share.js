@@ -111,6 +111,7 @@ const Share = (() => {
     if (r.homers && r.homers.length) {
       decisions.push('本塁打　' + r.homers.map((h) => who(h) + (h.hr > 1 ? '×' + h.hr : '')).join('　'));
     }
+    (r.extraLines || []).forEach((l) => decisions.push(l));    // サッカーの得点者など
     const board = boardOf(sim);
     const grid = paGrid(state, sim);
     const pit = pitchingLines(state.team);
@@ -122,7 +123,7 @@ const Share = (() => {
 
     /* 高さを先に数える */
     let H = 70 + 80 + 70 + 24;                         // 見出し・勝敗・スコア
-    if (r.cold || r.walkoff) H += 28;
+    if (r.cold || r.walkoff || r.note) H += 28;
     H += decisions.length * 28 + 14;
     if (board) H += 40 + 3 * 34 + 14;
     if (grid) H += 46 + 54 + grid.rows.reduce((a, row) => a + gridRowH(row), 0);
@@ -186,9 +187,9 @@ const Share = (() => {
     if (champ) {
       y += 32; ctx.font = 'bold 22px ' + FONT; ctx.fillStyle = accent;
       ctx.fillText(String(r.tourName || '') + ' 制覇　おめでとう！', W / 2, y);
-    } else if (r.cold || r.walkoff) {
+    } else if (r.cold || r.walkoff || r.note) {
       y += 30; ctx.font = '18px ' + FONT; ctx.fillStyle = mute;
-      ctx.fillText(r.cold ? 'コールドゲーム' : 'サヨナラ', W / 2, y);
+      ctx.fillText(r.note || (r.cold ? 'コールドゲーム' : 'サヨナラ'), W / 2, y);
     }
     y += 20;
     ctx.font = '18px ' + FONT; ctx.fillStyle = mute; ctx.textAlign = 'center';
@@ -374,5 +375,29 @@ const Share = (() => {
       } });
   }
 
-  return { preview, draw };
+  /** サッカーの結果を、野球の結果と同じ形に直して共有・保存の画像にする */
+  function previewSoccer(state, res, mode) {
+    const S = state.soccer;
+    const isLast = S.tour.index >= S.tour.rounds.length - 1;
+    const myKey = res.home ? 'home' : 'away';
+    const scorers = {};
+    res.events.filter((e) => e.kind === 'goal' && e.side === myKey)
+      .forEach((e) => { scorers[e.name] = (scorers[e.name] || 0) + 1; });
+    const names = Object.keys(scorers);
+    const fake = {
+      team: { name: S.schoolName, batters: [], pitchers: [] },
+      tour: { kind: S.tour.kind },
+      lastResult: {
+        win: !!res.win, last: !!(res.win && isLast),
+        tourName: Game.soccerLabel(S.tour.kind), round: res.roundName,
+        myRuns: res.my, opRuns: res.op, oppName: res.oppName,
+        note: res.pk ? 'PK戦 ' + (res.home ? res.pk.home : res.pk.away) + '−' + (res.home ? res.pk.away : res.pk.home)
+          : (res.extra ? '延長戦' : ''),
+        extraLines: names.length ? ['得点　' + names.map((n) => n + (scorers[n] > 1 ? '×' + scorers[n] : '')).join('　')] : [],
+      },
+    };
+    preview(fake, null, mode);
+  }
+
+  return { preview, previewSoccer, draw };
 })();
