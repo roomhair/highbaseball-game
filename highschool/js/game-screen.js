@@ -127,13 +127,12 @@ const GameScreen = (() => {
   }
 
   /* ---------- 小窓の動き（野球速報アプリや野球ゲームの試合画面を参考に） ----------
-     ・投球（マウンド→本塁）のあとに打球が飛ぶ。フライは高く上がる（大きく見える）
+     ・打球は本塁から飛ぶ。フライは高く上がる（大きく見える）
      ・走者は塁を回って次の塁へ。生還したら本塁で消え、アウトになった走者は消える
      ・ホームランは外野の先で光がはじける
      動きは SVG の animateMotion などで付ける（描き直すたびに最初から動く） */
 
   const BASE_PT = [[140.5, 111.5], [100, 70.5], [59, 111.5]];
-  const MOUND = [100, 112];
   const TEAM_COLOR = { my: '#2f6fe4', op: '#e5483c' };
 
   function basePt(b) { return (b < 0 || b >= 3) ? HOME : BASE_PT[b]; }
@@ -170,18 +169,12 @@ const GameScreen = (() => {
     const isBat = e && e.k === 'pa';
     const b = (i) => (bases && bases[i] ? ' is-on' : '');
 
-    const tPitch = isBat ? 0.24 * k : 0;
+    /* 投球は描かない。打球は本塁からすぐに飛ぶ */
+    const tPitch = 0;
     const t = isBat ? ballTarget(e) : null;
     const kind = t ? flyKind(e) : null;
     const hr = isBat && e.code === 'HR';
     const flight = t ? (hr ? 0.9 : (kind === 'fly' ? 0.7 : (kind === 'liner' ? 0.42 : 0.5))) * k : 0;
-
-    /* 投球。マウンドから本塁へ */
-    const pitchBall = isBat
-      ? '<g transform="translate(' + MOUND[0] + ' ' + MOUND[1] + ')"><circle class="fv-pitch" r="3">' +
-        '<animateMotion path="M0,0 L0,' + (HOME[1] - 4 - MOUND[1]) + '" begin="0s" dur="' + tPitch.toFixed(2) + 's" fill="freeze"/>' +
-        '<animate attributeName="opacity" from="1" to="0" begin="' + tPitch.toFixed(2) + 's" dur="0.05s" fill="freeze"/></circle></g>'
-      : '';
 
     /* 打球。本塁から落ちどころへ。フライは途中で大きく（高く）見せる */
     let ball = '';
@@ -244,7 +237,7 @@ const GameScreen = (() => {
         '<rect class="fv-base' + b(2) + '" x="54.5" y="107" width="9" height="9" transform="rotate(45 59 111.5)"/>' +
         '<polygon class="fv-home" points="100,147 105,152 100,157 95,152"/>' +
         (showBatter === false ? '' : batterView(swingKindOf(e), e && e.batterBats)) +
-        pitchBall + ball + runners +
+        ball + runners +
       '</svg>' +
       '<div class="outs">' + [0, 1, 2].map((i) =>
         '<i class="out' + (i < outs ? ' is-on' : '') + '"></i>').join('') + '<span>OUT</span></div>' +
