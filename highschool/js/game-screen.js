@@ -183,8 +183,13 @@ const GameScreen = (() => {
       const len = Math.sqrt(dx * dx + dy * dy);
       const big = hr ? 8 : (kind === 'fly' ? 7 : (kind === 'liner' ? 5 : 4.2));
       ball =
-        '<line class="balltrail' + (hr ? ' is-hr' : '') + '" x1="' + HOME[0] + '" y1="' + HOME[1] + '" x2="' + t[0] + '" y2="' + t[1] + '" ' +
-          'style="--len:' + len.toFixed(1) + ';animation-delay:' + tPitch.toFixed(2) + 's;animation-duration:' + flight.toFixed(2) + 's"></line>' +
+        /* 軌跡の線も、ボールと同じ SMIL（同じ開始・同じ長さ・等速）で伸ばす。
+           線だけ別のアニメーション（イージングつき）にすると、線の先が先に
+           行ってしまい、ボールがあとから追いかけるように見える */
+        '<line class="balltrail' + (hr ? ' is-hr' : '') + '" x1="' + HOME[0] + '" y1="' + HOME[1] + '" x2="' + HOME[0] + '" y2="' + HOME[1] + '">' +
+          '<animate attributeName="x2" from="' + HOME[0] + '" to="' + t[0] + '" begin="' + tPitch.toFixed(2) + 's" dur="' + flight.toFixed(2) + 's" calcMode="linear" fill="freeze"/>' +
+          '<animate attributeName="y2" from="' + HOME[1] + '" to="' + t[1] + '" begin="' + tPitch.toFixed(2) + 's" dur="' + flight.toFixed(2) + 's" calcMode="linear" fill="freeze"/>' +
+        '</line>' +
         '<g transform="translate(' + HOME[0] + ' ' + HOME[1] + ')"><circle class="fv-hit' + (hr ? ' is-hr' : '') + '" r="4.2">' +
           '<animateMotion path="M0,0 L' + dx.toFixed(1) + ',' + dy.toFixed(1) + '" begin="' + tPitch.toFixed(2) + 's" dur="' + flight.toFixed(2) + 's" fill="freeze"/>' +
           '<animate attributeName="r" values="4.2;' + big + ';4.2" begin="' + tPitch.toFixed(2) + 's" dur="' + flight.toFixed(2) + 's" fill="freeze"/>' +
