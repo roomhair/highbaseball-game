@@ -209,7 +209,6 @@ const GameScreen = (() => {
     const offSide = e && e.half ? (e.half === 'top' ? 'away' : 'home') : (ctx && ctx.cur ? ctx.cur.side : 'away');
     const mine = ctx ? ctx.mySide : 'away';
     const offColor = offSide === mine ? TEAM_COLOR.my : TEAM_COLOR.op;
-    const defColor = offSide === mine ? TEAM_COLOR.op : TEAM_COLOR.my;
     const isBat = e && e.k === 'pa';
     const b = (i) => (bases && bases[i] ? ' is-on' : '');
 
@@ -219,7 +218,7 @@ const GameScreen = (() => {
     const hr = isBat && e.code === 'HR';
     const flight = t ? (hr ? 0.9 : (kind === 'fly' ? 0.7 : (kind === 'liner' ? 0.42 : 0.5))) * k : 0;
 
-    /* 守備の9人。打球の方向の野手は落下点へ走る */
+    /* 守備の9人（黒丸）。打球の方向の野手は落下点へ走る */
     let fielders = '';
     Object.keys(SPOT).forEach((pos) => {
       const s = SPOT[pos];
@@ -230,7 +229,7 @@ const GameScreen = (() => {
         const ty = out ? t[1] : s[1] + (t[1] - s[1]) * 0.7;
         anim = '<animateMotion path="M0,0 L' + (tx - s[0]).toFixed(1) + ',' + (ty - s[1]).toFixed(1) + '" begin="' + tPitch.toFixed(2) + 's" dur="' + (flight * 0.95).toFixed(2) + 's" fill="freeze"/>';
       }
-      fielders += '<g transform="translate(' + s[0] + ' ' + s[1] + ')"><circle class="fv-fielder" r="4.6" fill="' + defColor + '">' + anim + '</circle></g>';
+      fielders += '<g transform="translate(' + s[0] + ' ' + s[1] + ')"><circle class="fv-fielder" r="4.6">' + anim + '</circle></g>';
     });
 
     /* 投球。マウンドから本塁へ */

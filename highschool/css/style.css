@@ -588,7 +588,7 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .zone__pt.is-ball { fill: #2f6fe4; }
 @keyframes zonept { from { transform: scale(0); } to { transform: scale(1); } }
 /* 守備・走者・投球・打球 */
-.fv-fielder { stroke: var(--bg); stroke-width: 1.2; opacity: .85; }
+.fv-fielder { fill: #1d2024; stroke: #fff; stroke-width: 1.2; }
 .fv-runner { stroke: #fff; stroke-width: 1.6; }
 .fv-pitch { fill: var(--ink); }
 .fv-hit { fill: var(--ink); stroke: var(--bg); stroke-width: 1.4; }
