@@ -27,10 +27,9 @@ const SoccerGameScreen = (() => {
   let res = null;
   let myName = '', oppName = '';
   let runId = 0;
-  let speed = 1;            // 0=1つずつ（手動）, 1=オート, 3=オート（速い）
-  let fast = false;         // 次のゴールまで飛ばしているあいだ
-  let skipGoal = false;
-  let tapResolve = null;
+  let speed = 1;            // 1・2・3（倍速）
+  let paused = false;       // 一時停止中
+  let resumers = [];
   let doneCb = null;
   let units = { my: [], op: [] };
   let ball = null;
@@ -45,25 +44,14 @@ const SoccerGameScreen = (() => {
 
   function sleep(ms) {
     const my = runId;
-    const k = fast ? 0 : ms / (speed === 3 ? 3 : 1);
     return new Promise((resolve, reject) => {
-      setTimeout(() => (my === runId ? resolve() : reject(new Cancel())), k);
+      setTimeout(() => {
+        if (my !== runId) { reject(new Cancel()); return; }
+        // 一時停止中は、再開するまでここで止まる
+        if (paused) resumers.push(() => (my === runId ? resolve() : reject(new Cancel())));
+        else resolve();
+      }, ms / speed);
     });
-  }
-
-  /** 手動（1つずつ）のときは、タップするまで待つ */
-  function gate() {
-    if (speed !== 0 || fast) return Promise.resolve();
-    const hint = UI.el('soccer-game-taphint');
-    if (hint) hint.hidden = false;
-    const my = runId;
-    return new Promise((resolve, reject) => {
-      tapResolve = () => { if (hint) hint.hidden = true; my === runId ? resolve() : reject(new Cancel()); };
-    });
-  }
-
-  function tap() {
-    if (tapResolve) { const f = tapResolve; tapResolve = null; f(); }
   }
 
   /* ---------- 描画 ---------- */
@@ -76,7 +64,7 @@ const SoccerGameScreen = (() => {
   }
 
   function place(node, x, y, ms) {
-    node.style.transition = 'transform ' + (fast ? 0 : (ms / (speed === 3 ? 3 : 1))) + 'ms ease-in-out';
+    node.style.transition = 'transform ' + (ms / speed) + 'ms ease-in-out';
     node.style.transform = 'translate(' + x.toFixed(2) + 'px,' + y.toFixed(2) + 'px)';
   }
 
@@ -387,18 +375,10 @@ const SoccerGameScreen = (() => {
     shape(W / 2, H / 2, null, 0);
     for (const e of res.events) {
       await advanceClockTo(e.min);
-      await gate();
-      // 次のゴールまで飛ばしている途中は、ゴール以外の場面を省略する
-      if (skipGoal && e.kind !== 'goal') {
-        revealed.push(e); renderLog();
-        continue;
-      }
-      if (skipGoal && e.kind === 'goal') { skipGoal = false; fast = false; }
       revealed.push(e); renderLog();
       await playEvent(e);
     }
     await advanceClockTo(res.total + (res.extra ? 20 : 0));
-    fast = false; skipGoal = false;
     if (res.pk) await playPK();
     const win = res.win;
     renderClock(res.pk ? 'PK戦終了' : '試合終了');
@@ -414,21 +394,24 @@ const SoccerGameScreen = (() => {
   }
 
   function finish() {
-    const hint = UI.el('soccer-game-taphint');
-    if (hint) hint.hidden = true;
     if (doneCb) { const cb = doneCb; doneCb = null; cb(); }
   }
 
   /* ---------- 操作 ---------- */
 
+  function setPaused(on) {
+    paused = on;
+    const btn = UI.el('soccer-pause');
+    if (btn) { btn.textContent = on ? '再開' : '一時停止'; btn.classList.toggle('is-paused', on); }
+    if (!on) { const rs = resumers; resumers = []; rs.forEach((f) => f()); }
+  }
+
   function setSpeed(sp) {
-    document.querySelectorAll('#soccer-game-speed .speedbtn').forEach((b) => b.classList.remove('is-on'));
+    if (sp === 'pause') { setPaused(!paused); return; }
+    document.querySelectorAll('#soccer-game-speed .speedbtn[data-sp]:not(#soccer-pause)').forEach((b) => b.classList.remove('is-on'));
     const btn = document.querySelector('#soccer-game-speed .speedbtn[data-sp="' + sp + '"]');
     if (btn) btn.classList.add('is-on');
-    if (sp === 'goal') { skipGoal = true; fast = true; tap(); return; }
-    skipGoal = false; fast = false;
     speed = Number(sp);
-    if (speed !== 0) tap();
   }
 
   /** 試合開始。result は Soccer.playUser() が返したもの、
@@ -439,8 +422,9 @@ const SoccerGameScreen = (() => {
     myName = state.soccer.schoolName;
     oppName = result.oppName || '相手校';
     revealed = []; score = [0, 0]; curMin = 0; clockAt = 0;
-    speed = 1; fast = false; skipGoal = false; tapResolve = null; doneCb = onDone;
-    document.querySelectorAll('#soccer-game-speed .speedbtn').forEach((b) =>
+    speed = 1; resumers = []; doneCb = onDone;
+    setPaused(false);
+    document.querySelectorAll('#soccer-game-speed .speedbtn[data-sp]:not(#soccer-pause)').forEach((b) =>
       b.classList.toggle('is-on', b.dataset.sp === '1'));
     const svg = UI.el('soccer-pitch');
     drawPitch(svg);
@@ -457,10 +441,6 @@ const SoccerGameScreen = (() => {
     document.querySelectorAll('#soccer-game-speed .speedbtn').forEach((b) => {
       b.addEventListener('click', () => setSpeed(b.dataset.sp));
     });
-    const stage = UI.el('soccer-stage');
-    if (stage) stage.addEventListener('click', tap);
-    const hint = UI.el('soccer-game-taphint');
-    if (hint) hint.addEventListener('click', tap);
   }
 
   return { start, init };
