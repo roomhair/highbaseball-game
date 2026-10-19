@@ -1203,8 +1203,8 @@ const Game = (() => {
 
     on('btn-play', () => (state.mode === 'soccer' ? soccerPlay() : playGame()));
     on('btn-verdict-next', () => (state.mode === 'soccer' ? soccerToGrowth() : toGrowth()));
-    on('btn-verdict-share', () => Share.shareResult(state, lastSim));
-    on('btn-verdict-save', () => Share.saveImage(state, lastSim));
+    on('btn-verdict-share', () => Share.preview(state, lastSim, 'share'));
+    on('btn-verdict-save', () => Share.preview(state, lastSim, 'save'));
     on('btn-growth-next', () => (state.mode === 'soccer' ? soccerToMatchResult() : toResult()));
     const nextup = UI.el('screen-nextup');
     if (nextup) nextup.addEventListener('click', () => {

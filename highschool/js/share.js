@@ -98,7 +98,9 @@ const Share = (() => {
     const r = state.lastResult;
     const win = r.win;
     const isBigStage = state.tour && ['national', 'spring', 'fallJingu'].indexOf(state.tour.kind) >= 0;
-    const accent = isBigStage ? '#8f2233' : '#1d5c3a';
+    /* 大会の決勝に勝った（優勝）ときだけ、特別版にする */
+    const champ = !!(win && r.last);
+    const accent = champ ? '#b07d0a' : (isBigStage ? '#8f2233' : '#1d5c3a');
     const ink = '#16181a', mute = '#6b7076', faint = '#979ba1', rule = '#e4e0d6', hot = '#c0283c';
 
     const who = (d) => d ? d.name : null;
@@ -126,17 +128,31 @@ const Share = (() => {
     if (grid) H += 46 + 54 + grid.rows.reduce((a, row) => a + gridRowH(row), 0);
     if (bat.length) H += 46 + bat.length * lineH;
     if (pit.length) H += 46 + pit.length * lineH;
-    H += 56;
+    H += 84;
 
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d');
     const FONT = 'sans-serif';
 
-    ctx.fillStyle = '#faf9f5';
+    ctx.fillStyle = champ ? '#fff7dc' : '#faf9f5';
     ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = accent; ctx.lineWidth = 10;
-    ctx.strokeRect(5, 5, W - 10, H - 10);
+    ctx.strokeStyle = accent; ctx.lineWidth = champ ? 14 : 10;
+    ctx.strokeRect(7, 7, W - 14, H - 14);
+    if (champ) {
+      ctx.lineWidth = 3; ctx.strokeStyle = '#e3b64a';
+      ctx.strokeRect(22, 22, W - 44, H - 44);
+      /* 紙吹雪。決まった並びで散らす（同じ試合なら毎回同じ絵になる） */
+      const cols = ['#e3b64a', '#e5483c', '#2f6fe4', '#6bbf8a', '#ffffff'];
+      let seed = 7;
+      const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+      for (let i = 0; i < 70; i++) {
+        ctx.fillStyle = cols[i % cols.length];
+        const x = 40 + rnd() * (W - 80), y = 40 + rnd() * 300;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(rnd() * Math.PI);
+        ctx.fillRect(-5, -2.5, 10, 5); ctx.restore();
+      }
+    }
 
     /* 文字を、決まった幅に収まる大きさで描く */
     const fit = (text, x, y, maxW, size, align) => {
@@ -161,13 +177,16 @@ const Share = (() => {
     ctx.fillStyle = faint; ctx.textAlign = 'center'; ctx.font = '20px ' + FONT;
     ctx.fillText(String(r.tourName || '') + '　' + String(r.round || ''), W / 2, y);
     y += 80;
-    ctx.fillStyle = accent; ctx.font = 'bold 64px ' + FONT;
-    ctx.fillText(win ? '勝利' : '敗戦', W / 2, y);
+    ctx.fillStyle = accent; ctx.font = 'bold ' + (champ ? 88 : 64) + 'px ' + FONT;
+    ctx.fillText(champ ? '優勝' : (win ? '勝利' : '敗戦'), W / 2, y);
     y += 70;
     ctx.fillStyle = ink; ctx.font = 'bold 30px ' + FONT;
     const myName = (state.team && state.team.name) || '';
     ctx.fillText(myName + '  ' + r.myRuns + ' - ' + r.opRuns + '  ' + (r.oppName || ''), W / 2, y);
-    if (r.cold || r.walkoff) {
+    if (champ) {
+      y += 32; ctx.font = 'bold 22px ' + FONT; ctx.fillStyle = accent;
+      ctx.fillText(String(r.tourName || '') + ' 制覇　おめでとう！', W / 2, y);
+    } else if (r.cold || r.walkoff) {
       y += 30; ctx.font = '18px ' + FONT; ctx.fillStyle = mute;
       ctx.fillText(r.cold ? 'コールドゲーム' : 'サヨナラ', W / 2, y);
     }
@@ -266,65 +285,94 @@ const Share = (() => {
     return new File([blob], filename, { type: 'image/png' });
   }
 
-  /** 共有シートも downloads も無い環境（主にPC）向けのフォールバック */
-  async function fallbackSave(file) {
-    if (window.claude && window.claude.use) {
-      try {
-        const downloads = await window.claude.use('downloads');
-        if (downloads) { await downloads.save({ filename: file.name, data: file }); return; }
-      } catch (e) { /* 断られた・使えない環境では下のフォールバックへ */ }
-    }
-    /* ここで <a download> は使わない（それがまさに「ファイルダウンロード」なので）。
-       新しいタブに開くだけにして、保存するかは見る人に委ねる */
-    const url = URL.createObjectURL(file);
-    window.open(url, '_blank');
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
-  }
+  const FILE_NAME = '強奪高校野球.png';
+  const SITE_URL = 'https://baseball.roomhaird.com/highschool/';
+  let pending = null;     // 開いているプレビューの画像（dataURL と File）
 
-  /** 画像として保存する。
-      navigator.share は「ユーザー操作から直接呼ばれたか」をブラウザが見ているため、
-      ボタンを押した同期の流れの中で（await を挟まずに）呼ぶ。
-      1枚待ってから呼ぶと、呼び出しが認められず共有シートが開かないことがある。
-      iOS/Androidの共有シートには「画像を保存」＝カメラロールへの直接保存が
-      出るので、ファイルダウンロードよりもこちらが素直。
-      共有シートが使えない環境（Artifact埋め込みなど）だけ、
-      window.claude の downloads 機能、それも無理ならPCのように
-      新しいタブに開くだけ、の順にフォールバックする。 */
-  function saveImage(state, sim) {
-    const canvas = draw(state, sim);
-    const file = toFile(canvas, '強奪高校野球.png');
-
-    if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file] }).catch(() => {});
-      return;
-    }
-    fallbackSave(file);
-  }
-
-  /** SNSに共有する。画像ごと渡せる環境ではそれを、無理なら文章だけ。
-      saveImage と同じ理由で、navigator.share はボタンを押した同期の
-      流れの中で呼ぶ（canvas.toBlob の非同期な待ちを挟まない）。 */
-  function shareResult(state, sim) {
+  /** 共有に添える文章（野球チームメーカーと同じ作り：結果・ひとこと・サイトのURL） */
+  function shareText(state) {
     const r = state.lastResult;
-    const text = (state.team && state.team.name || '') + ' ' + r.myRuns + '-' + r.opRuns + ' ' +
-      (r.oppName || '') + '　' + (r.win ? '勝利！' : '敗戦…') + '（強奪高校野球）';
-
-    const canvas = draw(state, sim);
-    const file = toFile(canvas, '強奪高校野球.png');
-
-    if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], text }).catch(() => {});
-      return;
-    }
-    if (navigator.share) {
-      navigator.share({ text }).catch(() => {});
-      return;
-    }
-    /* Web Share が無い環境（主にPC）は、Xの投稿画面を新しいタブで開く。
-       サンドボックスされた埋め込み先などでは window.open 自体が失敗することもある */
-    const url = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text);
-    try { window.open(url, '_blank', 'noopener'); } catch (e) { /* 開けない環境では諦める */ }
+    const my = (state.team && state.team.name) || '';
+    const champ = r.win && r.last;
+    const lines = [
+      '強奪高校野球で ' + (r.tourName || '') + ' ' + (r.round || '') + ' を戦った結果……',
+      '',
+      my + ' ' + r.myRuns + ' - ' + r.opRuns + ' ' + (r.oppName || ''),
+      champ ? (r.tourName || '') + 'を制して優勝しました！🏆' : (r.win ? '勝利！' : '敗戦…'),
+      '',
+      'あなたもこの高校を勝たせられますか？',
+    ];
+    return lines.join('\n');
   }
 
-  return { saveImage, shareResult };
+  function canShareFile(file) {
+    return !!(file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] }));
+  }
+
+  function xIntent(text) {
+    const href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(SITE_URL);
+    try { window.open(href, '_blank', 'noopener'); } catch (e) { /* 開けない環境では諦める */ }
+  }
+
+  function downloadImage(dataUrl) {
+    const a = document.createElement('a');
+    a.href = dataUrl; a.download = FILE_NAME;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+
+  /** 画像を端末に保存する。共有シートが使えるときは、その中の「画像を保存」で
+      カメラロールに入る。使えないとき（パソコンなど）はファイルとして保存する */
+  function saveNow() {
+    if (!pending) return;
+    const p = pending;
+    if (canShareFile(p.file)) {
+      navigator.share({ files: [p.file] }).catch((e) => { if (!e || e.name !== 'AbortError') downloadImage(p.dataUrl); });
+      return;
+    }
+    downloadImage(p.dataUrl);
+  }
+
+  /** SNSに共有する。画像ごと渡せる環境ではそれを、無理なら文章とURLだけでXの投稿画面を開く
+      （どちらの道でも、投稿を確定するのは自分） */
+  function shareNow(state) {
+    if (!pending) return;
+    const p = pending;
+    const text = shareText(state);
+    if (canShareFile(p.file)) {
+      navigator.share({ files: [p.file], text: text + '\n' + SITE_URL }).catch((e) => { if (!e || e.name !== 'AbortError') xIntent(text); });
+      return;
+    }
+    xIntent(text);
+  }
+
+  /** 作った画像を見せて、「共有」「保存」「キャンセル」を選ばせる。
+      File は先に作っておく（Safari はボタンを押した流れから外れると共有シートを開かないため） */
+  function preview(state, sim, mode) {
+    const canvas = draw(state, sim);
+    const dataUrl = canvas.toDataURL('image/png');
+    pending = { dataUrl, file: null };
+    if (canvas.toBlob && typeof File === 'function') {
+      canvas.toBlob((blob) => {
+        try { if (blob && pending && pending.dataUrl === dataUrl) pending.file = new File([blob], FILE_NAME, { type: 'image/png' }); } catch (e) { /* 保存リンクのほうを使う */ }
+      }, 'image/png');
+    }
+    const champ = state.lastResult.win && state.lastResult.last;
+    const first = mode === 'save' ? 'save' : 'share';
+    UI.modal(
+      '<h3 class="modal__title">' + (champ ? '優勝特別版の画像' : '作った画像') + '</h3>' +
+      '<p class="note">この画像を共有・保存できます。</p>' +
+      '<div class="sharepv"><img alt="作った共有画像" src="' + dataUrl + '"></div>' +
+      '<div class="actions actions--modal sharepv__actions">' +
+        '<button type="button" class="btn' + (first === 'share' ? ' btn--primary' : '') + '" id="sh-share">共有</button>' +
+        '<button type="button" class="btn' + (first === 'save' ? ' btn--primary' : '') + '" id="sh-save">保存</button>' +
+        '<button type="button" class="btn" id="sh-cancel">キャンセル</button>' +
+      '</div>',
+      { kind: 'share', onOpen(body) {
+        body.querySelector('#sh-share').addEventListener('click', () => shareNow(state));
+        body.querySelector('#sh-save').addEventListener('click', saveNow);
+        body.querySelector('#sh-cancel').addEventListener('click', () => { pending = null; UI.closeModal(); });
+      } });
+  }
+
+  return { preview, draw };
 })();
