@@ -170,7 +170,14 @@ const Tournament = (() => {
   function buildOpponent(tour) {
     const r = currentRound(tour);
     if (!r) return null;
-    return makeTeam(r.schoolName, r.level, tour.kind);
+    const t = makeTeam(r.schoolName, r.level, tour.kind);
+    /* 決勝は必ず1番手が先発。それ以外は、たまに2番手・3番手が先発する */
+    const isFinal = tour.index >= tour.rounds.length - 1;
+    if (!isFinal && t.rotation.length > 2 && RNG.chance(0.35)) {
+      const pick = t.rotation.splice(RNG.chance(0.65) ? 1 : 2, 1)[0];
+      t.rotation.unshift(pick);
+    }
+    return t;
   }
 
   /** 大会の1試合あたりの得点・失点 */
