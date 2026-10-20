@@ -1002,8 +1002,7 @@ const Screens = (() => {
     socShow(state, state.year + '年目', 'サッカー転向',
       '<p class="section-lead">' + (fall ? '秋' : '夏') + 'の県大会でコールド負け。' + esc(S.schoolName) +
       '野球部の部員たちはすっかりやる気を無くし、サッカーを始めてしまった。</p>' +
-      '<p class="section-lead">部員はそのままサッカー部に加わり、新しい挑戦が始まる。' +
-      'シーズンの流れは野球と同じ。' + (fall ? 'まずは特訓から。' : 'まずは3年生の引退から。') + '</p>' +
+      '<p class="section-lead">部員はそのままサッカー部に加わり、新しい挑戦が始まる。</p>' +
       socSection(S, '部員（名前を押すと能力が見られます）', socLineupRows(S).concat(socBenchRows(S))),
       fall ? '特訓へ' : 'オフシーズンへ');
   }
