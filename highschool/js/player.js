@@ -316,11 +316,11 @@ const Player = (() => {
          結果として148km/hも149km/hも、それぞれの確率で出てくる。
          prestigeBonus（学校の格）も、同じ考え方で少しだけ乗せる */
       velo: Math.round(RNG.clamp(
-        123 + (GRADE_VELO[grade] || 0) + (ownTeam ? (OWN_VELO_EXTRA[grade] || 0) : 0) + talent * 2.5 + levelShift * 0.26 +
+        123 + (GRADE_VELO[grade] || 0) + (ownTeam ? (OWN_VELO_EXTRA[grade] || 0) : 0) + talent * 2.5 + levelShift * 0.38 +
         (opt.prestigeBonus || 0) * 0.3 + RNG.norm(0, 7.5), 100, 166)),
       control: makeStat(base, talent, 0, ownTeam, opt.wide),
       stamina: makeStat(base, talent, 0, ownTeam, opt.wide),
-      pitches: rollPitches(talent, grade, levelShift / 12),
+      pitches: rollPitches(talent, grade, levelShift / 8),
       /* 投手も打席に立つ。打撃は弱めに作る */
       meet:  RNG.stat(makeStat(base, talent, -14, ownTeam)),
       power: RNG.stat(makeStat(base, talent, -12, ownTeam)),

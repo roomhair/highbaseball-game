@@ -47,12 +47,15 @@ const Tournament = (() => {
   function makeTeam(name, level, kind) {
     const t = Team.create(name);
     const noSenior = FALL_SPRING_KINDS.indexOf(kind) >= 0;
+    /* 強い相手ほど、投手に比べて野手が強く作られすぎていた（投手が弱いのに打線だけ強い）。
+       投手を底上げしたぶん、野手を少し下げて、チーム全体の強さは変えない */
+    const batLevel = level - Math.max(0, Math.min(6, (level - 45) * 0.12));
     /* 野手13人。守る場所が8つぶん揃うように配る（DHは持ち場にしない） */
     const posList = DATASET_POSITIONS.slice();
     for (let i = 0; i < 5; i++) posList.push(RNG.pick(FIELD_POSITIONS));
     posList.forEach((pos) => {
       const grade = noSenior ? rollGradeNoSenior() : rollGrade();
-      t.batters.push(Player.newBatter({ grade, pos, level, practice: true }));
+      t.batters.push(Player.newBatter({ grade, pos, level: batLevel, practice: true }));
     });
     for (let i = 0; i < 7; i++) {
       const grade = noSenior ? rollPitcherGradeNoSenior() : rollPitcherGrade();
