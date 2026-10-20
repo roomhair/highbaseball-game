@@ -131,45 +131,6 @@ const Team = (() => {
     return team;
   }
 
-  /** 「最弱」の並び。できるだけ能力の低い選手を、できるだけ適性の低い
-      守備位置に置く。指名打者も残りでいちばん打てない選手にし、
-      打順は力の低い順（いちばん打てる選手が最後）にする。投げる順番には触らない */
-  function worstLineup(team) {
-    const pool = team.batters.slice();
-    if (pool.length < 9) return team;
-    /* autoLineup の逆。守備の点（適性の低さも含む）と打力の両方が低いほどよい */
-    const cost = FIELD_POSITIONS.map((posKey) =>
-      pool.map((p) => defScore(p, posKey) + Player.rating(p) * 0.8));
-    const picked = bestAssign(cost);
-    const chosen = [];
-    const used = new Set();
-    FIELD_POSITIONS.forEach((posKey, i) => {
-      const p = pool[picked[i]];
-      if (!p) return;
-      used.add(p.id);
-      chosen.push({ p, pos: posKey });
-    });
-    let dh = null, dhScore = 1e9;
-    pool.forEach((p) => {
-      if (used.has(p.id)) return;
-      const sc = p.meet * 0.4 + p.power * 0.45 + p.speed * 0.15;
-      if (sc < dhScore) { dhScore = sc; dh = p; }
-    });
-    if (dh) { used.add(dh.id); chosen.push({ p: dh, pos: 'DH' }); }
-    chosen.sort((a, b) => Player.rating(a.p) - Player.rating(b.p));
-    team.lineup = chosen.map((c) => ({ pid: c.p.id, pos: c.pos }));
-    return team;
-  }
-
-  /** 「最弱」の投げる順番。いちばん力のない投手が先発 */
-  function worstRotation(team) {
-    team.rotation = team.pitchers.slice()
-      .sort((a, b) => Player.rating(a) - Player.rating(b))
-      .map((p) => p.id);
-    team.pitcherOrder = null;
-    return team.rotation;
-  }
-
   /** 打順に並べる。1番は走れて当てられる選手、3〜4番は長打 */
   function orderBatters(chosen) {
     const list = chosen.slice();
@@ -309,7 +270,7 @@ const Team = (() => {
   }
 
   return {
-    create, all, find, defScore, autoLineup, autoRotation, worstLineup, worstRotation, orderBatters,
+    create, all, find, defScore, autoLineup, autoRotation, orderBatters,
     bench, defenders, strength, bestPlayer, repair,
     restPitchers, healPitchers, staminaLabel, staminaTier,
     captain, checkCaptain,
