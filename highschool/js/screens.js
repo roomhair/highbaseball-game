@@ -718,11 +718,10 @@ const Screens = (() => {
     const games = (t && t.games) || 0;
     const rf = (t && t.runsFor) || 0, ra = (t && t.runsAgainst) || 0;
     const r = state.lastResult;
-    const parts = [];
-    if (games) parts.push(games + '戦全勝');
-    if (r) parts.push('決勝 ' + r.myRuns + '−' + r.opRuns + '（' + esc(r.oppName) + '）');
-    if (games) parts.push('1試合平均 ' + (rf / games).toFixed(1) + '得点 ' + (ra / games).toFixed(1) + '失点');
-    return parts.join('　');
+    const lines = [];
+    if (r) lines.push('決勝 ' + r.myRuns + '−' + r.opRuns + '（' + esc(r.oppName) + '）');
+    if (games) lines.push('1試合平均 ' + (rf / games).toFixed(1) + '得点 ' + (ra / games).toFixed(1) + '失点');
+    return lines.join('<br>');
   }
 
   /** 活躍した3人。大会成績の良い順 */
