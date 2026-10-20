@@ -536,7 +536,7 @@ const Screens = (() => {
     const grew = report.filter((r) => !r.awakened);
 
     const card = (r) => '<article class="gr' + (r.awakened ? ' is-awake' : '') + '">' +
-      '<header class="gr__head"><b>' + esc(r.name) + '</b>' +
+      '<header class="gr__head"><b><button type="button" class="linkbtn gr__name" data-pid="' + r.pid + '">' + esc(r.name) + '</button></b>' +
         '<span>' + r.grade + '年・' + esc(r.role || '') + '</span>' +
         (r.awakened ? '<em class="gr__awake">覚醒</em>' : '') + '</header>' +
       '<ul class="gr__list">' + r.ups.map((u) =>
@@ -548,13 +548,18 @@ const Screens = (() => {
     const html =
       (awake.length
         ? '<div class="awakebox"><h4 class="awakebox__title">覚醒</h4>' +
-          awake.map((r) => '<p class="awakebox__line"><b>' + esc(r.name) + '</b>（' + r.grade +
+          awake.map((r) => '<p class="awakebox__line"><b><button type="button" class="linkbtn gr__name" data-pid="' + r.pid + '">' + esc(r.name) + '</button></b>（' + r.grade +
             '年）が覚醒した！</p>').join('') + '</div>'
         : '') +
       (report.length
         ? '<div class="grlist">' + awake.map(card).join('') + grew.map(card).join('') + '</div>'
         : '<p class="note">今回は伸びた選手がいませんでした。</p>');
     UI.html('growth-body', html);
+    UI.el('growth-body').querySelectorAll('.gr__name').forEach((b) =>
+      b.addEventListener('click', () => {
+        const q = Team.find(state.team, b.dataset.pid);
+        if (q) UI.openPlayer(q, { team: state.team, rename: false });
+      }));
     UI.show('screen-growth');
   }
 
