@@ -153,7 +153,7 @@ const Screens = (() => {
     return '<div class="lineupcard' + (opts.compact ? ' is-compact' : '') + '">' +
       '<h3 class="lineupcard__title">' + esc(t.name) + '</h3>' +
       '<div class="tablewrap"><table class="lineup">' + head + '<tbody>' + rows + '</tbody></table></div>' +
-      (sp ? '<p class="lineupcard__p">先発　' +
+      (sp ? '<p class="lineupcard__p">先発' + oppRankText(t, sp) + '　' +
         '<button type="button" class="linkbtn pitname" data-pid="' + sp.id + '">' + esc(sp.name) + '</button>' +
         '<span class="spmeta">' +
           sp.grade + '年・' + (sp.throws === 'L' ? '左' : '右') +
@@ -166,6 +166,13 @@ const Screens = (() => {
         '<span class="spballs">' + pitchText(sp) + '</span></p>' : '') +
       (opts.pickable ? starterPicker(t, opts.pitcherOrder) : '') +
       '</div>';
+  }
+
+  /** 相手校の先発が、投手陣の何番手にあたるか（力の順）。自校は先発を選べるので出さない */
+  function oppRankText(t, sp) {
+    if (t === (Game.state && Game.state.team)) return '';
+    const rank = t.pitchers.slice().sort((a, b) => Player.rating(b) - Player.rating(a)).map((x) => x.id).indexOf(sp.id);
+    return rank >= 0 ? '（' + (rank + 1) + '番手）' : '';
   }
 
   /** 変化球を「名前＋切れ味」で並べる */
