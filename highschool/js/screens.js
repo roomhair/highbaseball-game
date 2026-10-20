@@ -846,7 +846,7 @@ const Screens = (() => {
           (p.from ? '<p class="retire__from">' + p.from.year + '年目に ' + esc(p.from.school) + ' から加入</p>' : '') +
           '<p class="retire__abil">' + esc(abil) + '</p>' +
           (isPit ? UI.careerPitLine(p.career) : UI.careerBatLine(p.career)) +
-          '<h4 class="sub">活躍シーン ベスト3</h4>' + top +
+          '<h4 class="sub">活躍シーン</h4>' + top +
         '</article>';
       }).join('')
       : '<p class="note">今年は引退する3年生がいませんでした。</p>';

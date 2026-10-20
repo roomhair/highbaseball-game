@@ -706,6 +706,9 @@ const Sim = (() => {
 
       recordBat(bat, res, out);
       recordPit(pit, res, out);
+      /* 球数。1球ずつは投げていないので、打席の結果から見積もる */
+      pit.game.np = (pit.game.np || 0) + (res.code === 'K' ? 4 + RNG.int(3)
+        : (res.code === 'BB' ? 5 + RNG.int(3) : (res.code === 'HBP' ? 3 : 2 + RNG.int(4))));
       if ((res.code === 'E' || res.code === 'BE') && res.by) {
         const fl = Team.find(defTeam, res.by);
         if (fl) { fl.game.e = (fl.game.e || 0) + 1; }

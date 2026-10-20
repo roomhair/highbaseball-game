@@ -285,6 +285,16 @@ const GameScreen = (() => {
       ' ミート' + r(p.meet) + ' パワー' + r(p.power) + ' 走力' + r(p.speed) + '</span>';
   }
 
+  /** 今日の投手成績（球数・投球回・被安打・与四球・奪三振） */
+  function pitLine(s) {
+    if (!s) return '';
+    const ip = Math.floor(s.outs / 3) + (s.outs % 3 ? ' ' + (s.outs % 3) + '/3' : '');
+    return '<span class="ll__today">' +
+      '<i>球数<b>' + (s.np || 0) + '</b></i><i>投球回<b>' + ip + '</b></i>' +
+      '<i>被安打<b>' + (s.h || 0) + '</b></i><i>与四球<b>' + (s.bb || 0) + '</b></i>' +
+      '<i>奪三振<b>' + (s.so || 0) + '</b></i></span>';
+  }
+
   /** 投手の欄。名前のあとに、投げるほうの能力と変化球、いまの余力を出す。
       bf は「いまの投手が受けた打者の数」。交代すると0に戻る */
   function pitBlock(p, bf) {
@@ -316,6 +326,7 @@ const GameScreen = (() => {
       '</span>' +
       '<span class="ll__balls">' + (p.pitches || []).map((q) =>
         '<i class="ll__ball">' + esc(q.name) + '<b>' + q.level + '</b></i>').join('') + '</span>' +
+      pitLine(p.game) +
     '</div>';
   }
 

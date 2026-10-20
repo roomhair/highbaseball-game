@@ -1342,3 +1342,7 @@ tr.prow.is-picked .nmlink { color: inherit; }
 @keyframes fvBaseOff { to { fill: var(--bg); stroke: var(--line); } }
 .fv-base.is-turn-on { animation: fvBaseOn .01s linear forwards; }
 .fv-base.is-turn-off { animation: fvBaseOff .01s linear forwards; }
+
+.ll__today { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 4px; font-size: 12px; color: var(--ink-soft, var(--ink-faint)); }
+.ll__today i { font-style: normal; white-space: nowrap; }
+.ll__today b { margin-left: 3px; color: var(--ink); font-weight: 700; }

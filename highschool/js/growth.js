@@ -299,13 +299,20 @@ const Growth = (() => {
     let prev = [0, 0];
     let best = null;
     let bestHr = null; // 場面が付かなくても、本塁打なら最後の砦として残す
+    let bestAny = null; // 打点をあげたいちばん大きな打席（場面の書き出し用）
+    /* 「7回裏 1アウト 2対3から」。自軍の得点を先に書く */
+    const sceneOf = (e, before) =>
+      e.inning + '回' + (e.half === 'top' ? '表' : '裏') + ' ' + (e.prevOuts || 0) + 'アウト ' +
+      before[mine] + '対' + before[opp] + 'から';
     for (let i = 0; i < ctx.log.length; i++) {
       const e = ctx.log[i];
       if (e.k !== 'pa') { continue; }
+      if (e.batter === pid && e.rbi > 0 && (!bestAny || e.rbi > bestAny.rbi)) bestAny = { rbi: e.rbi, scene: sceneOf(e, prev) };
       if (e.batter === pid && e.rbi > 0 &&
           ['1B', '2B', '3B', 'HR', 'BB', 'HBP', 'SQ'].indexOf(e.code) >= 0) {
         const beforeMine = prev[mine], beforeOpp = prev[opp];
         const afterMine = e.score[mine], afterOpp = e.score[opp];
+        const scene = sceneOf(e, prev);
         const isLast = !ctx.log[i + 1] || ctx.log[i + 1].k === 'end';
         let kind = null;
         if (ctx.walkoff && isLast && afterMine > afterOpp) kind = 'walkoff';
@@ -315,19 +322,19 @@ const Growth = (() => {
         if (kind) {
           const r = RANK[kind];
           if (!best || r > best.r || (r === best.r && e.rbi > best.rbi)) {
-            best = { r, kind, code: e.code, rbi: e.rbi };
+            best = { r, kind, code: e.code, rbi: e.rbi, scene };
           }
         }
-        if (e.code === 'HR' && (!bestHr || e.rbi > bestHr.rbi)) bestHr = { rbi: e.rbi };
+        if (e.code === 'HR' && (!bestHr || e.rbi > bestHr.rbi)) bestHr = { rbi: e.rbi, scene };
       }
       prev = e.score;
     }
     if (best) {
       const KIND_WORD = { walkoff: 'サヨナラ', ahead: '勝ち越し', tie: '同点', first: '先制' };
-      return KIND_WORD[best.kind] + hitWord(best.code);
+      return { scene: best.scene, text: KIND_WORD[best.kind] + hitWord(best.code) };
     }
-    if (bestHr) return HR_RUN_WORD[Math.min(4, Math.max(1, bestHr.rbi))] || 'ホームラン';
-    return null;
+    if (bestHr) return { scene: bestHr.scene, text: HR_RUN_WORD[Math.min(4, Math.max(1, bestHr.rbi))] || 'ホームラン' };
+    return bestAny ? { scene: bestAny.scene, text: null } : null;
   }
 
   /** その試合が「名場面」に残るか */
@@ -353,7 +360,8 @@ const Growth = (() => {
       else if (s.cg) line += '（完投）';
       if (ctx.win) line += '（勝利投手）';
     } else {
-      const keyHit = findKeyHit(p.id, ctx);
+      const found = findKeyHit(p.id, ctx);
+      const keyHit = found && found.text;
       if (keyHit) {
         line = keyHit;
       } else if (s.hr) {
@@ -366,6 +374,8 @@ const Growth = (() => {
         /* 目立った一打が無かった試合。最後の手段として数字だけ残す */
         line = s.ab + '打数' + s.h + '安打';
       }
+      /* いつの場面か（何回・何アウト・何対何から）を頭に付ける */
+      if (found && found.scene && line.indexOf('打数') < 0) line = found.scene + ' ' + line;
     }
     return { score: Math.round(score * 10) / 10, year: ctx.year, where, line, win: !!ctx.win };
   }
