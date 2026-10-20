@@ -110,7 +110,13 @@ const SoccerGameScreen = (() => {
         el('circle', { r: 1.75, fill, stroke: '#fff', 'stroke-width': 0.3 }, g);
         const t = el('text', { class: 'sp__num', 'text-anchor': 'middle', y: 0.62, 'font-size': 1.9 }, g);
         t.textContent = p.num;
-        const u = { pid: p.pid, name: p.name, num: p.num, pos: p.pos, side, g, base: [bx, slot[1]] };
+        /* 名字だけを、選手のすぐ下に出す（誰がどこにいるかが分かるように）。
+           何かをしている選手は、上に動作の言葉も出す */
+        const last = p.last || p.name.slice(0, 2);
+        const nm = el('text', { class: 'sp__name', 'text-anchor': 'middle', y: 4.6 }, g);
+        nm.textContent = last;
+        const cap = el('text', { class: 'sp__cap', 'text-anchor': 'middle', y: -2.9 }, g);
+        const u = { pid: p.pid, name: p.name, last, num: p.num, pos: p.pos, side, g, cap, base: [bx, slot[1]] };
         units[side].push(u);
         place(g, bx, slot[1], 0);
       });
@@ -143,6 +149,16 @@ const SoccerGameScreen = (() => {
         place(u.g, x, Math.max(2, Math.min(H - 2, y)), ms);
       });
     });
+  }
+
+  /** 選手の上に動作の言葉を出す（空なら消す）。動いている選手の名前は大きくする */
+  function tag(u, text) {
+    if (!u) return;
+    u.cap.textContent = text || '';
+    u.g.classList.toggle('sp--act', !!text);
+  }
+  function clearTags() {
+    units.my.concat(units.op).forEach((u) => tag(u, ''));
   }
 
   function unitOf(pid) {
@@ -236,6 +252,8 @@ const SoccerGameScreen = (() => {
     for (let i = 0; i < n; i++) {
       const u = unitOf(build[i]);
       const [x, y] = dests[i];
+      clearTags();
+      tag(u, i === n - 1 ? 'ドリブル' : 'パス');
       shape(x, y, att, 520, { [u.pid]: [x, y] });
       placeBall(x, y, 520);
       await sleep(i === n - 1 ? 560 : 520);
@@ -267,6 +285,10 @@ const SoccerGameScreen = (() => {
       const d = units[def].filter((u) => u.pos === 'DF')[0];
       over[d.pid] = [tx, ty];
     }
+    clearTags();
+    tag(shooter, 'シュート');
+    if (e.outcome === 'save') tag(gk, 'セーブ');
+    if (e.outcome === 'block') tag(units[def].filter((u) => u.pos === 'DF')[0], 'ブロック');
     shape(sx, sy, att, 360, over);
     placeBall(tx, ty, 380);
     await sleep(520);
@@ -283,9 +305,12 @@ const SoccerGameScreen = (() => {
       cel[shooter.pid] = [spot[0], spot[1]];
       shape(spot[0], spot[1], att, 700, cel);
       const sc = UI.el('soccer-stage');
+      clearTags();
+      tag(shooter, 'ゴール！');
       sc.classList.add(mineSide ? 'is-goal-my' : 'is-goal-op');
       await banner(mineSide ? 'GOAL!' : '失点…', '#' + shooter.num + ' ' + e.name, 1900, mineSide ? 'goalfx--my' : 'goalfx--op');
       sc.classList.remove('is-goal-my', 'is-goal-op');
+      clearTags();
       // センターから再開
       shape(W / 2, H / 2, null, 600);
       placeBall(W / 2, H / 2, 600);
@@ -301,6 +326,7 @@ const SoccerGameScreen = (() => {
         placeBall(goalX + dir * 6, ty + (ty > gy ? 5 : -5), 380);
       }
       await sleep(520);
+      clearTags();
       shape(W / 2, H / 2, null, 700);
       placeBall(W / 2 + dir * -6, H / 2 + rand(-6, 6), 700);
       await sleep(520);
@@ -354,6 +380,8 @@ const SoccerGameScreen = (() => {
       // 他の選手はセンターサークルへ。蹴る選手はPKのスポットへ
       const over = {};
       units.my.concat(units.op).forEach((u, i) => { over[u.pid] = [W / 2 + (u.side === 'my' ? -4 : 4), 20 + (i % 11) * 2.8]; });
+      clearTags();
+      tag(kicker, 'PK');
       over[kicker.pid] = [spotX - dir * 2.2, H / 2];
       over[keeper.pid] = [goalX - dir * 1.4, H / 2];
       shape(W / 2, H / 2, null, 500, over);

@@ -196,7 +196,7 @@ const Soccer = (() => {
   function mySide(S) {
     return S.lineup.filter((x) => findP(S, x.pid)).map((x) => {
       const p = findP(S, x.pid);
-      return { pid: p.id, name: p.name, pos: x.pos, s: p.soc, p };
+      return { pid: p.id, name: p.name, last: p.last || '', pos: x.pos, s: p.soc, p };
     }).map((x, i) => Object.assign(x, { num: i + 1 }));
   }
 
@@ -230,7 +230,7 @@ const Soccer = (() => {
         boost.forEach((k) => { s[k] = RNG.stat(s[k] + 10); });
         if (pos !== 'GK') s.gk = RNG.stat(s.gk - 12);
         const nm = NAMES.personName();
-        side.push({ pid: 'o' + pos + i, name: nm.last + nm.first, pos, s, num: side.length + 1 });
+        side.push({ pid: 'o' + pos + i, name: nm.last + nm.first, last: nm.last, pos, s, num: side.length + 1 });
       }
     });
     return side;

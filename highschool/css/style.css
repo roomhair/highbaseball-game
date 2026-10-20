@@ -1350,3 +1350,7 @@ tr.prow.is-picked .nmlink { color: inherit; }
 .fv-so { font: 900 13px/1 system-ui, -apple-system, 'Hiragino Sans', sans-serif; letter-spacing: .08em; fill: #d63a2f; stroke: #fff; stroke-width: 3px; paint-order: stroke; opacity: 0; }
 .lineup-edit .actions--modal { display: flex; flex-wrap: nowrap; gap: 8px; }
 .lineup-edit .actions--modal .btn { flex: 1 1 0; min-width: 0; padding-left: 4px; padding-right: 4px; font-size: 14px; white-space: nowrap; }
+
+.spitch .sp__name { font: 700 2.5px sans-serif; fill: #fff; stroke: rgba(10, 30, 15, .72); stroke-width: .55px; paint-order: stroke; pointer-events: none; }
+.spitch .sp__cap { font: 800 2.6px sans-serif; fill: #ffe27a; stroke: rgba(10, 30, 15, .8); stroke-width: .55px; paint-order: stroke; pointer-events: none; }
+.spitch .sp--act .sp__name { font-size: 3.1px; fill: #ffe27a; }
