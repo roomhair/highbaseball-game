@@ -461,6 +461,17 @@ const Game = (() => {
 
     lastSim = { res, meta: { mySide: state.mySide, roundName: round.name, tourLabel: tourLabel(), report } };
 
+    /* 大会に優勝した試合は、まず優勝の画面を出し、そのあと勝敗へ進む */
+    if (win && isLast) {
+      state.phase = 'celebrate';
+      save();
+      Screens.celebrate(state);
+      return;
+    }
+    toVerdict();
+  }
+
+  function toVerdict() {
     state.phase = 'verdict';
     save();
     Screens.verdict(state);
@@ -480,13 +491,10 @@ const Game = (() => {
     const btn = UI.el('btn-result-next');
     /* このボタンは（決勝でも）まず引き抜き画面へ進むだけなので、
        「甲子園へ」「優勝！」のような先の展開を言い切る文言にはしない。
-       大会優勝そのものの演出は、結果画面へ進むこの瞬間に出す
-       （引き抜きのあとまで待たない）。実際に次の大会へ進む操作は、
+       大会優勝そのものの画面は、試合のあと最初に出している（celebrate）。
+       実際に次の大会へ進む操作は、
        引き抜きのあとに出る専用の画面（地方大会優勝／全国大会優勝）で行う */
     btn.textContent = r.win ? '引き抜きチャレンジへ' : r.loseNext;
-    if (r.win && r.last) {
-      UI.curtain('<b>' + UI.esc(tourLabel()) + '</b><span>優勝</span>', function () {});
-    }
     GameScreen.result(state, lastSim.res, lastSim.meta);
   }
 
@@ -1045,6 +1053,7 @@ const Game = (() => {
       /* 試合の途中で閉じたときは、同じ試合の同じところから続ける */
       case 'game': resumeGame(); break;
       /* 試合の中身は保存していないので、その次の処理から続ける */
+      case 'celebrate': Screens.celebrate(state); break;
       case 'verdict': case 'growth': case 'result':
         if (state.lastResult && state.lastResult.win) toPoach(); else lose();
         break;
@@ -1220,6 +1229,7 @@ const Game = (() => {
     on('btn-skip', () => GameScreen.skip());
     on('btn-result-next', () => (state.mode === 'soccer' ? soccerAfterResult() : afterResult()));
     on('btn-localwin-next', () => (state.mode === 'soccer' ? soccerStartTournament('national') : startTournament('national')));
+    on('btn-celebrate-next', toVerdict);
     on('btn-champion-next', () => (state.mode === 'soccer' ? toSoccerOffseason() : toOffseason()));
     on('btn-spring-result-next', () => (state.mode === 'soccer' ? soccerAfterSpringResult() : afterSpringResult()));
     const intro = UI.el('screen-trainintro');

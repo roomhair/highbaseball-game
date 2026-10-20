@@ -797,6 +797,21 @@ const Screens = (() => {
     UI.show('screen-champion');
   }
 
+  /** 大会に優勝した試合のあと、いちばん最初に出す画面（そのあと勝敗・成長・試合結果の順） */
+  function celebrate(state) {
+    const t = state.team;
+    UI.html('celebrate-body',
+      '<div class="champ champ--grand">' +
+        confetti(28, ['#d4af37', '#e23b3b', '#3b7fe2', '#ffffff', '#ffd54f']) +
+        '<p class="champ__eyebrow">' + state.year + '年目</p>' +
+        '<h2 class="champ__title">' + esc(Game.tourLabel()) + ' 優勝</h2>' +
+        '<p class="champ__school">' + esc(t.name) + '</p>' +
+        '<div class="champ__rays" aria-hidden="true"></div>' +
+        '<p class="champ__record">' + tourLine(state) + '</p>' +
+      '</div>');
+    UI.show('screen-celebrate');
+  }
+
   /** 秋の大会がすべて終わったあと、センバツ相当に出られるかどうかの発表。
       出られる年は少しだけ華やかに、出られない年は淡々と伝える */
   function springResult(state, qualified) {
@@ -1370,7 +1385,7 @@ const Screens = (() => {
 
   return {
     pick, ready, training, trainingResult, opening, pregame,
-    poachWin, poachRelease, poachSuccess, poachFailed, champion, springResult, offseason, settings, lineupCard, bindRows,
+    poachWin, poachRelease, poachSuccess, poachFailed, champion, celebrate, springResult, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
     localWin, soccerStart, soccerOpening, soccerPregame, soccerVerdict, soccerGrowth, soccerMatchResult, soccerLineupEditor, soccerCelebrate, soccerOffseason,
     soccerTraining, soccerTrainingResult, soccerSpringResult, soccerNewcomers,
