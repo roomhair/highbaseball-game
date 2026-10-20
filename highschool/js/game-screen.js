@@ -247,6 +247,12 @@ const GameScreen = (() => {
       }
       return c;
     };
+    /* 三振は「STRIKE OUT」を、マウンドと本塁のあいだに横向きで出す */
+    const strikeOut = (e && e.k === 'pa' && e.code === 'K')
+      ? '<text class="fv-so" x="100" y="133" text-anchor="middle">STRIKE OUT' +
+        '<animate attributeName="opacity" values="0;1;1;0.9" keyTimes="0;0.15;0.8;1" dur="' + (1.1 * k).toFixed(2) + 's" begin="0.12s" fill="freeze"/>' +
+        '</text>'
+      : '';
     return '<div class="fieldview">' +
       '<div class="fieldview__main">' +
       '<svg viewBox="0 0 200 188" aria-hidden="true">' +
@@ -258,7 +264,7 @@ const GameScreen = (() => {
         '<rect class="fv-base' + b(2) + '" x="54.5" y="107" width="9" height="9" transform="rotate(45 59 111.5)"/>' +
         '<polygon class="fv-home" points="100,147 105,152 100,157 95,152"/>' +
         (showBatter === false ? '' : batterView(swingKindOf(e), e && e.batterBats)) +
-        ball + runners +
+        ball + runners + strikeOut +
       '</svg>' +
       '<div class="outs">' + [0, 1, 2].map((i) =>
         '<i class="out' + (i < outs ? ' is-on' : '') + '"></i>').join('') + '<span>OUT</span></div>' +
