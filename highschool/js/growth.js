@@ -285,7 +285,7 @@ const Growth = (() => {
   function hitWord(code) { return HIT_WORD[code] || 'タイムリー'; }
 
   /* 満塁・3ラン・2ラン・ソロの呼び分け */
-  const HR_RUN_WORD = { 1: 'ソロホームラン', 2: '2ランホームラン', 3: '3ランホームラン', 4: '満塁ホームラン' };
+  const HR_RUN_WORD = { 1: 'ソロホームラン', 2: 'ツーランホームラン', 3: 'スリーランホームラン', 4: '満塁ホームラン' };
 
   /**
    * 試合ログから、この打者にとっていちばんの当たり（先制・同点・勝ち越し・サヨナラ）を探す。
@@ -295,31 +295,39 @@ const Growth = (() => {
     if (!ctx.log || !ctx.mySide) return null;
     const mine = ctx.mySide === 'away' ? 0 : 1;
     const opp = 1 - mine;
-    const RANK = { walkoff: 4, ahead: 3, tie: 2, first: 1 };
+    const RANK = { walkoff: 5, turn: 4, ahead: 3, tie: 2, first: 1 };
     let prev = [0, 0];
     let best = null;
     let bestHr = null; // 場面が付かなくても、本塁打なら最後の砦として残す
     let bestAny = null; // 打点をあげたいちばん大きな打席（場面の書き出し用）
-    /* 「7回裏 1アウト 2対3から」。自軍の得点を先に書く */
-    const sceneOf = (e, before) =>
-      e.inning + '回' + (e.half === 'top' ? '表' : '裏') + ' ' + (e.prevOuts || 0) + 'アウト ' +
-      before[mine] + '対' + before[opp] + 'から';
+    /* 「1-3 8回裏 無死一二塁」。自軍の得点を先に書く（打つ前の得点・アウト・走者） */
+    let prevB = [null, null, null];
+    const OUT_WORD = ['無死', '一死', '二死'];
+    const baseWord = (b) => {
+      const on = [b[0] ? '一' : '', b[1] ? '二' : '', b[2] ? '三' : ''].join('');
+      return on === '一二三' ? '満塁' : (on ? on + '塁' : '走者なし');
+    };
+    const sceneOf = (e, before, b) =>
+      before[mine] + '-' + before[opp] + ' ' + e.inning + '回' + (e.half === 'top' ? '表' : '裏') + ' ' +
+      (OUT_WORD[e.prevOuts || 0] || '') + baseWord(b);
     for (let i = 0; i < ctx.log.length; i++) {
       const e = ctx.log[i];
-      if (e.k === 'steal') { prev = e.score; continue; }   // 暴投・捕逸で入った点も前の得点に含める
+      if (e.k === 'half') { prevB = e.tie ? ['t', 't', null] : [null, null, null]; continue; }
+      if (e.k === 'steal') { prev = e.score; prevB = e.bases; continue; }   // 暴投・捕逸で入った点も前の得点に含める
       if (e.k !== 'pa') { continue; }
-      if (e.batter === pid && e.rbi > 0 && (!bestAny || e.rbi > bestAny.rbi)) bestAny = { rbi: e.rbi, scene: sceneOf(e, prev) };
+      if (e.batter === pid && e.rbi > 0 && (!bestAny || e.rbi > bestAny.rbi)) bestAny = { rbi: e.rbi, scene: sceneOf(e, prev, prevB) };
       if (e.batter === pid && e.rbi > 0 &&
           ['1B', '2B', '3B', 'HR', 'BB', 'HBP', 'SQ'].indexOf(e.code) >= 0) {
         const beforeMine = prev[mine], beforeOpp = prev[opp];
         const afterMine = e.score[mine], afterOpp = e.score[opp];
-        const scene = sceneOf(e, prev);
+        const scene = sceneOf(e, prev, prevB);
         const isLast = !ctx.log[i + 1] || ctx.log[i + 1].k === 'end';
         let kind = null;
         if (ctx.walkoff && isLast && afterMine > afterOpp) kind = 'walkoff';
-        else if (beforeMine <= beforeOpp && afterMine > afterOpp) kind = 'ahead';
+        else if (beforeMine === 0 && beforeOpp === 0 && afterMine > afterOpp) kind = 'first';   // 先制
+        else if (beforeMine < beforeOpp && afterMine > afterOpp) kind = 'turn';       // 逆転
+        else if (beforeMine === beforeOpp && afterMine > afterOpp) kind = 'ahead';    // 勝ち越し
         else if (beforeMine < beforeOpp && afterMine === afterOpp) kind = 'tie';
-        else if (beforeMine === 0 && beforeOpp === 0) kind = 'first';
         if (kind) {
           const r = RANK[kind];
           if (!best || r > best.r || (r === best.r && e.rbi > best.rbi)) {
@@ -329,10 +337,15 @@ const Growth = (() => {
         if (e.code === 'HR' && (!bestHr || e.rbi > bestHr.rbi)) bestHr = { rbi: e.rbi, scene };
       }
       prev = e.score;
+      prevB = e.bases;
     }
     if (best) {
-      const KIND_WORD = { walkoff: 'サヨナラ', ahead: '勝ち越し', tie: '同点', first: '先制' };
-      return { scene: best.scene, text: KIND_WORD[best.kind] + hitWord(best.code) };
+      const KIND_WORD = { walkoff: 'サヨナラ', turn: '逆転', ahead: '勝ち越し', tie: '同点', first: '先制' };
+      /* 本塁打は「逆転スリーランホームラン」のように、何ランかまで書く */
+      const what = best.code === 'HR'
+        ? (HR_RUN_WORD[Math.min(4, Math.max(1, best.rbi))] || 'ホームラン')
+        : hitWord(best.code);
+      return { scene: best.scene, text: KIND_WORD[best.kind] + what };
     }
     if (bestHr) return { scene: bestHr.scene, text: HR_RUN_WORD[Math.min(4, Math.max(1, bestHr.rbi))] || 'ホームラン' };
     return bestAny ? { scene: bestAny.scene, text: null } : null;
@@ -377,8 +390,10 @@ const Growth = (() => {
         if (!s.h) return null;
         line = s.ab + '打数' + s.h + '安打';
       }
-      /* いつの場面か（何回・何アウト・何対何から）を頭に付ける */
-      if (found && found.scene && line.indexOf('打数') < 0) line = found.scene + ' ' + line;
+      /* いつの場面か（1-3 8回裏 無死一二塁）を頭に付ける。
+         猛打賞のように場面で語れない行には付けない */
+      const specific = keyHit || s.hr || (s.rbi >= 1 && s.h < 3);
+      if (found && found.scene && specific && line.indexOf('打数') < 0) line = found.scene + ' ' + line;
     }
     return { score: Math.round(score * 10) / 10, year: ctx.year, where, line, win: !!ctx.win };
   }
