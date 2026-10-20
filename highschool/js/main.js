@@ -510,6 +510,8 @@ const Game = (() => {
     if (kind === 'local' && cold) return '次へ';
     if (kind === 'local' || kind === 'national') return 'オフシーズンへ';
     if (kind === 'fallPref' && isLast) return '秋季地区大会へ';
+    /* 春の全国大会の次は、特訓ではなく新入生の入部 */
+    if (kind === 'spring') return '新入生の入部へ';
     return '特訓へ';
   }
 

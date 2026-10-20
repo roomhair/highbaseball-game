@@ -1151,7 +1151,7 @@ const Screens = (() => {
     goals.forEach((e) => { scorers[e.name] = (scorers[e.name] || 0) + 1; });
     const lead = res.win
       ? (isLast ? label + '　優勝。' : '次の試合へ進む。')
-      : ((S.tour.kind === 'fallPref' && isLast) ? '秋季地区大会へ。' : (S.tour.kind === 'local' || S.tour.kind === 'national' ? 'オフシーズンへ。' : '特訓へ。'));
+      : ((S.tour.kind === 'fallPref' && isLast) ? '秋季地区大会へ。' : (S.tour.kind === 'local' || S.tour.kind === 'national' ? 'オフシーズンへ。' : (S.tour.kind === 'spring' ? '新入生の入部へ。' : '特訓へ。')));
     UI.html('verdict-body',
       '<div class="verdict__box' + (res.win ? ' is-win' : ' is-lose') + '">' +
         '<p class="verdict__where">' + esc(label) + '　' + esc(res.roundName) + '</p>' +
@@ -1230,7 +1230,7 @@ const Screens = (() => {
     UI.el('btn-result-next').textContent = res.win
       ? (isLast ? '次へ' : '次の試合へ')
       : ((S.tour.kind === 'local' || S.tour.kind === 'national') ? 'オフシーズンへ'
-        : (S.tour.kind === 'fallPref' && isLast ? '秋季地区大会へ' : '特訓へ'));
+        : (S.tour.kind === 'fallPref' && isLast ? '秋季地区大会へ' : (S.tour.kind === 'spring' ? '新入生の入部へ' : '特訓へ')));
     UI.show('screen-result');
   }
 
