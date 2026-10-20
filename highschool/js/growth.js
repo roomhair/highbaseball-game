@@ -296,6 +296,19 @@ const Growth = (() => {
     const mine = ctx.mySide === 'away' ? 0 : 1;
     const opp = 1 - mine;
     const RANK = { walkoff: 5, turn: 4, ahead: 3, tie: 2, first: 1 };
+    const KIND_WORD = { walkoff: 'サヨナラ', turn: '逆転', ahead: '勝ち越し', tie: '同点', first: '先制' };
+    /* 「逆転スリーランホームラン」「ダメ押し2点タイムリー」のように、
+       場面の言葉に打ったものを続ける（2点以上は「2点タイムリー」と点で書く） */
+    const phrase = (word, code, rbi) => {
+      let what;
+      if (code === 'HR') what = HR_RUN_WORD[Math.min(4, Math.max(1, rbi))] || 'ホームラン';
+      else if (code === '3B') what = rbi >= 2 ? rbi + '点三塁打' : '三塁打';
+      else if (code === 'SQ') what = 'スクイズ';
+      else if (code === 'BB' || code === 'HBP') return word + 'の押し出し';
+      else if (code === 'OUT') what = '犠牲フライ';
+      else what = rbi >= 2 ? rbi + '点タイムリー' : 'タイムリー';
+      return word + what;
+    };
     let prev = [0, 0];
     let best = null;
     let bestHr = null; // 場面が付かなくても、本塁打なら最後の砦として残す
@@ -315,9 +328,7 @@ const Growth = (() => {
       if (e.k === 'half') { prevB = e.tie ? ['t', 't', null] : [null, null, null]; continue; }
       if (e.k === 'steal') { prev = e.score; prevB = e.bases; continue; }   // 暴投・捕逸で入った点も前の得点に含める
       if (e.k !== 'pa') { continue; }
-      if (e.batter === pid && e.rbi > 0 && (!bestAny || e.rbi > bestAny.rbi)) bestAny = { rbi: e.rbi, scene: sceneOf(e, prev, prevB) };
-      if (e.batter === pid && e.rbi > 0 &&
-          ['1B', '2B', '3B', 'HR', 'BB', 'HBP', 'SQ'].indexOf(e.code) >= 0) {
+      if (e.batter === pid && e.rbi > 0) {
         const beforeMine = prev[mine], beforeOpp = prev[opp];
         const afterMine = e.score[mine], afterOpp = e.score[opp];
         const scene = sceneOf(e, prev, prevB);
@@ -328,27 +339,25 @@ const Growth = (() => {
         else if (beforeMine < beforeOpp && afterMine > afterOpp) kind = 'turn';       // 逆転
         else if (beforeMine === beforeOpp && afterMine > afterOpp) kind = 'ahead';    // 勝ち越し
         else if (beforeMine < beforeOpp && afterMine === afterOpp) kind = 'tie';
-        if (kind) {
+        /* 場面の言葉。どれにも当たらなければ、リードしているなら「ダメ押し」、
+           まだ負けているなら「追い上げ」 */
+        const word = kind ? KIND_WORD[kind] : (beforeMine > beforeOpp ? 'ダメ押し' : '追い上げ');
+        const text = phrase(word, e.code, e.rbi);
+        if (!bestAny || e.rbi > bestAny.rbi) bestAny = { rbi: e.rbi, scene, text };
+        if (kind && ['1B', '2B', '3B', 'HR', 'BB', 'HBP', 'SQ'].indexOf(e.code) >= 0) {
           const r = RANK[kind];
           if (!best || r > best.r || (r === best.r && e.rbi > best.rbi)) {
-            best = { r, kind, code: e.code, rbi: e.rbi, scene };
+            best = { r, kind, code: e.code, rbi: e.rbi, scene, text };
           }
         }
-        if (e.code === 'HR' && (!bestHr || e.rbi > bestHr.rbi)) bestHr = { rbi: e.rbi, scene };
+        if (e.code === 'HR' && (!bestHr || e.rbi > bestHr.rbi)) bestHr = { rbi: e.rbi, scene, text };
       }
       prev = e.score;
       prevB = e.bases;
     }
-    if (best) {
-      const KIND_WORD = { walkoff: 'サヨナラ', turn: '逆転', ahead: '勝ち越し', tie: '同点', first: '先制' };
-      /* 本塁打は「逆転スリーランホームラン」のように、何ランかまで書く */
-      const what = best.code === 'HR'
-        ? (HR_RUN_WORD[Math.min(4, Math.max(1, best.rbi))] || 'ホームラン')
-        : hitWord(best.code);
-      return { scene: best.scene, text: KIND_WORD[best.kind] + what };
-    }
-    if (bestHr) return { scene: bestHr.scene, text: HR_RUN_WORD[Math.min(4, Math.max(1, bestHr.rbi))] || 'ホームラン' };
-    return bestAny ? { scene: bestAny.scene, text: null } : null;
+    if (best) return { scene: best.scene, text: best.text };
+    if (bestHr) return { scene: bestHr.scene, text: bestHr.text };
+    return bestAny ? { scene: bestAny.scene, text: null, anyText: bestAny.text } : null;
   }
 
   /** その試合が「名場面」に残るか */
@@ -381,7 +390,8 @@ const Growth = (() => {
       } else if (s.hr) {
         line = HR_RUN_WORD[Math.min(4, Math.max(1, s.rbi || 1))] || 'ホームラン';
       } else if (s.rbi >= 1) {
-        line = s.h >= 3 ? s.h + '安打' + s.rbi + '打点の活躍' : s.rbi + '打点のタイムリー';
+        line = s.h >= 3 ? s.h + '安打' + s.rbi + '打点の活躍'
+          : ((found && found.anyText) || (s.rbi >= 2 ? s.rbi + '点タイムリー' : 'タイムリー'));
       } else if (s.h >= 3) {
         line = s.h + '安打の猛打賞';
       } else {
