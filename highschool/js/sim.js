@@ -281,6 +281,13 @@ const Sim = (() => {
    * 打順と場面を主にして、打撃能力はそこへの補正にとどめてある。
    */
   function chooseTactic(bat, slot, outs, bases, inning, lead) {
+    /* 敬遠。一塁が空いていて二塁か三塁に走者がいる終盤の接戦で、
+       クリーンアップの強打者とは勝負を避けて満塁策や併殺狙いにする。
+       高校野球でも見る作戦だが、数は少ない */
+    if (!bases[0] && (bases[1] || bases[2]) && inning >= 6 && Math.abs(lead) <= 2 &&
+        slot >= 2 && slot <= 4 && battingAbility(bat) >= 62 && RNG.chance(0.16)) {
+      return 'ibb';
+    }
     if (outs >= 2) return null;
     const ability = battingAbility(bat);
     const close = Math.abs(lead) <= 3;
@@ -326,6 +333,7 @@ const Sim = (() => {
 
   /** バントの成否。うまい打者ほど決まる */
   function resolveTactic(kind, bat, pit, defRating) {
+    if (kind === 'ibb') return { code: 'BB', text: '敬遠', out: 0 };
     const skill = C(0.68 + (bat.meet / 100) * 0.22 - (stuffOf(pit) - 0.45) * 0.12, 0.48, 0.94);
     if (kind === 'squeeze') {
       /* スクイズは決まれば1点、外されれば三塁走者が憤死する */
@@ -679,6 +687,52 @@ const Sim = (() => {
       slot = offTeam.lineup[slotIndex] || slot;
       bat = Team.find(offTeam, slot.pid) || bat;
 
+      /* 三盗。二塁だけに走者がいるときに、足の速い選手がまれにしかける。
+         二盗よりずっと少なく、一死までしか行かない（二死からは打者に任せる） */
+      if (bases[1] && !bases[0] && !bases[2] && outs < 2) {
+        const runner = bases[1];
+        const pAttempt = C((runner.speed - 55) / 500, 0, 0.06) *
+          ((off.runs - (off === A ? H.runs : A.runs)) <= -2 ? 0.2 : 1);
+        if (RNG.chance(pAttempt)) {
+          const cat = Team.defenders(defTeam, def.pitcherId).C;
+          const arm = cat ? (cat.arm * 0.6 + cat.catch * 0.4) : 40;
+          const ok = RNG.chance(C(0.62 + (runner.speed - arm) / 120, 0.3, 0.9));
+          if (ok) {
+            bases[2] = runner; bases[1] = null; runner.game.sb++;
+            log.push(snap('steal', { text: runner.name + ' 三盗成功', ok: true }, off, def, inning, half, outs, bases, A, H, bat, pit));
+          } else {
+            bases[1] = null; outs++;
+            log.push(snap('steal', { text: runner.name + ' 三盗失敗', ok: false }, off, def, inning, half, outs, bases, A, H, bat, pit));
+          }
+          showBases(); yield;
+          if (outs >= 3) { off.order = slotIndex; break; }
+        }
+      }
+
+      /* 暴投・捕逸。走者がいると、投手の制球が悪いほど起きやすい。
+         走者はひとつずつ進み、三塁走者は還る（暴投なら自責点、捕逸は自責点にならない） */
+      if (bases.some(Boolean)) {
+        const pWP = C(0.065 + 0.07 * (0.5 - pit.control / 100), 0.015, 0.10);
+        if (RNG.chance(pWP)) {
+          const isWP = RNG.chance(0.72);
+          let wpRuns = 0;
+          if (bases[2]) { const r = bases[2]; bases[2] = null; wpRuns++; if (r.game) r.game.r++; }
+          if (bases[1]) { bases[2] = bases[1]; bases[1] = null; }
+          if (bases[0]) { bases[1] = bases[0]; bases[0] = null; }
+          if (wpRuns) {
+            off.runs += wpRuns; got += wpRuns; def.pitcherRuns += wpRuns;
+            pit.game.r += wpRuns; if (isWP) pit.game.er += wpRuns;
+          }
+          log.push(snap('steal', {
+            text: (isWP ? '暴投' : '捕逸') + '　走者が進塁' + (wpRuns ? '（' + wpRuns + '点）' : ''),
+            ok: true, runs: wpRuns,
+          }, off, def, inning, half, outs, bases, A, H, bat, pit));
+          showBases(); yield;
+          /* サヨナラ */
+          if (off.isHome && inning >= CONFIG.GAME.INNINGS && off.runs > (off === A ? H.runs : A.runs)) return got;
+        }
+      }
+
       /* 前の試合から抜けきっていないスタミナの持ち越しを、
          今日すでに受けた打者の数に足しておく。これで「持ち越しが
          多い投手は今日のスタミナも早く減る」がそのまま成り立つ */
@@ -689,7 +743,7 @@ const Sim = (() => {
       const lead = off.runs - (off === A ? H.runs : A.runs);
       const tactic = chooseTactic(bat, slotIndex, outs, bases, inning, lead);
       /* 投げた球。見せるためのもので、結果そのものには効かせていない */
-      const ball = pickPitch(pit, fatigue);
+      const ball = tactic === 'ibb' ? null : pickPitch(pit, fatigue);
       const res = tactic
         ? resolveTactic(tactic, bat, pit, defRating)
         : resolvePA(bat, pit, defTeam, defRating, fatigue, defenders,
@@ -809,13 +863,18 @@ const Sim = (() => {
         /* 二塁走者。外野へ抜けた当たりなら還れるが、
            内野安打なら三塁で止まるのがふつう */
         if (bases[1]) {
-          const q = inf ? 0.03 + sp(bases[1]) * 0.07 : 0.50 + sp(bases[1]) * 0.35;
-          if (RNG.chance(q)) { if (score(bases[1])) rbi++; bases[1] = null; }
+          /* 二死は打った瞬間に全力で走るので、還りやすい */
+          const q = inf ? 0.03 + sp(bases[1]) * 0.07 : 0.50 + sp(bases[1]) * 0.35 + (outs === 2 ? 0.20 : 0);
+          if (RNG.chance(q)) {
+            /* 外野の返球で、本塁でタッチアウトになることもある（二死では走者が先に走るので除く） */
+            if (!inf && outs < 2 && RNG.chance(0.06)) { outs++; bases[1] = null; res.text += '（本塁憤死）'; }
+            else { if (score(bases[1])) rbi++; bases[1] = null; }
+          }
           else if (!bases[2]) { bases[2] = bases[1]; bases[1] = null; }
         }
         /* 一塁走者。内野安打から三塁まで行けることはまずない */
         if (bases[0]) {
-          const q3 = inf ? 0.02 : 0.14 + sp(bases[0]) * 0.26;
+          const q3 = inf ? 0.02 : 0.14 + sp(bases[0]) * 0.26 + (outs === 2 ? 0.10 : 0);
           if (!bases[2] && RNG.chance(q3)) { bases[2] = bases[0]; bases[0] = null; }
           else if (!bases[1]) { bases[1] = bases[0]; bases[0] = null; }
         }
@@ -827,7 +886,7 @@ const Sim = (() => {
         if (bases[2]) { if (score(bases[2])) rbi++; bases[2] = null; }
         if (bases[1]) { if (score(bases[1])) rbi++; bases[1] = null; }
         if (bases[0]) {
-          if (RNG.chance(0.26 + sp(bases[0]) * 0.32)) { if (score(bases[0])) rbi++; }
+          if (RNG.chance(0.26 + sp(bases[0]) * 0.32 + (outs === 2 ? 0.20 : 0))) { if (score(bases[0])) rbi++; }
           else bases[2] = bases[0];
           bases[0] = null;
         }
@@ -968,6 +1027,12 @@ const Sim = (() => {
              それ以外（左飛・中飛での二塁走者、一塁走者、内野フライ）は稀 */
           const spot = res.spot;
           const fly = res.bbType !== 'LD';          // ライナーは飛び出していて戻れない
+          /* 内野へのライナーで、飛び出した一塁走者が戻れず併殺になることがある */
+          if (!fly && !res.isOF && outs < 2 && bases[0] && RNG.chance(0.07)) {
+            outs += 2; bases[0] = null;
+            res.text = posShort(res.spot) + '直併';
+            break;
+          }
           if (outs < 2) {
             const pHome = res.isOF ? (fly ? 0.65 : 0.18) : 0.02;
             const pSecond = res.isOF
@@ -977,8 +1042,14 @@ const Sim = (() => {
             outs++;
             let scoredNow = false;
             if (bases[2] && RNG.chance(pHome)) {
-              if (score(bases[2])) rbi++;
-              bases[2] = null; scoredNow = true;
+              if (res.isOF && fly && RNG.chance(0.04)) {
+                /* 外野からの好返球で、三塁走者が本塁でアウト（併殺） */
+                outs++; bases[2] = null;
+                res.text = posShort(spot) + '飛（本塁補殺）';
+              } else {
+                if (score(bases[2])) rbi++;
+                bases[2] = null; scoredNow = true;
+              }
             }
             if (bases[1] && !bases[2] && RNG.chance(pSecond)) { bases[2] = bases[1]; bases[1] = null; }
             if (bases[0] && !bases[1] && RNG.chance(pFirst)) { bases[1] = bases[0]; bases[0] = null; }

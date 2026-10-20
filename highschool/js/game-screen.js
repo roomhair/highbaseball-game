@@ -571,6 +571,12 @@ const GameScreen = (() => {
     }
 
     if (e.k === 'steal') {
+      /* 暴投・捕逸で点が入ったときは、スコアボードにも足す */
+      if (e.runs) {
+        const arr = e.half === 'top' ? st.awayInn : st.homeInn;
+        arr[e.inning - 1] = (arr[e.inning - 1] || 0) + e.runs;
+        st.awayR = e.score[0]; st.homeR = e.score[1];
+      }
       const html = '<div class="stage__play' + (e.ok ? ' is-good' : ' is-bad') + '">' +
         '<span class="stage__meta">' + halfLabel(e) + '</span>' +
         '<span class="stage__text">' + esc(e.text) + '</span></div>' +

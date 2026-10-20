@@ -306,6 +306,7 @@ const Growth = (() => {
       before[mine] + '対' + before[opp] + 'から';
     for (let i = 0; i < ctx.log.length; i++) {
       const e = ctx.log[i];
+      if (e.k === 'steal') { prev = e.score; continue; }   // 暴投・捕逸で入った点も前の得点に含める
       if (e.k !== 'pa') { continue; }
       if (e.batter === pid && e.rbi > 0 && (!bestAny || e.rbi > bestAny.rbi)) bestAny = { rbi: e.rbi, scene: sceneOf(e, prev) };
       if (e.batter === pid && e.rbi > 0 &&
