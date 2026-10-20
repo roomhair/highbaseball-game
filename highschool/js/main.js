@@ -1234,10 +1234,10 @@ const Game = (() => {
     on('btn-celebrate-next', toVerdict);
     on('btn-champion-next', () => (state.mode === 'soccer' ? toSoccerOffseason() : toOffseason()));
     on('btn-spring-result-next', () => (state.mode === 'soccer' ? soccerAfterSpringResult() : afterSpringResult()));
+    /* 「特訓へ」ボタンは画面を描くたびに作り直されるので、画面側で受ける */
     const intro = UI.el('screen-trainintro');
     if (intro) intro.addEventListener('click', (e) => {
-      /* キャプテンを決めるボタンを押したときは、特訓に入らない */
-      if (e.target.closest('#btn-captain')) return;
+      if (!e.target.closest('#btn-trainintro-go')) return;
       if (state && state.phase === 'train-intro') startTraining();
     });
     on('btn-off-next', toPostSummerRetirement);

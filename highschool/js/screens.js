@@ -222,11 +222,10 @@ const Screens = (() => {
       '<h2 class="nextup__title">特訓期間</h2>' +
       '<p class="nextup__vs">' + esc(t.name) + '。' + esc(trainingIntroLead(state)) + '</p>' +
       captainBox(t) +
-      /* キャプテンが決まるまでは先へ進ませない。
-         画面をタップすると特訓に入るので、注意書きも出す */
-      (cap
-        ? '<p class="taphint taphint--static">タップで特訓へ</p>'
-        : '<p class="capwarn">キャプテンを決めると特訓に進めます</p>'));
+      /* キャプテンが決まるまでは先へ進ませない（ボタンを押せなくして、注意書きも出す） */
+      (cap ? '' : '<p class="capwarn">キャプテンを決めると特訓に進めます</p>') +
+      '<div class="actions"><button type="button" class="btn btn--primary btn--wide" id="btn-trainintro-go"' +
+        (cap ? '' : ' disabled') + '>特訓へ</button></div>');
     wireCaptain(UI.el('trainintro-body'), t, () => trainingIntro(state));
     UI.show('screen-trainintro');
   }
