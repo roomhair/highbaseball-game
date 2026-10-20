@@ -261,6 +261,8 @@ const Screens = (() => {
       });
       groups.sort((a, b) =>
         (order[a.pid] == null ? 99 : order[a.pid]) - (order[b.pid] == null ? 99 : order[b.pid]));
+      /* 「走力 +16　ミート +20」の並びも、ふだんの能力の並び（ミート・パワー・走力…）に合わせる */
+      groups.forEach((g) => g.ups.sort((a, b) => statOrder(a.key) - statOrder(b.key)));
       const lines = groups.map((g) => {
         const p = Team.find(state.team, g.pid);
         if (!p) return '';
@@ -314,6 +316,13 @@ const Screens = (() => {
    * 残りはいまの値をそのまま添える。能力の評価には色を付ける。
    */
   /** ups は「この選手が今回上がるぶん」の一覧（「複数」のカードでは2つ入る） */
+  /** 能力の並び順（ふだんの表示と同じ）。特訓で上がる項目を並べるのに使う */
+  const STAT_ORDER = ['velo', 'control', 'stamina', 'pitch', 'newpitch', 'meet', 'power', 'speed', 'arm', 'field', 'catch', 'traj'];
+  function statOrder(key) {
+    const i = STAT_ORDER.indexOf(key);
+    return i < 0 ? STAT_ORDER.length : i;
+  }
+
   function statChips(p, ups) {
     const list = Array.isArray(ups) ? ups : [ups];
     /* その能力が上がるなら上がり幅、上がらないなら null */
@@ -1286,7 +1295,9 @@ const Screens = (() => {
       const lines = groups.map((g) => {
         const p = Soccer.findP(S, g.pid);
         if (!p) return '';
-        const ups = g.ups.map((t) => esc(t.label) + ' +' + t.amount).join('　');
+        const sorder = (k) => Soccer.STATS.findIndex((x) => x.key === k);
+        const ups = g.ups.slice().sort((a, b) => sorder(a.key) - sorder(b.key))
+          .map((t) => esc(t.label) + ' +' + t.amount).join('　');
         const keys = p.soc.pos === 'GK' ? Soccer.GK_KEYS : Soccer.FIELD_KEYS;
         const chips = Soccer.STATS.filter((stt) => keys.indexOf(stt.key) >= 0).map((stt) => {
           const t = g.ups.find((x) => x.key === stt.key);
