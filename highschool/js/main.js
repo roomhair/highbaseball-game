@@ -174,9 +174,9 @@ const Game = (() => {
   function trainingNextLabel() {
     switch (state.trainingNext) {
       case 'fallPref': return '秋の大会へ';
-      /* このあと出場の可否を発表する画面へ進む。出られるかどうかは
+      /* このあと出場の可否を発表する画面（選考結果）へ進む。出られるかどうかは
          そこで分かるので、ここでは大会の名前で書いておく */
-      case 'springOrNextSummer': return state.settings.springName + 'へ';
+      case 'springOrNextSummer': return state.settings.springName + '選考へ';
       /* 新入生を迎えたあとの特訓が終わったら、次はいよいよ夏の大会 */
       case 'nextSummer': return '夏の大会へ';
       default: return '県大会へ';
@@ -842,7 +842,7 @@ const Game = (() => {
   function soccerTrainingLabel() {
     switch (state.soccer.trainingNext) {
       case 'fallPref': return '秋の大会へ';
-      case 'springOrNextSummer': return state.settings.springName + 'へ';
+      case 'springOrNextSummer': return state.settings.springName + '選考へ';
       default: return '夏の大会へ';
     }
   }
