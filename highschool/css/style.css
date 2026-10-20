@@ -1348,3 +1348,5 @@ tr.prow.is-picked .nmlink { color: inherit; }
 .ll__today b { margin-left: 3px; color: var(--ink); font-weight: 700; }
 
 .fv-so { font: 900 13px/1 system-ui, -apple-system, 'Hiragino Sans', sans-serif; letter-spacing: .08em; fill: #d63a2f; stroke: #fff; stroke-width: 3px; paint-order: stroke; opacity: 0; }
+.lineup-edit .actions--modal { display: flex; flex-wrap: nowrap; gap: 8px; }
+.lineup-edit .actions--modal .btn { flex: 1 1 0; min-width: 0; padding-left: 4px; padding-right: 4px; font-size: 14px; white-space: nowrap; }

@@ -694,6 +694,8 @@ const UI = (() => {
         '<div class="actions actions--modal">' +
         '<button type="button" class="btn" id="lu-auto">' +
           (tab === 'bat' ? '野手をおまかせ' : '投手をおまかせ') + '</button>' +
+        '<button type="button" class="btn" id="lu-worst">' +
+          (tab === 'bat' ? '野手を最弱' : '投手を最弱') + '</button>' +
         '<button type="button" class="btn btn--primary" id="lu-done">決定</button>' +
         '</div></div>';
     }
@@ -807,6 +809,21 @@ const UI = (() => {
           Team.autoLineup(team);
           if (keep.length) team.rotation = keep;
           team.pitcherOrder = keepOrder;
+          team.batters.forEach((p) => { posOf[p.id] = BENCH; });
+          team.lineup.forEach((sl) => { posOf[sl.pid] = sl.pos; });
+          order = team.lineup.map((sl) => sl.pid)
+            .concat(team.batters.map((p) => p.id).filter((id) => posOf[id] === BENCH));
+          showBad = false;
+        }
+        refresh();
+      });
+      /* 最弱は、おまかせの逆。できるだけ弱い並びに組み直す（決定で確定） */
+      const worst = body.querySelector('#lu-worst');
+      if (worst) worst.addEventListener('click', () => {
+        if (tab === 'pit') {
+          Team.worstRotation(team);
+        } else {
+          Team.worstLineup(team);
           team.batters.forEach((p) => { posOf[p.id] = BENCH; });
           team.lineup.forEach((sl) => { posOf[sl.pid] = sl.pos; });
           order = team.lineup.map((sl) => sl.pid)
