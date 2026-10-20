@@ -886,24 +886,9 @@ const Screens = (() => {
         })()
       : '';
 
-    /* キャプテンはここでも変えられる。引退して空いたときだけでなく、
-       続けられる場合でも、気が変わったら替えられるようにしておく。
-       強制はしない（このまま先へ進んでもよい） */
-    const leaving = retired.map((f) => f.player.id);
-    const cap = Team.captain(state.team);
-    const capOut = cap && leaving.indexOf(cap.id) >= 0;
-    const capPart =
-      '<h3 class="sub">キャプテン</h3>' +
-      captainBox(state.team, leaving) +
-      '<p class="note">' +
-        (!cap ? 'キャプテンが決まっていません。'
-              : (capOut ? '引退するので、新しいキャプテンを決めてください。'
-                        : '続けてもらうならこのままで構いません。気が変わったらここで変えられます。')) +
-        '学年は問いません。引退する3年生は選べません。</p>';
-
     UI.html('off-body',
       taken + '<p class="section-lead">3年生が引退します。</p>' +
-      cards + capPart);
+      cards);
     const body = UI.el('off-body');
     const all = retired.map((f) => f.player).concat(
       state.poachedFrom && state.poachedFrom.player ? [state.poachedFrom.player] : []);
@@ -912,7 +897,6 @@ const Screens = (() => {
         const q = all.find((x) => x.id === b.dataset.pid);
         if (q) UI.openPlayer(q, { team: state.team, rename: false });
       }));
-    wireCaptain(body, state.team, () => offseason(state, retired), leaving);
     UI.show('screen-offseason');
   }
 
