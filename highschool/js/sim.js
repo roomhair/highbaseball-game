@@ -712,9 +712,15 @@ const Sim = (() => {
       /* 暴投・捕逸。走者がいると、投手の制球が悪いほど起きやすい。
          走者はひとつずつ進み、三塁走者は還る（暴投なら自責点、捕逸は自責点にならない） */
       if (bases.some(Boolean)) {
-        const pWP = C(0.065 + 0.07 * (0.5 - pit.control / 100), 0.015, 0.10);
-        if (RNG.chance(pWP)) {
-          const isWP = RNG.chance(0.72);
+        /* 暴投は投手の制球、捕逸は捕手の捕球能力で決まる。
+           捕逸の確率は捕手の捕球に反比例する（捕球50で約1.8%、100で約0.9%、20で約4.5%） */
+        const cat = Team.defenders(defTeam, def.pitcherId).C;
+        const catchSkill = Math.max(10, cat ? cat.catch : 40);
+        const pWP = C(0.047 + 0.05 * (0.5 - pit.control / 100), 0.01, 0.075);
+        const pPB = C(0.90 / catchSkill, 0.004, 0.09);
+        const roll = RNG.rand();
+        if (roll < pWP + pPB) {
+          const isWP = roll < pWP;
           let wpRuns = 0;
           if (bases[2]) { const r = bases[2]; bases[2] = null; wpRuns++; if (r.game) r.game.r++; }
           if (bases[1]) { bases[2] = bases[1]; bases[1] = null; }
