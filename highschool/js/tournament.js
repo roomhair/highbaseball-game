@@ -175,6 +175,9 @@ const Tournament = (() => {
     if (!r) return null;
     const t = makeTeam(r.schoolName, r.level, tour.kind);
     /* 決勝は必ず1番手が先発。それ以外は、たまに2番手・3番手が先発する */
+    /* 番手の並びは力の順で固定しておく（先発が替わっても、1番手は1番手のまま。
+       これが無いと、先発が誰でも結果画面に「1番手・先発」と出てしまう） */
+    t.pitcherOrder = t.rotation.slice();
     const isFinal = tour.index >= tour.rounds.length - 1;
     if (!isFinal && t.rotation.length > 2 && RNG.chance(0.35)) {
       const pick = t.rotation.splice(RNG.chance(0.65) ? 1 : 2, 1)[0];
