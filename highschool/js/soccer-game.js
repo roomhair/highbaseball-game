@@ -327,10 +327,92 @@ const SoccerGameScreen = (() => {
       }
       await sleep(520);
       clearTags();
-      shape(W / 2, H / 2, null, 700);
-      placeBall(W / 2 + dir * -6, H / 2 + rand(-6, 6), 700);
-      await sleep(520);
+      /* ゴール以外は、キックオフに戻さず、ルールどおりに再開する
+         （ゴールキック・コーナーキック・キーパーのキャッチ・クリア） */
+      await restartAfterMiss(e.outcome, att, def, dir, goalX, gk);
     }
+  }
+
+  /** ゴールにならなかった攻撃のあとの再開。サッカーのルールに合わせる。
+      ・枠の外へ出た → 守るチームのゴールキック
+      ・キーパーが止めた → 多くはキャッチして投げる／蹴る。弾けばコーナーキック
+      ・バー・ブロック → コーナーキックか、守備側のクリア */
+  async function restartAfterMiss(outcome, att, def, dir, goalX, gk) {
+    const gy = H / 2;
+    const ownGoalX = goalX;                       // 攻められたゴール（守る側のゴール）
+    let kind;
+    if (outcome === 'wide') kind = 'goalkick';
+    else if (outcome === 'save') kind = Math.random() < 0.72 ? 'catch' : 'corner';
+    else if (outcome === 'bar') kind = Math.random() < 0.5 ? 'corner' : 'clear';
+    else kind = Math.random() < 0.5 ? 'corner' : 'clear';      // ブロック
+
+    if (kind === 'goalkick') {
+      // ゴールエリアの中に置いて、キーパーが蹴る
+      const bx = ownGoalX - dir * 5.5, by = gy + rand(-5, 5);
+      shape(bx, by, def, 600, { [gk.pid]: [bx - dir * 1.2, by] });
+      placeBall(bx, by, 600);
+      tag(gk, 'ゴールキック');
+      await sleep(760);
+      clearTags();
+      const tx = ownGoalX - dir * rand(30, 42), ty = H / 2 + rand(-18, 18);
+      placeBall(tx, ty, 650);
+      shape(tx, ty, def, 700);
+      await sleep(700);
+      return;
+    }
+    if (kind === 'catch') {
+      // キーパーがキャッチ。そのまま前へ蹴り出す
+      const p = parsePos(gk);
+      placeBall(p[0], p[1], 300);
+      tag(gk, 'キャッチ');
+      await sleep(760);
+      clearTags();
+      const tx = ownGoalX - dir * rand(24, 38), ty = H / 2 + rand(-16, 16);
+      placeBall(tx, ty, 650);
+      shape(tx, ty, def, 700);
+      await sleep(700);
+      return;
+    }
+    if (kind === 'corner') {
+      // 攻める側のコーナーキック。両チームがゴール前に集まる
+      const cy = Math.random() < 0.5 ? 0.6 : H - 0.6, cx = ownGoalX - dir * 0.6;
+      const attackers = units[att].filter((u) => u.pos !== 'GK');
+      const taker = attackers.filter((u) => u.pos === 'MF' || u.pos === 'FW')[0] || attackers[0];
+      const over = { [taker.pid]: [cx, cy] };
+      units[att].forEach((u) => {
+        if (u === taker || u.pos === 'GK' || u.pos === 'DF') return;
+        over[u.pid] = [ownGoalX - dir * rand(6, 14), gy + rand(-9, 9)];
+      });
+      units[def].forEach((u) => {
+        if (u.pos === 'GK') { over[u.pid] = [ownGoalX - dir * 1.6, gy + rand(-1.5, 1.5)]; return; }
+        if (u.pos === 'FW') return;
+        over[u.pid] = [ownGoalX - dir * rand(4, 10), gy + rand(-10, 10)];
+      });
+      shape(ownGoalX - dir * 12, gy, att, 800, over);
+      placeBall(cx, cy, 800);
+      tag(taker, 'コーナーキック');
+      await sleep(1000);
+      clearTags();
+      // ゴール前へ蹴り込み、守る側がクリア
+      placeBall(ownGoalX - dir * rand(6, 10), gy + rand(-6, 6), 520);
+      await sleep(560);
+      const clearer = units[def].filter((u) => u.pos === 'DF')[0];
+      tag(clearer, 'クリア');
+      const tx = ownGoalX - dir * rand(26, 36), ty = H / 2 + rand(-20, 20);
+      placeBall(tx, ty, 650);
+      shape(tx, ty, def, 750);
+      await sleep(700);
+      clearTags();
+      return;
+    }
+    // クリア。守る側の最終ラインが大きく蹴り出す
+    const clearer = units[def].filter((u) => u.pos === 'DF')[0];
+    tag(clearer, 'クリア');
+    const tx = ownGoalX - dir * rand(24, 36), ty = H / 2 + rand(-20, 20);
+    placeBall(tx, ty, 600);
+    shape(tx, ty, null, 700);
+    await sleep(700);
+    clearTags();
   }
 
   /** 時計を進める。途中でハーフタイムなどがあれば挟む */
