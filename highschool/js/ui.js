@@ -907,6 +907,7 @@ const UI = (() => {
   }
 
   return {
+    pitOrderOf,
     el, esc, html, show, currentScreen, curtain, modal, closeModal, confirmBox, decisionLines,
     avg, era, ipText, stat, rankSpan, rankNum, aptSpan, pullText, handMark,
     playerRow, rosterTable, rosterPanel, sortPlayers, playerDetail, openPlayer,

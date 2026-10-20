@@ -306,7 +306,8 @@ const Screens = (() => {
   function orderIndex(team) {
     const map = {};
     team.lineup.forEach((sl, i) => { map[sl.pid] = i; });
-    (team.rotation || []).forEach((id, i) => { if (map[id] == null) map[id] = 20 + i; });
+    /* 投手は番手の順（先発に選んでも番手は動かさない） */
+    UI.pitOrderOf(team).forEach((id, i) => { if (map[id] == null) map[id] = 20 + i; });
     team.batters.forEach((p) => { if (map[p.id] == null) map[p.id] = 10; });
     return map;
   }
