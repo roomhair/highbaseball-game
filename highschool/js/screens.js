@@ -998,13 +998,14 @@ const Screens = (() => {
 
   function soccerStart(state) {
     const S = state.soccer;
+    const fall = S.convertedFrom === 'fallPref';
     socShow(state, state.year + '年目', 'サッカー転向',
-      '<p class="section-lead">夏の県大会でコールド負け。' + esc(S.schoolName) +
+      '<p class="section-lead">' + (fall ? '秋' : '夏') + 'の県大会でコールド負け。' + esc(S.schoolName) +
       '野球部の部員たちはすっかりやる気を無くし、サッカーを始めてしまった。</p>' +
       '<p class="section-lead">部員はそのままサッカー部に加わり、新しい挑戦が始まる。' +
-      'シーズンの流れは野球と同じ。まずは3年生の引退から。</p>' +
+      'シーズンの流れは野球と同じ。' + (fall ? 'まずは特訓から。' : 'まずは3年生の引退から。') + '</p>' +
       socSection(S, '部員（名前を押すと能力が見られます）', socLineupRows(S).concat(socBenchRows(S))),
-      'オフシーズンへ');
+      fall ? '特訓へ' : 'オフシーズンへ');
   }
 
   /** 大会開幕（野球の開幕画面と同じ） */

@@ -507,7 +507,7 @@ const Game = (() => {
       負けても決勝（＝最後の回）まで来ていれば次の大会へ進む */
   function loseNextLabel(kind, isLast, cold) {
     /* 県大会でのコールド負けは、このあとサッカー転向の画面へ進む */
-    if (kind === 'local' && cold) return '次へ';
+    if ((kind === 'local' || kind === 'fallPref') && cold) return '次へ';
     if (kind === 'local' || kind === 'national') return 'オフシーズンへ';
     if (kind === 'fallPref' && isLast) return '秋季地区大会へ';
     /* 春の全国大会の次は、特訓ではなく新入生の入部 */
@@ -658,6 +658,9 @@ const Game = (() => {
     /* 秋は「負けても決勝（＝最後の回）まで来ていれば次の大会へ進む」
        （県大会2位以内→地区大会、地区大会2位以内→センバツ相当）。
        地区大会は準優勝でも神宮大会相当には進めない（優勝校だけ） */
+    /* 県大会（夏でも秋でも）でコールド負けすると、部員はやる気を無くし、
+       野球部はそのままサッカー部になる */
+    if (kind === 'fallPref' && state.lastResult.cold) { toSoccerConversion(); return; }
     if (kind === 'fallPref') {
       state.fallPrefFinalLevel = state.tour.finalLevel;
       /* 準優勝（決勝で敗退）でも地区大会へは進む */
@@ -702,6 +705,8 @@ const Game = (() => {
     state.mode = 'soccer';
     state.soccer = Soccer.start(team);
     state.soccer.springQualified = false;
+    /* どの大会でのコールド負けか（夏の県大会か、秋の県大会か） */
+    state.soccer.convertedFrom = state.tour ? state.tour.kind : 'local';
     state.team = null;
     state.phase = 'soccer-start';
     save();
@@ -1244,7 +1249,11 @@ const Game = (() => {
 
     on('btn-soccer-primary', () => {
       switch (state.phase) {
-        case 'soccer-start': toSoccerOffseason(); break;
+        case 'soccer-start':
+          /* 秋の県大会でのコールド負けなら、3年生の引退はもう済んでいるので、特訓から始める */
+          if (state.soccer.convertedFrom === 'fallPref') soccerToTraining('fallPref', TRAIN_LIMITS.short);
+          else toSoccerOffseason();
+          break;
         case 'soccer-offseason': soccerAfterOffseason(); break;
       }
     });
