@@ -906,23 +906,52 @@ const Sim = (() => {
               bases[0] = null;
               if (outs < 3) {
                 /* 併殺の間に三塁走者が還る。三つめのアウトにならなければ点は入る */
-                if (bases[2] && RNG.chance(0.80)) { if (score(bases[2])) rbi++; bases[2] = null; }
+                if (bases[2] && RNG.chance(0.80)) { score(bases[2]); bases[2] = null; }   // 併殺打の間の得点に打点は付かない
                 if (bases[1] && !bases[2]) { bases[2] = bases[1]; bases[1] = null; }
               }
               res.text = posShort(res.spot) + '併';
               break;
             }
           }
+          /* 併殺にならなかったゴロ。一塁に走者がいれば、打者が一塁へ走るので
+             走者は押し出されて二塁へ向かう（強制）。守備側の処理は次のどちらか。
+             ・打者を一塁で刺す（ボテボテ）。走者は押し出された分だけ進む
+             ・二塁で走者を封殺（併殺崩れ・野選）。打者は一塁に生きる
+             「一死一二塁のまま変わらない」のような、走者が動かない結果にはならない */
+          const forced1 = !!bases[0];
+          const toRight = res.spot === '1B' || res.spot === '2B';   // 一二塁間のゴロ
+          const fc = forced1 && outs < 2 && RNG.chance(0.40);
           outs++;
           if (outs < 3) {
-            /* 三塁走者は、内野ゴロの間に還ることがある。
-               足があるほど、また前進守備でなければ還りやすい */
-            if (bases[2] && RNG.chance(C(0.46 + (bases[2].speed - 45) * 0.003, 0.28, 0.66))) {
-              if (score(bases[2])) rbi++;
-              bases[2] = null;
+            if (fc) {
+              bases[0] = null;                                       // 二塁で封殺
+              if (bases[2]) {
+                /* 満塁なら三塁走者は押し出されて本塁へ。そうでなければ、飛び出していれば還る */
+                const full = !!bases[1];
+                if (RNG.chance(full ? 0.85 : 0.35)) { if (score(bases[2])) rbi++; bases[2] = null; }
+                else if (full) { /* 本塁でも刺されず、三塁に残る */ }
+              }
+              if (bases[1] && !bases[2]) { bases[2] = bases[1]; bases[1] = null; }
+              bases[0] = bat;
+              res.text = posShort(res.spot) + 'ゴロ（封殺）';
+            } else {
+              /* 三塁走者。満塁なら押し出されて必ず還る。そうでなければ内野ゴロの間に
+                 還ることがある（足があるほど還りやすい） */
+              if (bases[2]) {
+                const force3 = bases[0] && bases[1];
+                if (force3 || RNG.chance(C(0.46 + (bases[2].speed - 45) * 0.003, 0.28, 0.66))) {
+                  if (score(bases[2])) rbi++;
+                  bases[2] = null;
+                }
+              }
+              /* 二塁走者。一塁に走者がいれば押し出されて三塁へ（強制）。
+                 いなければ、一二塁間のゴロなら進みやすく、三遊間のゴロなら止まりやすい */
+              if (bases[1] && !bases[2]) {
+                if (bases[0] || RNG.chance(toRight ? 0.75 : 0.22)) { bases[2] = bases[1]; bases[1] = null; }
+              }
+              /* 一塁走者は、打者が走るので必ず二塁へ */
+              if (bases[0] && !bases[1]) { bases[1] = bases[0]; bases[0] = null; }
             }
-            if (bases[1] && !bases[2] && RNG.chance(0.45)) { bases[2] = bases[1]; bases[1] = null; }
-            if (bases[0] && !bases[1]) { bases[1] = bases[0]; bases[0] = null; }
           }
         } else {
           /* 飛球でのタッチアップ。外野フライでは、三塁走者が還る（左・中・右とも
