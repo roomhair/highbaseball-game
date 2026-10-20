@@ -815,7 +815,7 @@ const Sim = (() => {
         }
         /* 一塁走者。内野安打から三塁まで行けることはまずない */
         if (bases[0]) {
-          const q3 = inf ? 0.02 : 0.20 + sp(bases[0]) * 0.30;
+          const q3 = inf ? 0.02 : 0.14 + sp(bases[0]) * 0.26;
           if (!bases[2] && RNG.chance(q3)) { bases[2] = bases[0]; bases[0] = null; }
           else if (!bases[1]) { bases[1] = bases[0]; bases[0] = null; }
         }
@@ -827,7 +827,7 @@ const Sim = (() => {
         if (bases[2]) { if (score(bases[2])) rbi++; bases[2] = null; }
         if (bases[1]) { if (score(bases[1])) rbi++; bases[1] = null; }
         if (bases[0]) {
-          if (RNG.chance(0.35 + sp(bases[0]) * 0.35)) { if (score(bases[0])) rbi++; }
+          if (RNG.chance(0.26 + sp(bases[0]) * 0.32)) { if (score(bases[0])) rbi++; }
           else bases[2] = bases[0];
           bases[0] = null;
         }
@@ -903,7 +903,8 @@ const Sim = (() => {
         if (res.bbType === 'GB') {
           /* 併殺の目 */
           if (bases[0] && outs < 2) {
-            const pDP = C(0.40 - (bat.speed - 50) * 0.004, 0.08, 0.66);
+            const DP_BY_SPOT = { SS: 1.12, '2B': 1.05, '3B': 1.0, '1B': 0.62, P: 0.75, C: 0.35 };   // 一塁線のゴロや投手・捕手のゴロは併殺になりにくい
+            const pDP = C((0.40 - (bat.speed - 50) * 0.004) * (DP_BY_SPOT[res.spot] || 0.9), 0.05, 0.66);
             if (RNG.chance(pDP)) {
               outs += 2;
               bases[0] = null;
@@ -922,7 +923,12 @@ const Sim = (() => {
              ・二塁で走者を封殺（併殺崩れ・野選）。打者は一塁に生きる
              「一死一二塁のまま変わらない」のような、走者が動かない結果にはならない */
           const forced1 = !!bases[0];
-          const toRight = res.spot === '1B' || res.spot === '2B';   // 一二塁間のゴロ
+          /* 二塁走者が三塁へ進めるか（走者が詰まっていないとき）。
+             一二塁間（右方向）のゴロは打球を見て進めるが、いつもではない。
+             三遊間のゴロは打球が三塁側へ向かうので、まず進めない。
+             一死では無理をしないぶん、少し下がる */
+          const R2_ADV = { '1B': 0.55, '2B': 0.62, SS: 0.10, '3B': 0.05, P: 0.12, C: 0.04 };
+          const r2Adv = (R2_ADV[res.spot] != null ? R2_ADV[res.spot] : 0.15) * (outs >= 1 ? 0.8 : 1);
           const fc = forced1 && outs < 2 && RNG.chance(0.40);
           outs++;
           if (outs < 3) {
@@ -950,7 +956,7 @@ const Sim = (() => {
               /* 二塁走者。一塁に走者がいれば押し出されて三塁へ（強制）。
                  いなければ、一二塁間のゴロなら進みやすく、三遊間のゴロなら止まりやすい */
               if (bases[1] && !bases[2]) {
-                if (bases[0] || RNG.chance(toRight ? 0.75 : 0.22)) { bases[2] = bases[1]; bases[1] = null; }
+                if (bases[0] || RNG.chance(r2Adv)) { bases[2] = bases[1]; bases[1] = null; }
               }
               /* 一塁走者は、打者が走るので必ず二塁へ */
               if (bases[0] && !bases[1]) { bases[1] = bases[0]; bases[0] = null; }
@@ -963,7 +969,7 @@ const Sim = (() => {
           const spot = res.spot;
           const fly = res.bbType !== 'LD';          // ライナーは飛び出していて戻れない
           if (outs < 2) {
-            const pHome = res.isOF ? (fly ? 0.55 : 0.18) : 0.02;
+            const pHome = res.isOF ? (fly ? 0.65 : 0.18) : 0.02;
             const pSecond = res.isOF
               ? (spot === 'RF' ? (fly ? 0.40 : 0.10) : (fly ? 0.06 : 0.02))
               : 0.01;
