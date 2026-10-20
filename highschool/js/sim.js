@@ -833,6 +833,9 @@ const Sim = (() => {
       return true;
     };
     const sp = (r) => (r ? r.speed / 100 : 0.4);
+    /* 走者の足の速さ。-1（遅い）〜+1（速い）。50が平均。
+       進塁・本塁突入・タッチアップなど、走塁の確率はすべてこれで上下させる */
+    const z = (r) => (r ? C((r.speed - 50) / 50, -1, 1) : 0);
 
     switch (res.code) {
       case 'K':
@@ -856,7 +859,7 @@ const Sim = (() => {
            二塁から還るのは、よほど足があって外野へ抜けかけたときだけ */
         const inf = !!res.infieldHit;
         /* 三塁走者。内野安打でも多くは還れるが、前進守備に突き刺されば止まる */
-        if (bases[2] && (!inf || RNG.chance(0.72 + sp(bases[2]) * 0.18))) {
+        if (bases[2] && (!inf || RNG.chance(0.72 + z(bases[2]) * 0.16))) {
           if (score(bases[2])) rbi++;
           bases[2] = null;
         }
@@ -864,17 +867,17 @@ const Sim = (() => {
            内野安打なら三塁で止まるのがふつう */
         if (bases[1]) {
           /* 二死は打った瞬間に全力で走るので、還りやすい */
-          const q = inf ? 0.03 + sp(bases[1]) * 0.07 : 0.50 + sp(bases[1]) * 0.35 + (outs === 2 ? 0.20 : 0);
+          const q = inf ? 0.03 + sp(bases[1]) * 0.07 : C(0.62 + z(bases[1]) * 0.30 + (outs === 2 ? 0.20 : 0), 0.15, 0.97);
           if (RNG.chance(q)) {
             /* 外野の返球で、本塁でタッチアウトになることもある（二死では走者が先に走るので除く） */
-            if (!inf && outs < 2 && RNG.chance(0.06)) { outs++; bases[1] = null; res.text += '（本塁憤死）'; }
+            if (!inf && outs < 2 && RNG.chance(C(0.06 - z(bases[1]) * 0.04, 0.015, 0.10))) { outs++; bases[1] = null; res.text += '（本塁憤死）'; }
             else { if (score(bases[1])) rbi++; bases[1] = null; }
           }
           else if (!bases[2]) { bases[2] = bases[1]; bases[1] = null; }
         }
         /* 一塁走者。内野安打から三塁まで行けることはまずない */
         if (bases[0]) {
-          const q3 = inf ? 0.02 : 0.14 + sp(bases[0]) * 0.26 + (outs === 2 ? 0.10 : 0);
+          const q3 = inf ? 0.02 : C(0.26 + z(bases[0]) * 0.22 + (outs === 2 ? 0.10 : 0), 0.04, 0.70);
           if (!bases[2] && RNG.chance(q3)) { bases[2] = bases[0]; bases[0] = null; }
           else if (!bases[1]) { bases[1] = bases[0]; bases[0] = null; }
         }
@@ -886,7 +889,7 @@ const Sim = (() => {
         if (bases[2]) { if (score(bases[2])) rbi++; bases[2] = null; }
         if (bases[1]) { if (score(bases[1])) rbi++; bases[1] = null; }
         if (bases[0]) {
-          if (RNG.chance(0.26 + sp(bases[0]) * 0.32 + (outs === 2 ? 0.20 : 0))) { if (score(bases[0])) rbi++; }
+          if (RNG.chance(C(0.40 + z(bases[0]) * 0.28 + (outs === 2 ? 0.20 : 0), 0.10, 0.92))) { if (score(bases[0])) rbi++; }
           else bases[2] = bases[0];
           bases[0] = null;
         }
@@ -988,6 +991,7 @@ const Sim = (() => {
              一死では無理をしないぶん、少し下がる */
           const R2_ADV = { '1B': 0.55, '2B': 0.62, SS: 0.10, '3B': 0.05, P: 0.12, C: 0.04 };
           const r2Adv = (R2_ADV[res.spot] != null ? R2_ADV[res.spot] : 0.15) * (outs >= 1 ? 0.8 : 1);
+          const r2Spd = (r) => 1 + z(r) * 0.35;      // 二塁走者の足で、ゴロの進塁が上下する
           const fc = forced1 && outs < 2 && RNG.chance(0.40);
           outs++;
           if (outs < 3) {
@@ -1007,7 +1011,7 @@ const Sim = (() => {
                  還ることがある（足があるほど還りやすい） */
               if (bases[2]) {
                 const force3 = bases[0] && bases[1];
-                if (force3 || RNG.chance(C(0.46 + (bases[2].speed - 45) * 0.003, 0.28, 0.66))) {
+                if (force3 || RNG.chance(C(0.46 + (bases[2].speed - 50) * 0.006, 0.22, 0.72))) {
                   if (score(bases[2])) rbi++;
                   bases[2] = null;
                 }
@@ -1015,7 +1019,7 @@ const Sim = (() => {
               /* 二塁走者。一塁に走者がいれば押し出されて三塁へ（強制）。
                  いなければ、一二塁間のゴロなら進みやすく、三遊間のゴロなら止まりやすい */
               if (bases[1] && !bases[2]) {
-                if (bases[0] || RNG.chance(r2Adv)) { bases[2] = bases[1]; bases[1] = null; }
+                if (bases[0] || RNG.chance(C(r2Adv * r2Spd(bases[1]), 0, 0.92))) { bases[2] = bases[1]; bases[1] = null; }
               }
               /* 一塁走者は、打者が走るので必ず二塁へ */
               if (bases[0] && !bases[1]) { bases[1] = bases[0]; bases[0] = null; }
@@ -1041,8 +1045,8 @@ const Sim = (() => {
             const pFirst = res.isOF && fly ? 0.03 : 0.0;
             outs++;
             let scoredNow = false;
-            if (bases[2] && RNG.chance(pHome)) {
-              if (res.isOF && fly && RNG.chance(0.04)) {
+            if (bases[2] && RNG.chance(C(pHome * (1 + z(bases[2]) * 0.2), 0, 0.95))) {
+              if (res.isOF && fly && RNG.chance(C(0.04 - z(bases[2]) * 0.02, 0.01, 0.07))) {
                 /* 外野からの好返球で、三塁走者が本塁でアウト（併殺） */
                 outs++; bases[2] = null;
                 res.text = posShort(spot) + '飛（本塁補殺）';
@@ -1051,7 +1055,7 @@ const Sim = (() => {
                 bases[2] = null; scoredNow = true;
               }
             }
-            if (bases[1] && !bases[2] && RNG.chance(pSecond)) { bases[2] = bases[1]; bases[1] = null; }
+            if (bases[1] && !bases[2] && RNG.chance(C(pSecond * (1 + z(bases[1]) * 0.35), 0, 0.9))) { bases[2] = bases[1]; bases[1] = null; }
             if (bases[0] && !bases[1] && RNG.chance(pFirst)) { bases[1] = bases[0]; bases[0] = null; }
             if (scoredNow) { res.text = '犠飛'; res.sf = true; }
             break;
