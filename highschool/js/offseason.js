@@ -38,7 +38,7 @@ const Offseason = (() => {
     return {
       player: p,
       career: p.career,
-      top: (p.hl || []).slice().sort((a, b) => b.score - a.score).slice(0, 3),
+      top: (p.hl || []).filter((h) => !/打数0安打$/.test(h.line)).sort((a, b) => b.score - a.score).slice(0, 3),
       draft: draftPick(p),
     };
   }

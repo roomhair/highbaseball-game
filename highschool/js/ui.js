@@ -382,7 +382,7 @@ const UI = (() => {
         '</div>';
     }
 
-    const top = (p.hl || []).slice().sort((a, b) => b.score - a.score).slice(0, 3);
+    const top = (p.hl || []).filter((h) => !/打数0安打$/.test(h.line)).sort((a, b) => b.score - a.score).slice(0, 3);
     const hl = top.length
       ? '<h4 class="sub">活躍シーン</h4><ol class="hllist">' + top.map((h) =>
           '<li><span class="hl__where">' + esc(h.where) + '</span><span class="hl__line">' + esc(h.line) + '</span></li>').join('') + '</ol>'
