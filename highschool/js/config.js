@@ -214,7 +214,7 @@ const CONFIG = {
     MAX: 160,
   },
 
-  /* 強奪の成功率。相手の強さ（勝った回のレベル）が高いほど失敗しやすく、
+  /* 引き抜きの成功率。相手の強さ（勝った回のレベル）が高いほど失敗しやすく、
      自校の格（SCHOOL_RANK）が高いほど成功しやすい。確率表そのもの
      （POACH_SUCCESS_TABLE）で持たせてある。行が相手の強さ、
      列が自校の格（弱小・中堅・強豪・名門）の順 */
@@ -241,7 +241,7 @@ function schoolRankNewcomerBonus(score) {
   return CONFIG.SCHOOL_RANK.NEWCOMER_BONUS[schoolRankTier(score)] || 0;
 }
 
-/** 強奪の成功率。oppLevel は相手チームを作った回の強さ、
+/** 引き抜きの成功率。oppLevel は相手チームを作った回の強さ、
     prestigeScore は自校の格スコア */
 function poachSuccessChance(oppLevel, prestigeScore) {
   const T = CONFIG.POACH.OPP_TIERS;
