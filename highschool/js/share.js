@@ -287,7 +287,7 @@ const Share = (() => {
   }
 
   const FILE_NAME = '引き抜き高校野球.png';
-  const SITE_URL = 'https://baseball.roomhaird.com/highschool/';
+  const SITE_URL = 'https://roomhaird.com/highschool/';
   let pending = null;     // 開いているプレビューの画像（dataURL と File）
 
   /** 共有に添える文章（野球チームメーカーと同じ作り：結果・ひとこと・サイトのURL） */
