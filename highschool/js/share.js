@@ -100,11 +100,11 @@ const Share = (() => {
     const isBigStage = state.tour && ['national', 'spring', 'fallJingu'].indexOf(state.tour.kind) >= 0;
     /* 大会の決勝に勝った（優勝）ときだけ、特別版にする */
     const champ = !!(win && r.last);
-    /* 色は画面と同じ。土の色が基本で、優勝だけ金、勝ちは緑・負けは赤の文字 */
-    const soil = '#4f3321', boardBg = '#2e2117', gold = '#e2a826';
-    const accent = champ ? '#966306' : soil;
-    const word = champ ? '#966306' : (win ? '#2c6a37' : '#b8283a');
-    const ink = '#2b2119', mute = '#5c4f42', faint = '#67594b', rule = '#ebe2d5', hot = '#966306';
+    /* 色は画面と同じ。青の太枠が基本で、優勝だけ金、勝ちは緑・負けは赤の文字 */
+    const blue = '#2a6fdb', boardBg = '#0b2a6e', gold = '#ffc21a';
+    const accent = champ ? '#c47a00' : blue;
+    const word = champ ? '#c47a00' : (win ? '#17803a' : '#c3112d');
+    const ink = '#10264f', mute = '#3c5277', faint = '#4f6286', rule = '#d9e6f6', hot = '#c47a00';
 
     const who = (d) => d ? d.name : null;
     const decisions = [];
@@ -139,7 +139,7 @@ const Share = (() => {
     const ctx = cv.getContext('2d');
     const FONT = 'sans-serif';
 
-    ctx.fillStyle = champ ? '#fff8e3' : '#fffdf9';
+    ctx.fillStyle = champ ? '#fff8e0' : '#f6faff';
     ctx.fillRect(0, 0, W, H);
     ctx.strokeStyle = accent; ctx.lineWidth = champ ? 14 : 10;
     ctx.strokeRect(7, 7, W - 14, H - 14);
@@ -150,7 +150,7 @@ const Share = (() => {
     }
     if (champ) {
       /* 紙吹雪。決まった並びで散らす（同じ試合なら毎回同じ絵になる） */
-      const cols = [gold, soil, '#f3b27c', '#34793f', '#ffffff'];
+      const cols = [gold, blue, '#ff5a6e', '#1f9447', '#ffffff'];
       let seed = 7;
       const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
       for (let i = 0; i < 70; i++) {
@@ -205,12 +205,12 @@ const Share = (() => {
     /* イニング別のスコアボード */
     if (board) {
       y += 40;
-      /* 球場の掲示板のように、土の色の地に白い数字。点の合計（R）だけ焼けた土の色 */
+      /* 球場の掲示板のように、濃い青の地に白い数字。点の合計（R）だけ黄色 */
       const nameW = 130, totW = 44, bx = padX - 10;
       const innW = (W - padX * 2 - nameW - totW * 3) / board.n;
       ctx.fillStyle = boardBg;
       ctx.fillRect(bx, y - 26, W - bx * 2, 26 + 10 + board.rows.length * 34 + 14);
-      ctx.fillStyle = '#d8c6b0'; ctx.font = '16px ' + FONT; ctx.textAlign = 'center';
+      ctx.fillStyle = '#b8d2ff'; ctx.font = '16px ' + FONT; ctx.textAlign = 'center';
       for (let i = 0; i < board.n; i++) ctx.fillText(String(i + 1), padX + nameW + innW * (i + 0.5), y);
       ['R', 'H', 'E'].forEach((h, k) => ctx.fillText(h, padX + nameW + innW * board.n + totW * (k + 0.5), y));
       ctx.beginPath(); ctx.moveTo(bx, y + 10); ctx.lineTo(W - bx, y + 10);
@@ -223,7 +223,7 @@ const Share = (() => {
         row.cells.forEach((c, i) => ctx.fillText(c, padX + nameW + innW * (i + 0.5), y));
         ctx.font = 'bold 18px ' + FONT;
         [row.r, row.h, row.e].forEach((v, k) => {
-          ctx.fillStyle = k === 0 ? '#f3b27c' : '#ffffff';
+          ctx.fillStyle = k === 0 ? '#ffd43b' : '#ffffff';
           ctx.fillText(v, padX + nameW + innW * board.n + totW * (k + 0.5), y);
         });
       });
@@ -245,7 +245,7 @@ const Share = (() => {
       grid.rows.forEach((row, ri) => {
         const rh = gridRowH(row);
         const top = y - 12;
-        if (ri % 2 === 0) { ctx.fillStyle = 'rgba(79,51,33,.05)'; ctx.fillRect(padX, top, W - padX * 2, rh); }
+        if (ri % 2 === 0) { ctx.fillStyle = 'rgba(42,111,219,.07)'; ctx.fillRect(padX, top, W - padX * 2, rh); }
         const mid = top + rh / 2 + 6;
         ctx.fillStyle = faint; ctx.font = '15px ' + FONT; ctx.textAlign = 'center';
         ctx.fillText(row.no, padX + noW / 2, mid);
