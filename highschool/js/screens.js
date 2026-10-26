@@ -798,7 +798,7 @@ const Screens = (() => {
     const t = state.team;
     UI.html('localwin-body',
       '<div class="champ champ--local">' +
-        confetti(18, ['#2a8456', '#e2a826', '#9dbcf2', '#15305a']) +
+        confetti(18, ['#34793f', '#e2a826', '#f3b27c', '#4f3321']) +
         '<p class="champ__eyebrow">' + state.year + '年目</p>' +
         '<h2 class="champ__title">県大会 優勝</h2>' +
         '<p class="champ__school">' + esc(t.name) + '</p>' +
@@ -815,7 +815,7 @@ const Screens = (() => {
     const t = state.team;
     UI.html('champion-body',
       '<div class="champ champ--grand">' +
-        confetti(28, ['#e2a826', '#ffffff', '#9dbcf2', '#63c88f', '#f2b632']) +
+        confetti(28, ['#e2a826', '#ffffff', '#f3b27c', '#7ccb8a', '#f2b632']) +
         '<p class="champ__eyebrow">' + state.year + '年目</p>' +
         '<h2 class="champ__title">' + esc(state.settings.nationalName) + ' 優勝</h2>' +
         '<p class="champ__school">' + esc(t.name) + '</p>' +
@@ -833,7 +833,7 @@ const Screens = (() => {
     const t = state.team;
     UI.html('celebrate-body',
       '<div class="champ champ--grand">' +
-        confetti(28, ['#e2a826', '#ffffff', '#9dbcf2', '#63c88f', '#f2b632']) +
+        confetti(28, ['#e2a826', '#ffffff', '#f3b27c', '#7ccb8a', '#f2b632']) +
         '<p class="champ__eyebrow">' + state.year + '年目</p>' +
         '<h2 class="champ__title">' + esc(Game.tourLabel()) + ' 優勝</h2>' +
         '<p class="champ__school">' + esc(t.name) + '</p>' +
@@ -850,7 +850,7 @@ const Screens = (() => {
     const name = state.settings.springName;
     const body = qualified
       ? '<div class="champ champ--spring">' +
-          confetti(16, ['#3b7fe2', '#9dbcf2', '#15305a', '#e2a826']) +
+          confetti(16, ['#3b7fe2', '#9dbcf2', '#4f3321', '#e2a826']) +
           '<p class="champ__eyebrow">' + state.year + '年目</p>' +
           '<h2 class="champ__title">' + esc(name) + ' 出場決定</h2>' +
           '<p class="champ__school">' + esc(t.name) + '</p>' +
@@ -1256,7 +1256,7 @@ const Screens = (() => {
     if (kind === 'national') {
       UI.html('champion-body',
         '<div class="champ champ--grand">' +
-          confetti(28, ['#e2a826', '#ffffff', '#9dbcf2', '#63c88f', '#f2b632']) + year +
+          confetti(28, ['#e2a826', '#ffffff', '#f3b27c', '#7ccb8a', '#f2b632']) + year +
           '<h2 class="champ__title">' + esc(state.settings.nationalName) + ' 優勝</h2>' +
           '<p class="champ__school">' + esc(S.schoolName) + ' サッカー部</p>' +
           '<div class="champ__rays" aria-hidden="true"></div>' +
@@ -1267,7 +1267,7 @@ const Screens = (() => {
     } else {
       UI.html('localwin-body',
         '<div class="champ champ--local">' +
-          confetti(18, ['#2a8456', '#e2a826', '#9dbcf2', '#15305a']) + year +
+          confetti(18, ['#34793f', '#e2a826', '#f3b27c', '#4f3321']) + year +
           '<h2 class="champ__title">県大会 優勝</h2>' +
           '<p class="champ__school">' + esc(S.schoolName) + ' サッカー部</p>' +
           '<div class="champ__rays" aria-hidden="true"></div>' +
@@ -1367,7 +1367,7 @@ const Screens = (() => {
     const name = state.settings.springName;
     const body = qualified
       ? '<div class="champ champ--spring">' +
-          confetti(16, ['#3b7fe2', '#9dbcf2', '#15305a', '#e2a826']) +
+          confetti(16, ['#3b7fe2', '#9dbcf2', '#4f3321', '#e2a826']) +
           '<p class="champ__eyebrow">' + state.year + '年目</p>' +
           '<h2 class="champ__title">' + esc(name) + ' 出場決定</h2>' +
           '<p class="champ__school">' + esc(S.schoolName) + ' サッカー部</p>' +
