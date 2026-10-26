@@ -178,7 +178,7 @@ const Screens = (() => {
   /** 変化球を「名前＋切れ味」で並べる */
   function pitchText(p) {
     if (!p.pitches || !p.pitches.length) return '―';
-    return p.pitches.map((q) =>
+    return Player.pitchesInOrder(p).map((q) =>
       '<span class="pball">' + esc(q.name) + '<b>' + q.level + '</b></span>').join('');
   }
 
@@ -354,7 +354,7 @@ const Screens = (() => {
         chip('スタミナ', 'stamina', p.stamina,
           amt('stamina') == null ? null : RNG.stat(p.stamina + amt('stamina'))),
       ];
-      p.pitches.forEach((q) => {
+      Player.pitchesInOrder(p).forEach((q) => {
         const t = list.find((x) => x.key === 'pitch' && x.pitch === q.name);
         out.push(plain(q.name, q.level, t ? Math.min(7, q.level + t.amount) : null));
       });
@@ -378,7 +378,7 @@ const Screens = (() => {
     if (p.kind === 'pitcher') {
       return '最速<b class="rankval">' + p.velo + '</b>km/h　制球' + UI.rankNum(p.control) +
         '　スタミナ' + UI.rankNum(p.stamina) +
-        '　' + esc(p.pitches.map((q) => q.name + q.level).join('・'));
+        '　' + esc(Player.pitchesInOrder(p).map((q) => q.name + q.level).join('・'));
     }
     return 'ミート' + UI.rankNum(p.meet) + '　パワー' + UI.rankNum(p.power) +
       '　走力' + UI.rankNum(p.speed) + '　肩' + UI.rankNum(p.arm) +
@@ -879,7 +879,7 @@ const Screens = (() => {
         const abil = isPit
           ? ['最速 ' + p.velo + 'km/h', '制球 ' + rankOf(p.control) + ' ' + p.control,
              'スタミナ ' + rankOf(p.stamina) + ' ' + p.stamina,
-             p.pitches.map((q) => q.name + q.level).join('・')].join('　')
+             Player.pitchesInOrder(p).map((q) => q.name + q.level).join('・')].join('　')
           : ['ミート ' + rankOf(p.meet) + ' ' + p.meet, 'パワー ' + rankOf(p.power) + ' ' + p.power,
              '走力 ' + rankOf(p.speed) + ' ' + p.speed, '肩 ' + rankOf(p.arm) + ' ' + p.arm,
              '守備 ' + rankOf(p.field) + ' ' + p.field, '捕球 ' + rankOf(p.catch) + ' ' + p.catch,

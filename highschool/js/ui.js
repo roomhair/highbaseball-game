@@ -228,7 +228,7 @@ const UI = (() => {
          '<td class="c">' + rankNum(p.stamina) + '</td>',
          /* 変化球は全部出す。表は .tablewrap で横スクロールできるので、
             途中で切って「+n」にする必要はない */
-         '<td class="t-break">' + p.pitches.map((q) =>
+         '<td class="t-break">' + Player.pitchesInOrder(p).map((q) =>
            '<span class="luball">' + esc(q.name) + '<b>' + q.level + '</b></span>').join('') +
          '</td>'].join('')
       : ['<td class="c"><b class="rankval">' + p.traj + '</b></td>',
@@ -363,7 +363,7 @@ const UI = (() => {
         '<span class="stat__num stat__num--wide lufat lufat--' + Team.staminaTier(p) + '">' +
         esc(Team.staminaLabel(p)) + '</span></div>';
       abilities += '</div><h4 class="sub">変化球</h4><ul class="pitchlist">' +
-        p.pitches.map((q) => {
+        Player.pitchesInOrder(p).map((q) => {
           const iq = (init.pitches || []).find((x) => x.name === q.name);
           const initNote = (iq && iq.level !== q.level) ? '<span class="stat__init">獲得時 ' + iq.level + '</span>' : '';
           return '<li><span>' + esc(q.name) + '</span><b>' + q.level + '</b>' +
@@ -656,7 +656,7 @@ const UI = (() => {
           '　ス' + rankNum(p.stamina) +
           '　<span class="lufat lufat--' + Team.staminaTier(p) + '">' +
           esc(Team.staminaLabel(p)) + '</span></span>' +
-        '<span class="luapts lupitch">' + p.pitches.map((q) =>
+        '<span class="luapts lupitch">' + Player.pitchesInOrder(p).map((q) =>
           '<span class="luball">' + esc(q.name) + '<b>' + q.level + '</b></span>').join('') + '</span>' +
         '<span class="luarrow">' +
           '<button type="button" class="btn btn--tiny pup" data-i="' + i + '">▲</button>' +

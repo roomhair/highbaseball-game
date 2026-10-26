@@ -392,7 +392,24 @@ const Player = (() => {
 
   function gradeLabel(g) { return g + '年'; }
 
+  /* 変化球を表示する順番。利き手と逆に曲がる球（スライダー・カットボール）から、
+     逆側の斜めに落ちる球（カーブ）、真下に落ちる球（フォーク・チェンジアップ）、
+     利き手側の斜めに落ちる球（シンカー）を通って、利き手側に曲がる球（シュート・ツーシーム）へ。
+     データの並び（決め球が先頭）は変えず、見せるときだけ並べ替える */
+  const PITCH_ORDER = [
+    'スライダー', 'カットボール',
+    'カーブ', 'スローカーブ', 'ナックルカーブ',
+    'スプリット', 'フォーク', 'チェンジアップ', 'パーム', 'ナックル',
+    'シンカー', 'スクリュー',
+    'シュート', 'ツーシーム',
+  ];
+  function pitchesInOrder(p) {
+    const idx = (n) => { const i = PITCH_ORDER.indexOf(n); return i < 0 ? PITCH_ORDER.length : i; };
+    return (p.pitches || []).slice().sort((a, b) => idx(a.name) - idx(b.name));
+  }
+
   return {
+    pitchesInOrder,
     newBatter, newPitcher, rating, breakScore, aptPenalty, handLabel, gradeLabel, RIGHT_ONLY,
     tryAptUp, aptUpChance,
     emptyBat, emptyPit, addStats, seedPracticeBat, seedPracticePit, practiceGames,

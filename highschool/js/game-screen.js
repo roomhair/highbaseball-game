@@ -330,7 +330,7 @@ const GameScreen = (() => {
           (worn ? '↓' : '') + '</span>' +
         '<i class="ll__bar"><b style="width:' + Math.round(left * 100) + '%"></b></i>' +
       '</span>' +
-      '<span class="ll__balls">' + (p.pitches || []).map((q) =>
+      '<span class="ll__balls">' + Player.pitchesInOrder(p).map((q) =>
         '<i class="ll__ball">' + esc(q.name) + '<b>' + q.level + '</b></i>').join('') + '</span>' +
       pitLine(p.game) +
     '</div>';
