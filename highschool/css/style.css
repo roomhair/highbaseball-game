@@ -2051,3 +2051,11 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 .result-score.is-win { border-left: 6px solid #5fd67e; }
 .result-score.is-lose { border-left: 6px solid #ff7a8a; }
 .result-score b, .verdict__score b { text-shadow: none; }
+/* 設定画面の小見出し・覚醒の札・タップの案内・手順の番号：どれも押せないので平らにする */
+.set-heading { border: 0; border-left: 5px solid var(--frame); border-radius: 0; background: var(--panel-2); }
+.awakebox__title { background: none; border: 0; border-radius: 0; padding: 0; color: var(--yel-ink); }
+.taphint--static { background: none; border: 0; box-shadow: none; border-radius: 0; color: var(--ink-mute); padding: 6px 0; }
+.flow li::before { background: var(--yel-lo); border: 0; box-shadow: none; color: var(--yel-ink); }
+/* サッカーの時計・タイムの場面表示：青い帯の札をやめて、文字だけにする */
+.sclock { background: none; color: var(--ink); border-radius: 0; border-bottom: 3px solid var(--frame); }
+.time__where { background: none; color: var(--brand); padding: 0; border-radius: 0; }
