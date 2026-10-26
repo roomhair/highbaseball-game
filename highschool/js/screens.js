@@ -592,8 +592,21 @@ const Screens = (() => {
 
   /* ---------- 引き抜き ---------- */
 
+  /** 引き抜きの画面の、いまの手順を示す。見た目だけで、進み方には関わらない。
+      stage は pick（相手を選ぶ）・release（放出を選ぶ）・win / lose（結果） */
+  function poachStage(stage) {
+    const step = { pick: 0, release: 1, win: 2, lose: 2 }[stage];
+    UI.el('screen-poach').dataset.stage = stage;
+    UI.el('poach-steps').querySelectorAll('li').forEach((li, i) => {
+      li.classList.toggle('is-done', i < step);
+      li.classList.toggle('is-now', i === step);
+      if (i === step) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+    });
+  }
+
   function poachWin(state, onTake, onSkip) {
     let picked = null;
+    poachStage('pick');
     UI.el('poach-title').textContent = '引き抜きチャレンジ';
     UI.el('poach-warn').hidden = true;
     UI.el('poach-title').classList.remove('is-win', 'is-lose');
@@ -638,6 +651,7 @@ const Screens = (() => {
       起こりうるため、挑戦そのものより前に選ばせる） */
   function poachRelease(state, incoming, onRelease, onCancel) {
     let picked = null;
+    poachStage('release');
     UI.el('poach-title').textContent = '放出する選手を選ぶ';
     UI.el('poach-title').classList.remove('is-win', 'is-lose');
     UI.el('poach-lead').textContent =
@@ -687,6 +701,7 @@ const Screens = (() => {
 
   /** 引き抜きに成功したとき。放出はすでに選んであるので、結果を伝えるだけ */
   function poachSuccess(state, incoming, outgoing, onNext) {
+    poachStage('win');
     UI.el('poach-title').textContent = '引き抜き成功！';
     UI.el('poach-warn').hidden = true;
     UI.el('poach-title').classList.remove('is-lose');
@@ -708,6 +723,7 @@ const Screens = (() => {
 
   /** 引き抜きに失敗したとき。相手に引き止められ、何も変わらずに次へ進む */
   function poachFailed(state, incoming, onNext) {
+    poachStage('lose');
     UI.el('poach-title').textContent = '引き抜き失敗';
     UI.el('poach-warn').hidden = true;
     UI.el('poach-title').classList.remove('is-win');
@@ -782,7 +798,7 @@ const Screens = (() => {
     const t = state.team;
     UI.html('localwin-body',
       '<div class="champ champ--local">' +
-        confetti(18, ['#6bbf8a', '#ffd54f', '#81c7e8', '#ffffff']) +
+        confetti(18, ['#2a8456', '#e2a826', '#9dbcf2', '#15305a']) +
         '<p class="champ__eyebrow">' + state.year + '年目</p>' +
         '<h2 class="champ__title">県大会 優勝</h2>' +
         '<p class="champ__school">' + esc(t.name) + '</p>' +
@@ -799,7 +815,7 @@ const Screens = (() => {
     const t = state.team;
     UI.html('champion-body',
       '<div class="champ champ--grand">' +
-        confetti(28, ['#d4af37', '#e23b3b', '#3b7fe2', '#ffffff', '#ffd54f']) +
+        confetti(28, ['#e2a826', '#ffffff', '#9dbcf2', '#63c88f', '#f2b632']) +
         '<p class="champ__eyebrow">' + state.year + '年目</p>' +
         '<h2 class="champ__title">' + esc(state.settings.nationalName) + ' 優勝</h2>' +
         '<p class="champ__school">' + esc(t.name) + '</p>' +
@@ -817,7 +833,7 @@ const Screens = (() => {
     const t = state.team;
     UI.html('celebrate-body',
       '<div class="champ champ--grand">' +
-        confetti(28, ['#d4af37', '#e23b3b', '#3b7fe2', '#ffffff', '#ffd54f']) +
+        confetti(28, ['#e2a826', '#ffffff', '#9dbcf2', '#63c88f', '#f2b632']) +
         '<p class="champ__eyebrow">' + state.year + '年目</p>' +
         '<h2 class="champ__title">' + esc(Game.tourLabel()) + ' 優勝</h2>' +
         '<p class="champ__school">' + esc(t.name) + '</p>' +
@@ -834,7 +850,7 @@ const Screens = (() => {
     const name = state.settings.springName;
     const body = qualified
       ? '<div class="champ champ--spring">' +
-          confetti(16, ['#3b7fe2', '#81c7e8', '#ffffff', '#ffd54f']) +
+          confetti(16, ['#3b7fe2', '#9dbcf2', '#15305a', '#e2a826']) +
           '<p class="champ__eyebrow">' + state.year + '年目</p>' +
           '<h2 class="champ__title">' + esc(name) + ' 出場決定</h2>' +
           '<p class="champ__school">' + esc(t.name) + '</p>' +
@@ -1240,7 +1256,7 @@ const Screens = (() => {
     if (kind === 'national') {
       UI.html('champion-body',
         '<div class="champ champ--grand">' +
-          confetti(28, ['#d4af37', '#e23b3b', '#3b7fe2', '#ffffff', '#ffd54f']) + year +
+          confetti(28, ['#e2a826', '#ffffff', '#9dbcf2', '#63c88f', '#f2b632']) + year +
           '<h2 class="champ__title">' + esc(state.settings.nationalName) + ' 優勝</h2>' +
           '<p class="champ__school">' + esc(S.schoolName) + ' サッカー部</p>' +
           '<div class="champ__rays" aria-hidden="true"></div>' +
@@ -1251,7 +1267,7 @@ const Screens = (() => {
     } else {
       UI.html('localwin-body',
         '<div class="champ champ--local">' +
-          confetti(18, ['#6bbf8a', '#ffd54f', '#81c7e8', '#ffffff']) + year +
+          confetti(18, ['#2a8456', '#e2a826', '#9dbcf2', '#15305a']) + year +
           '<h2 class="champ__title">県大会 優勝</h2>' +
           '<p class="champ__school">' + esc(S.schoolName) + ' サッカー部</p>' +
           '<div class="champ__rays" aria-hidden="true"></div>' +
@@ -1351,7 +1367,7 @@ const Screens = (() => {
     const name = state.settings.springName;
     const body = qualified
       ? '<div class="champ champ--spring">' +
-          confetti(16, ['#3b7fe2', '#81c7e8', '#ffffff', '#ffd54f']) +
+          confetti(16, ['#3b7fe2', '#9dbcf2', '#15305a', '#e2a826']) +
           '<p class="champ__eyebrow">' + state.year + '年目</p>' +
           '<h2 class="champ__title">' + esc(name) + ' 出場決定</h2>' +
           '<p class="champ__school">' + esc(S.schoolName) + ' サッカー部</p>' +

@@ -100,8 +100,11 @@ const Share = (() => {
     const isBigStage = state.tour && ['national', 'spring', 'fallJingu'].indexOf(state.tour.kind) >= 0;
     /* 大会の決勝に勝った（優勝）ときだけ、特別版にする */
     const champ = !!(win && r.last);
-    const accent = champ ? '#b07d0a' : (isBigStage ? '#8f2233' : '#1d5c3a');
-    const ink = '#16181a', mute = '#6b7076', faint = '#979ba1', rule = '#e4e0d6', hot = '#c0283c';
+    /* 色は画面と同じ。紺が基本で、優勝だけ金、勝ちは緑・負けは赤の文字 */
+    const navy = '#15305a', boardBg = '#10213d', gold = '#e2a826';
+    const accent = champ ? '#a8700a' : navy;
+    const word = champ ? '#a8700a' : (win ? '#1f6e47' : '#b8283a');
+    const ink = '#15203a', mute = '#4f5a6e', faint = '#6b7588', rule = '#e2e7ee', hot = '#a8700a';
 
     const who = (d) => d ? d.name : null;
     const decisions = [];
@@ -136,15 +139,18 @@ const Share = (() => {
     const ctx = cv.getContext('2d');
     const FONT = 'sans-serif';
 
-    ctx.fillStyle = champ ? '#fff7dc' : '#faf9f5';
+    ctx.fillStyle = champ ? '#fff8e3' : '#f6f8fb';
     ctx.fillRect(0, 0, W, H);
     ctx.strokeStyle = accent; ctx.lineWidth = champ ? 14 : 10;
     ctx.strokeRect(7, 7, W - 14, H - 14);
-    if (champ) {
-      ctx.lineWidth = 3; ctx.strokeStyle = '#e3b64a';
+    /* 全国の舞台と優勝は、内側に金の細い線をもう1本 */
+    if (champ || isBigStage) {
+      ctx.lineWidth = 3; ctx.strokeStyle = gold;
       ctx.strokeRect(22, 22, W - 44, H - 44);
+    }
+    if (champ) {
       /* 紙吹雪。決まった並びで散らす（同じ試合なら毎回同じ絵になる） */
-      const cols = ['#e3b64a', '#e5483c', '#2f6fe4', '#6bbf8a', '#ffffff'];
+      const cols = [gold, navy, '#9dbcf2', '#2a8456', '#ffffff'];
       let seed = 7;
       const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
       for (let i = 0; i < 70; i++) {
@@ -178,7 +184,7 @@ const Share = (() => {
     ctx.fillStyle = faint; ctx.textAlign = 'center'; ctx.font = '20px ' + FONT;
     ctx.fillText(String(r.tourName || '') + '　' + String(r.round || ''), W / 2, y);
     y += 80;
-    ctx.fillStyle = accent; ctx.font = 'bold ' + (champ ? 88 : 64) + 'px ' + FONT;
+    ctx.fillStyle = word; ctx.font = 'bold ' + (champ ? 88 : 64) + 'px ' + FONT;
     ctx.fillText(champ ? '優勝' : (win ? '勝利' : '敗戦'), W / 2, y);
     y += 70;
     ctx.fillStyle = ink; ctx.font = 'bold 30px ' + FONT;
@@ -199,23 +205,28 @@ const Share = (() => {
     /* イニング別のスコアボード */
     if (board) {
       y += 40;
-      const nameW = 130, totW = 44;
+      /* 球場の掲示板のように、紺の地に白い数字。点の合計（R）だけ金 */
+      const nameW = 130, totW = 44, bx = padX - 10;
       const innW = (W - padX * 2 - nameW - totW * 3) / board.n;
-      ctx.fillStyle = faint; ctx.font = '16px ' + FONT; ctx.textAlign = 'center';
+      ctx.fillStyle = boardBg;
+      ctx.fillRect(bx, y - 26, W - bx * 2, 26 + 10 + board.rows.length * 34 + 14);
+      ctx.fillStyle = '#a9b8d1'; ctx.font = '16px ' + FONT; ctx.textAlign = 'center';
       for (let i = 0; i < board.n; i++) ctx.fillText(String(i + 1), padX + nameW + innW * (i + 0.5), y);
       ['R', 'H', 'E'].forEach((h, k) => ctx.fillText(h, padX + nameW + innW * board.n + totW * (k + 0.5), y));
-      hline(y + 10);
+      ctx.beginPath(); ctx.moveTo(bx, y + 10); ctx.lineTo(W - bx, y + 10);
+      ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1; ctx.stroke();
       board.rows.forEach((row) => {
         y += 34;
-        ctx.fillStyle = ink; ctx.textAlign = 'left';
+        ctx.fillStyle = '#ffffff'; ctx.textAlign = 'left';
         fit(row.name, padX, y, nameW - 8, 18, 'left');
-        ctx.fillStyle = ink; ctx.font = '18px ' + FONT; ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffffff'; ctx.font = '18px ' + FONT; ctx.textAlign = 'center';
         row.cells.forEach((c, i) => ctx.fillText(c, padX + nameW + innW * (i + 0.5), y));
         ctx.font = 'bold 18px ' + FONT;
-        [row.r, row.h, row.e].forEach((v, k) =>
-          ctx.fillText(v, padX + nameW + innW * board.n + totW * (k + 0.5), y));
+        [row.r, row.h, row.e].forEach((v, k) => {
+          ctx.fillStyle = k === 0 ? '#f2b632' : '#ffffff';
+          ctx.fillText(v, padX + nameW + innW * board.n + totW * (k + 0.5), y);
+        });
       });
-      hline(y + 12);
       y += 14;
     }
 
@@ -234,7 +245,7 @@ const Share = (() => {
       grid.rows.forEach((row, ri) => {
         const rh = gridRowH(row);
         const top = y - 12;
-        if (ri % 2 === 0) { ctx.fillStyle = 'rgba(0,0,0,.03)'; ctx.fillRect(padX, top, W - padX * 2, rh); }
+        if (ri % 2 === 0) { ctx.fillStyle = 'rgba(21,48,90,.05)'; ctx.fillRect(padX, top, W - padX * 2, rh); }
         const mid = top + rh / 2 + 6;
         ctx.fillStyle = faint; ctx.font = '15px ' + FONT; ctx.textAlign = 'center';
         ctx.fillText(row.no, padX + noW / 2, mid);
