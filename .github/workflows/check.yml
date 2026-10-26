@@ -1,0 +1,21 @@
+name: Check
+
+# highschool/ は本番（roomhair/baseball-statsquiz）へ毎朝同期される。
+# AdSense の審査で問題になった3点（審査コードの抜け・baseball.roomhaird.com・noindex）を
+# 壊していないかを、push した時点で確かめる。本番の同期でも同じものが走る。
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: AdSense（審査コード・正規ドメイン・noindex）
+        run: bash .github/check-adsense.sh highschool
+
+      - name: JavaScript syntax
+        run: for f in highschool/js/*.js; do node --check "$f" || exit 1; done
