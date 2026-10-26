@@ -1992,3 +1992,62 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 .about p { margin: 0 0 12px; font-size: 13.5px; line-height: 1.9; color: var(--ink-mute); }
 .about p b { color: var(--ink); }
 .about a { color: var(--brand); font-weight: 800; text-underline-offset: 3px; }
+
+/* =========================================================
+   押しボタンの形は、押せるものだけに使う
+   （下に落ちる影・つやのあるグラデーション・太くて丸い枠は、.btn などボタンだけのもの。
+     見出し・数字の表示・札・手順の印は、ボタンに見えないよう平らにしてある）
+   ========================================================= */
+/* 画面の見出し：リボンをやめて、青い文字と下線の見出しにする */
+.section-title {
+  display: flex; width: auto; max-width: 100%;
+  margin: 4px 0 var(--sp-3); padding: 2px 0 8px 14px;
+  background: none; border: 0; border-bottom: 3px solid var(--frame); border-radius: 0; box-shadow: none;
+  color: var(--ink); text-shadow: none; position: relative;
+}
+.section-title::before {
+  position: absolute; left: 0; top: 4px; bottom: 11px; width: 5px; min-height: 0;
+  background: var(--yel-lo); box-shadow: none; border-radius: 2px;
+}
+#poach-title.is-win { background: none; color: var(--good); border-bottom-color: var(--good-fill); }
+#poach-title.is-lose { background: none; color: var(--danger); border-bottom-color: var(--danger-fill); }
+/* 小見出し：枠と丸みをやめて、左に線の入った帯にする */
+.sub { border: 0; border-left: 5px solid var(--frame); border-radius: 0; background: var(--panel-2); }
+/* 数字の表示（選択 1/5・見送り 0/3）：ボタンでなく、計器の表示のように */
+.train-meta > span {
+  background: none; color: var(--ink-mute); border: 0; border-left: 4px solid var(--yel-lo);
+  border-radius: 0; box-shadow: none; padding: 4px 10px;
+}
+.train-meta b { color: var(--brand); }
+/* 流れの一覧：影のついた箱でなく、罫線で区切った一覧にする */
+.flow li { background: none; border: 0; border-bottom: 1px solid var(--line-soft); border-radius: 0; box-shadow: none; padding: 7px 4px; }
+/* 見出しの上の小さな札 */
+.hero__eyebrow, .opening__eyebrow, .nextup__eyebrow, .champ__eyebrow {
+  background: none; box-shadow: none; border: 0; border-radius: 0; padding: 0; color: var(--yel-hi);
+}
+.vs i { background: none; box-shadow: none; border-radius: 0; padding: 0 2px; color: var(--yel-hi); }
+.taphint { background: none; box-shadow: none; color: var(--ink-mute); padding: 3px 6px; border-radius: 0; }
+/* パネル・札・手順の印：下に落ちる影をやめる */
+.ll, .ll.is-batting, #screen-poach #poach-lead,
+#screen-poach[data-stage="win"] #poach-lead, #screen-poach[data-stage="lose"] #poach-lead { box-shadow: none; }
+.decisions__badge { box-shadow: none; border-radius: 3px; }
+.poachsteps li, .poachsteps li.is-done, .poachsteps li.is-now { box-shadow: none; border: 0; border-bottom: 3px solid var(--line); border-radius: 0; background: none; }
+.poachsteps li.is-done { border-bottom-color: var(--good-fill); }
+.poachsteps li.is-now { color: var(--ink); border-bottom-color: var(--yel-lo); }
+/* ラベル（札）：枠線をやめて、色のついた小さな文字にする */
+.traincard__tier, .traincard__multi, .capmark, .gr__awake, .retire__draft, .tag {
+  border: 0; border-radius: 3px; padding: 1px 6px;
+}
+.capbox__label { background: none; color: var(--brand); padding: 0; border-radius: 0; }
+.capbox.is-empty .capbox__label { background: none; color: var(--danger); }
+/* 上がる能力の印（特訓カード）：枠で囲まず、色を敷くだけ */
+.ts.is-up, .traincard--xl .ts.is-up { border: 0; border-radius: 3px; }
+/* 点数の表示（勝敗画面・試合結果・対戦カード）：濃い青の面はそのままに、
+   押しボタンのような縁取りと影はなくす */
+.result-score, .verdict__score, .section-lead.vs, .sclock {
+  border: 0; box-shadow: none; border-radius: 4px;
+}
+.result-score.is-win, .result-score.is-lose { border: 0; }
+.result-score.is-win { border-left: 6px solid #5fd67e; }
+.result-score.is-lose { border-left: 6px solid #ff7a8a; }
+.result-score b, .verdict__score b { text-shadow: none; }
