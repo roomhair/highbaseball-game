@@ -683,6 +683,8 @@ const GameScreen = (() => {
     clearTimeout(timer);
     ctx.awaitTap = false;
     ctx.paused = false;
+    /* スキップしたあとは、自分の側もAI監督にまかせる（疲れた投手を投げさせ続けない） */
+    if (ctx.live.autopilot) ctx.live.autopilot();
     while (pull()) apply(ctx.live.log[ctx.i++]);
     finish();
   }

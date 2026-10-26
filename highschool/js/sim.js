@@ -417,6 +417,7 @@ const Sim = (() => {
     /* 外から今の状況を見られるようにしておく（タイムの画面で使う） */
     const ctl = (opt && opt.ctl) || {};
     ctl.log = log; ctl.A = A; ctl.H = H;
+    if (ctl.auto) { A.autoPilot = true; H.autoPilot = true; }   // スキップ済みなら、はじめからAI監督
 
     const startA = Team.find(away, A.pitcherId), startH = Team.find(home, H.pitcherId);
     if (startA) { startA.game.gs = 1; startA.game.g = 1; }
@@ -533,6 +534,13 @@ const Sim = (() => {
              取り直すこと（保持しておかない） */
           bases: ctl.bases,
         };
+      },
+      /** スキップのとき。ここから先は、人が操っている側もAI監督が采配する
+          （疲れた投手を、そのまま投げさせ続けない） */
+      autopilot() {
+        ctl.auto = true;
+        if (ctl.A) ctl.A.autoPilot = true;
+        if (ctl.H) ctl.H.autoPilot = true;
       },
       /** 守っている側の投手を代える。side は 'away' か 'home' */
       changePitcher(side, pid) {
@@ -1119,7 +1127,7 @@ const Sim = (() => {
 
   /** 自動の投手交代。交代したら true を返す（呼ぶ側はそこで止められる） */
   function maybeChangePitcher(def, log, inning, half) {
-    if (def.manual) return false;      // 人が操っている側は自動で代えない
+    if (def.manual && !def.autoPilot) return false;      // 人が操っている側は自動で代えない（スキップしたあとは別）
     if (!def.penId.length) return false;
     const pit = Team.find(def.team, def.pitcherId);
     if (!pit) return false;
