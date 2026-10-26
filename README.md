@@ -2,7 +2,7 @@
 
 特訓し、引き抜き、地方大会から全国大会までを勝ち上がる高校野球の育成シミュレーション。
 勝てば相手の主力を1人もらえ、負ければこちらの主力を持っていかれます。
-**部屋**（baseball.roomhaird.com）の3つ目として、`/highschool/` に置く予定のものです。
+**部屋**（roomhaird.com）の3つ目として、`/highschool/` に置いているものです。
 
 このリポジトリは**本番に入れる前の置き場**です。本番と同じ並びでファイルを置いてあるので、
 ここを開けばそのまま試遊できます。
@@ -840,6 +840,31 @@ E以上で差が出ないのは、**9回を投げ切っても限界に届かな�
 
 ## 本番サイトへの入れ方
 
+**移行は済んでいます。** いまは本番（`roomhair/baseball-statsquiz`）の
+「Sync highschool」ワークフローが、**このリポジトリの `claude/elegant-bardeen-gnqbll`
+ブランチ**から `highschool/` を毎朝6時（日本時間）に取り込んでいます。
+`highschool/` を直すときは**ここ（このブランチ）を直す**こと。本番側の `highschool/` を
+直接直しても、次の同期で上書きされます。
+
+### 守ること（2026-10 に AdSense の審査対策で直した）
+
+- **URL は `https://roomhaird.com/...` で書く。** canonical・og:url・og:image・
+  構造化データ・`highschool/js/share.js` すべて。`baseball.roomhaird.com` は
+  Cloudflare で apex へ 301 していて、正規ではない。書くと AdSense の審査対象（apex）が
+  「自分は複製だ」と宣言することになる
+- **`highschool/` の各ページの `<head>` に AdSense のタグを直書きする。**
+  `js/ads.js` は `adsense.slots` が空のあいだ AdSense を読み込まないので、
+  `ads.js` を読んでいるだけでは審査コードが存在しない。ページを足したら忘れずに
+
+```html
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1646091398696967"
+     crossorigin="anonymous"></script>
+```
+
+経緯は本番の README の「AdSense 審査の経緯（2026-10）」を参照。
+
+### 最初に移したときの手順（記録）
+
 本番（`roomhair/baseball-statsquiz`）に移すのは **`highschool/` だけ**です。
 このリポジトリの他のファイル（`index.html` / `css/` / `js/` / `fonts/` /
 `privacy.html` / `_headers` / `wrangler.jsonc`）は、試遊を本番と同じ形にするための
@@ -870,7 +895,7 @@ E以上で差が出ないのは、**9回を投げ切っても限界に届かな�
 
 ```xml
 <url>
-  <loc>https://baseball.roomhaird.com/highschool/</loc>
+  <loc>https://roomhaird.com/highschool/</loc>
   <changefreq>weekly</changefreq>
   <priority>0.9</priority>
 </url>
