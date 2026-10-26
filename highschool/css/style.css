@@ -59,7 +59,7 @@
   --line-soft: #d9e6f6;
 
   /* --- 青（枠と見出し帯） --- */
-  --frame:       #2a6fdb;   /* パネルの太枠 */
+  --frame:       #5c9ded;   /* パネルの太枠。中の文字（能力の評価）より目立たない明るさ */
   --frame-rim:   #ffffff;   /* 太枠の外側のふち（二重の縁取りに見せる） */
   --blue-hi:     #2a6cd8;   /* 帯のグラデーションの明るいほう（白い文字が 4.5:1 を保つ） */
   --blue-lo:     #1446a6;   /* 帯のグラデーションの暗いほう */
@@ -68,6 +68,11 @@
   --brand-fill:  #1a56c4;   /* 塗りに使う青 */
   --brand-ink:   #ffffff;
   --brand-soft:  #e1edff;
+  /* パネルの見出し帯。薄い水色に紺の文字（濃い帯だと表の中の評価の色が埋もれるため） */
+  --strip-hi:    #eaf4ff;
+  --strip-lo:    #d3e6fd;
+  --strip-ink:   #10264f;
+  --strip-edge:  #a9cbf3;
 
   /* --- 黄（今・決定） --- */
   --yel-hi:      #ffe45c;
@@ -87,10 +92,10 @@
   --danger-soft: #ffe3e7;
 
   /* --- スコアボード・掲示板（濃い青の面） --- */
-  --board:       #0b2a6e;
-  --board-2:     #133d94;
+  --board:       #1a4aa6;
+  --board-2:     #2560c4;
   --board-ink:   #ffffff;
-  --board-mute:  #b8d2ff;
+  --board-mute:  #e3eeff;
   --board-line:  rgba(255, 255, 255, .18);
   --board-now:   #ffd43b;   /* 今の回・今の手順 */
   --board-now-ink:#10264f;
@@ -179,13 +184,13 @@
   --cloud:     rgba(160, 200, 255, .10);
   --bg:        #0b1c49;
   --bg-2:      #16275a;
-  --panel:     #0f2150;
-  --panel-2:   #16296a;
+  --panel:     #162c62;
+  --panel-2:   #1f3876;
   --ink:       #eef4ff;
   --ink-mute:  #bfd0f0;
   --ink-faint: #9db2da;
-  --line:      #2f4a8c;
-  --line-soft: #223a78;
+  --line:      #38559a;
+  --line-soft: #2a4482;
   --frame:       #3d86f0;
   --frame-rim:   #0a1a45;
   --blue-hi:     #2f6fd8;
@@ -193,7 +198,11 @@
   --blue-deep:   #030d2c;
   --brand:       #9cc6ff;
   --brand-fill:  #2a66d4;
-  --brand-soft:  #1b3576;
+  --brand-soft:  #23407f;
+  --strip-hi:    #2a4c92;
+  --strip-lo:    #213f7d;
+  --strip-ink:   #eef4ff;
+  --strip-edge:  #3d86f0;
   --yel-soft:    #3a3110;
   --good:        #6fdc8e;
   --good-fill:   #1a7d3c;
@@ -203,8 +212,8 @@
   --danger:      #ff8a98;
   --danger-fill: #d42640;
   --danger-soft: #3d1422;
-  --board:       #061a4d;
-  --board-2:     #0d2a6c;
+  --board:       #0f2d70;
+  --board-2:     #1a3d8a;
   --board-edge:  #3d86f0;
   --shadow-sm: 0 2px 0 rgba(0, 0, 0, .45), 0 4px 10px rgba(0, 0, 0, .35);
   --shadow:    0 3px 0 rgba(0, 0, 0, .5), 0 8px 22px rgba(0, 0, 0, .4);
@@ -230,13 +239,13 @@
     --cloud:     rgba(160, 200, 255, .10);
     --bg:        #0b1c49;
     --bg-2:      #16275a;
-    --panel:     #0f2150;
-    --panel-2:   #16296a;
+    --panel:     #162c62;
+    --panel-2:   #1f3876;
     --ink:       #eef4ff;
     --ink-mute:  #bfd0f0;
     --ink-faint: #9db2da;
-    --line:      #2f4a8c;
-    --line-soft: #223a78;
+    --line:      #38559a;
+    --line-soft: #2a4482;
     --frame:       #3d86f0;
     --frame-rim:   #0a1a45;
     --blue-hi:     #2f6fd8;
@@ -244,7 +253,11 @@
     --blue-deep:   #030d2c;
     --brand:       #9cc6ff;
     --brand-fill:  #2a66d4;
-    --brand-soft:  #1b3576;
+    --brand-soft:  #23407f;
+    --strip-hi:    #2a4c92;
+    --strip-lo:    #213f7d;
+    --strip-ink:   #eef4ff;
+    --strip-edge:  #3d86f0;
     --yel-soft:    #3a3110;
     --good:        #6fdc8e;
     --good-fill:   #1a7d3c;
@@ -254,8 +267,8 @@
     --danger:      #ff8a98;
     --danger-fill: #d42640;
     --danger-soft: #3d1422;
-    --board:       #061a4d;
-    --board-2:     #0d2a6c;
+    --board:       #0f2d70;
+    --board-2:     #1a3d8a;
     --board-edge:  #3d86f0;
     --shadow-sm: 0 2px 0 rgba(0, 0, 0, .45), 0 4px 10px rgba(0, 0, 0, .35);
     --shadow:    0 3px 0 rgba(0, 0, 0, .5), 0 8px 22px rgba(0, 0, 0, .4);
@@ -390,10 +403,10 @@ tr.prow:focus-visible { box-shadow: inset 0 0 0 3px #ff7a00; }
 .section-title {
   display: flex; align-items: center; gap: 10px; width: fit-content; max-width: 100%;
   margin: 4px 0 var(--sp-3); padding: 7px 18px 7px 12px;
-  background: linear-gradient(180deg, var(--blue-hi), var(--blue-lo));
+  background: linear-gradient(180deg, #3f8ae8, var(--blue-hi));
   color: #ffffff;
   border: 2px solid var(--frame-rim); border-radius: var(--radius);
-  box-shadow: 0 0 0 2px var(--frame), 0 4px 0 2px var(--blue-deep);
+  box-shadow: 0 0 0 2px var(--frame), 0 3px 0 2px var(--blue-lo);
   font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 800; line-height: var(--lh-tight);
   text-shadow: 0 2px 0 var(--blue-deep);
 }
@@ -409,13 +422,13 @@ tr.prow:focus-visible { box-shadow: inset 0 0 0 3px #ff7a00; }
 /* 小見出し。表や一覧の上に置く、青い帯 */
 .sub {
   display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px;
-  margin: var(--sp-6) 0 var(--sp-2); padding: 6px 12px;
-  background: linear-gradient(180deg, var(--blue-hi), var(--blue-lo));
-  border-radius: var(--radius-sm); box-shadow: 0 2px 0 var(--blue-deep);
-  font-family: var(--font-display); font-size: var(--fs-md); font-weight: 800; color: #ffffff;
-  text-shadow: 0 1px 0 var(--blue-deep);
+  margin: var(--sp-6) 0 var(--sp-2); padding: 5px 12px;
+  background: linear-gradient(180deg, var(--strip-hi), var(--strip-lo));
+  border: 2px solid var(--strip-edge); border-left: 6px solid var(--frame);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display); font-size: var(--fs-md); font-weight: 800; color: var(--strip-ink);
 }
-.sub__note { font-weight: 400; font-size: var(--fs-xs); color: #ffffff; }
+.sub__note { font-weight: 400; font-size: var(--fs-xs); color: var(--ink-mute); }
 .note { font-size: 13px; color: var(--ink-mute); }
 .tiny { font-size: 11px; color: var(--ink-mute); }
 
@@ -614,7 +627,7 @@ td.hl { font-weight: 800; }
 /* 能力の評価（S〜G）。文字の色と文字そのものの両方で見分けられる */
 .rank, .stat__rank {
   display: inline-block; min-width: 1.15em; text-align: center;
-  font-weight: 800; font-size: 12.5px; letter-spacing: 0; font-family: var(--font-num);
+  font-weight: 800; font-size: 13.5px; letter-spacing: 0; font-family: var(--font-num);
 }
 .rank-S, .stat__rank.rank-S { color: var(--r-s); }
 
@@ -633,12 +646,13 @@ td.hl { font-weight: 800; }
 .rank-G, .stat__rank.rank-G { color: var(--r-g); }
 
 /* =========================================================
-   パネルの見出し帯（青のグラデーションに白い文字）
+   パネルの見出し帯（薄い水色に紺の文字）
+   濃い青の帯にすると、表の中の能力の評価（S〜G）の色が埋もれるので薄くしてある
    ========================================================= */
 .dataset__head, .lineupcard__title, .traincard__kind, .verdict__where {
-  background: linear-gradient(180deg, var(--blue-hi), var(--blue-lo));
-  color: #ffffff; text-shadow: 0 1px 0 var(--blue-deep);
-  border-bottom: 2px solid var(--blue-deep);
+  background: linear-gradient(180deg, var(--strip-hi), var(--strip-lo));
+  color: var(--strip-ink);
+  border-bottom: 2px solid var(--strip-edge);
 }
 
 /* =========================================================
@@ -651,9 +665,9 @@ td.hl { font-weight: 800; }
   margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 800; flex: 1 1 auto;
   display: flex; align-items: center; gap: 8px;
 }
-.dataset__no::before { content: ''; width: 6px; height: 20px; border-radius: 3px; background: var(--yel-hi); }
-.dataset__meta { margin: 0; flex: 1 1 100%; order: 3; font-size: 12px; color: #ffffff; }
-.dataset__best { color: #ffffff; font-weight: 800; }
+.dataset__no::before { content: ''; width: 6px; height: 20px; border-radius: 3px; background: var(--frame); }
+.dataset__meta { margin: 0; flex: 1 1 100%; order: 3; font-size: 12px; color: var(--ink-mute); }
+.dataset__best { color: var(--ink); font-weight: 800; }
 .dataset__pick { flex: 0 0 auto; min-height: 40px; font-size: 14px; padding: 6px 14px; margin-bottom: 4px; }
 .dataset .tablewrap { margin: 0; }
 
@@ -764,9 +778,9 @@ td.hl { font-weight: 800; }
   font-family: var(--font-display); font-size: 14px; font-weight: 800;
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
-.traincard--l .traincard__kind { background: linear-gradient(180deg, #2fb35a, #15793a); border-bottom-color: #0d5426; }
-.traincard--xl .traincard__kind { background: linear-gradient(180deg, #ff9f1a, #e05a00); border-bottom-color: #8f3a00; }
-.traincard__n { font-size: 11px; font-weight: 700; color: #ffffff; }
+.traincard--l .traincard__kind { background: linear-gradient(180deg, color-mix(in srgb, var(--good-soft) 60%, var(--panel)), var(--good-soft)); border-bottom-color: var(--good-fill); }
+.traincard--xl .traincard__kind { background: linear-gradient(180deg, color-mix(in srgb, var(--yel-soft) 60%, var(--panel)), var(--yel-soft)); border-bottom-color: var(--yel-lo); }
+.traincard__n { font-size: 11px; font-weight: 700; color: var(--ink-mute); }
 
 /* 札（ラベル）。状態や種類を短い言葉で示す。色に頼らず文字で読めるようにする */
 .traincard__tier, .traincard__multi, .capmark, .gr__awake, .retire__draft, .tag {
@@ -807,7 +821,7 @@ td.hl { font-weight: 800; }
 .capsel { max-height: 58vh; overflow-y: auto; padding: 2px 2px 4px; }
 
 /* 「複数」の札。猛特訓とは別に引いているので、並べて出す */
-.traincard__multi { color: #ffffff; background: rgba(255, 255, 255, .15); border-color: #ffffff; }
+.traincard__multi { color: var(--brand); background: var(--brand-soft); border-color: var(--brand); }
 /* 「複数」と「猛特訓」が重なったときだけ、枠ごと目立たせる */
 .traincard.is-multi.traincard--xl {
   box-shadow: 0 0 0 2px var(--frame-rim), 0 0 0 6px color-mix(in srgb, var(--yel-lo) 60%, transparent), var(--shadow-lg);
@@ -855,8 +869,8 @@ td.hl { font-weight: 800; }
 .cardline--tight .cardline__name { font-size: 13.5px; }
 .cardline--tight .cardline__up { font-size: 15px; }
 .cardline--tight .cardline__now { font-size: 11px; }
-/* 評価の横に出す素の数字 */
-.rankval { font-weight: 700; font-size: 11.5px; color: var(--ink); margin-left: 1px; }
+/* 評価の横に出す素の数字。評価の文字（S〜G）のほうが目立つよう、細く薄めにする */
+.rankval { font-weight: 500; font-size: 11.5px; color: var(--ink-mute); margin-left: 1px; }
 td.role { font-size: 11px; color: var(--ink-mute); }
 .roster td.c .rankval { font-size: 11px; color: var(--ink-mute); }
 /* 引き抜かれた選手のお知らせ（オフシーズン画面の頭） */
@@ -1808,11 +1822,11 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 
 /* 設定の中の小見出し。何と何の設定なのか、目で切れるようにする（青い帯） */
 .set-heading {
-  margin: 28px 0 8px; padding: 6px 12px;
-  background: linear-gradient(180deg, var(--blue-hi), var(--blue-lo));
-  border-radius: var(--radius-sm); box-shadow: 0 2px 0 var(--blue-deep);
-  font-family: var(--font-display); font-size: 14px; font-weight: 800; color: #ffffff;
-  text-shadow: 0 1px 0 var(--blue-deep);
+  margin: 28px 0 8px; padding: 5px 12px;
+  background: linear-gradient(180deg, var(--strip-hi), var(--strip-lo));
+  border: 2px solid var(--strip-edge); border-left: 6px solid var(--frame);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display); font-size: 14px; font-weight: 800; color: var(--strip-ink);
 }
 .field--check { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; font-weight: 700; cursor: pointer; }
 .field--check input { flex: none; margin-top: 2px; width: 22px; height: 22px; accent-color: var(--brand-fill); }

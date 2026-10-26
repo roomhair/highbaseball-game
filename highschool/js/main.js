@@ -1032,6 +1032,8 @@ const Game = (() => {
        無いフィールドなので、ここで補っておく */
     if (state.settings.springName == null) state.settings.springName = CONFIG.DEFAULTS.springName;
     if (state.settings.jinguName == null) state.settings.jinguName = CONFIG.DEFAULTS.jinguName;
+    /* 全国大会の名前の初期値を「乙大人園」から「乙子園」に変えた。前の初期値のままなら新しい名前に */
+    if (state.settings.nationalName === CONFIG.OLD_NATIONAL_NAME) state.settings.nationalName = CONFIG.DEFAULTS.nationalName;
     if (state.trainingNext == null) state.trainingNext = 'local';
     if (state.springQualified == null) state.springQualified = false;
     if (state.prestigeScore == null) state.prestigeScore = 0;

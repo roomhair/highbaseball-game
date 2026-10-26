@@ -3,7 +3,7 @@
 
    途中経過をブラウザに保存する。閉じても続きから遊べるように。
    ・保存できない設定（プライベートモード等）でも、遊べなくはならない。
-   ・設定（乙大人園の名前など）は、ゲームを最初からやり直しても
+   ・設定（乙子園の名前など）は、ゲームを最初からやり直しても
      残しておきたいので別の鍵に分けてある。
    ================================================== */
 'use strict';
@@ -54,6 +54,7 @@ const Storage = {
       const raw = localStorage.getItem(CONFIG.SETTINGS_KEY);
       if (raw) Object.assign(base, JSON.parse(raw) || {});
     } catch (e) { /* 既定のまま */ }
+    if (base.nationalName === CONFIG.OLD_NATIONAL_NAME) base.nationalName = CONFIG.DEFAULTS.nationalName;
     return base;
   },
 
