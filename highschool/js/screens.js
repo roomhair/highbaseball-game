@@ -418,7 +418,7 @@ const Screens = (() => {
   function openingLead(state) {
     const t = esc(state.team.name);
     switch (state.tour.kind) {
-      case 'national': return '全国の頂点まであと7つ。' + t + '、初戦へ。';
+      case 'national': return '全国の頂点をめざす戦いが始まる。' + t + '、初戦へ。';
       case 'fallPref': return t + '、新チームで秋の大会へ。';
       case 'fallDistrict': return t + '、地区大会へ。';
       case 'fallJingu': return t + '、全国の強豪が集う舞台へ。';
@@ -593,7 +593,7 @@ const Screens = (() => {
   /* ---------- 引き抜き ---------- */
 
   /** 引き抜きの画面の、いまの手順を示す。見た目だけで、進み方には関わらない。
-      stage は pick（相手を選ぶ）・release（放出を選ぶ）・win / lose（結果） */
+      stage は pick（相手を選ぶ）・release（放出する選手を選ぶ）・win / lose（結果） */
   function poachStage(stage) {
     const step = { pick: 0, release: 1, win: 2, lose: 2 }[stage];
     UI.el('screen-poach').dataset.stage = stage;
@@ -1013,7 +1013,7 @@ const Screens = (() => {
   }
 
   function socSection(S, title, rows) {
-    return '<h3 class="sub">' + esc(title) + '</h3>' + (rows.length ? socTable(S, rows) : '<p class="note">いません。</p>');
+    return '<h3 class="sub">' + esc(title) + '</h3>' + (rows.length ? socTable(S, rows) : '<p class="note">該当する選手はいません。</p>');
   }
 
   function socShow(state, eyebrow, title, bodyHtml, primary, secondary) {

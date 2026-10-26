@@ -973,10 +973,10 @@ const GameScreen = (() => {
       const p = Team.find(t, s.pid);
       return p ? { p, meta: (i + 1) + '番　' + posName(s.pos) + '　適性 ' + aptAt(p, s.pos) } : null;
     }).filter(Boolean);
-    pickPlayer('守備位置を変える', '入れ替える1人目', mk(), (pidA) => {
+    pickPlayer('守備位置を変える', '入れ替える1人目の選手', mk(), (pidA) => {
       const a = t.lineup.findIndex((s) => s.pid === pidA);
       const rest = mk().filter((x) => x.p.id !== pidA);
-      pickPlayer('守備位置を変える', Team.find(t, pidA).name + ' と入れ替える相手', rest, (pidB) => {
+      pickPlayer('守備位置を変える', Team.find(t, pidA).name + ' と入れ替える選手', rest, (pidB) => {
         const b = t.lineup.findIndex((s) => s.pid === pidB);
         if (a < 0 || b < 0) { timeMenu(); return; }
         const pa = t.lineup[a].pos, pb = t.lineup[b].pos;
