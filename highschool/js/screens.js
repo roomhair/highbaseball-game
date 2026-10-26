@@ -214,7 +214,7 @@ const Screens = (() => {
       /* 3年生が引退した直後。学年はまだ上がらず、新入生もまだいない */
       case 'fallPref': return '3年生が引退した今のチームの、秋までの練習が始まる。';
       case 'springOrNextSummer':
-        return state.springQualified ? '春までの練習が始まる。' : '来年の夏までの練習が始まる。';
+        return '冬の特訓が始まる。';
       /* センバツ相当まで終わり、学年が上がって新入生を迎えた直後 */
       case 'nextSummer': return '新入生を迎えた新チームの、夏までの練習が始まる。';
       default: return '新入生を迎えたチームの、夏までの練習が始まる。';
@@ -861,7 +861,7 @@ const Screens = (() => {
           '<p class="champ__eyebrow">' + state.year + '年目</p>' +
           '<h2 class="champ__title">' + esc(name) + ' 出場ならず</h2>' +
           '<p class="champ__school">' + esc(t.name) + '</p>' +
-          '<p class="champ__lead">来年の' + esc(name) + 'への出場はかなわなかった。新入生を迎え、来年の夏に備える。</p>' +
+          '<p class="champ__lead">来年の' + esc(name) + 'への出場はかなわなかった。新入生を迎え、夏へ。</p>' +
         '</div>';
     UI.html('spring-result-body', body);
     UI.el('btn-spring-result-next').textContent = qualified ? (name + 'へ') : '新入生の入部';
@@ -1166,7 +1166,7 @@ const Screens = (() => {
     goals.forEach((e) => { scorers[e.name] = (scorers[e.name] || 0) + 1; });
     const lead = res.win
       ? (isLast ? label + '　優勝。' : '次の試合へ進む。')
-      : ((S.tour.kind === 'fallPref' && isLast) ? '秋季地区大会へ。' : (S.tour.kind === 'local' || S.tour.kind === 'national' ? 'オフシーズンへ。' : (S.tour.kind === 'spring' ? '新入生の入部へ。' : '特訓へ。')));
+      : ((S.tour.kind === 'fallPref' && isLast) ? '秋季地区大会へ。' : (S.tour.kind === 'local' || S.tour.kind === 'national' ? 'オフシーズンへ。' : (S.tour.kind === 'spring' ? '新入生の入部へ。' : 'オフシーズンへ。')));
     UI.html('verdict-body',
       '<div class="verdict__box' + (res.win ? ' is-win' : ' is-lose') + '">' +
         '<p class="verdict__where">' + esc(label) + '　' + esc(res.roundName) + '</p>' +
@@ -1245,7 +1245,7 @@ const Screens = (() => {
     UI.el('btn-result-next').textContent = res.win
       ? (isLast ? '次へ' : '次の試合へ')
       : ((S.tour.kind === 'local' || S.tour.kind === 'national') ? 'オフシーズンへ'
-        : (S.tour.kind === 'fallPref' && isLast ? '秋季地区大会へ' : (S.tour.kind === 'spring' ? '新入生の入部へ' : '特訓へ')));
+        : (S.tour.kind === 'fallPref' && isLast ? '秋季地区大会へ' : (S.tour.kind === 'spring' ? '新入生の入部へ' : 'オフシーズンへ')));
     UI.show('screen-result');
   }
 
