@@ -80,11 +80,14 @@ const Share = (() => {
     if (!sim || !sim.res) return null;
     const res = sim.res;
     const n = Math.max(9, res.innings || 9);
+    /* サヨナラ・コールドで後攻が回の途中に決めた回には「x」を付ける */
+    const last = (res.innings || 9) - 1;
+    const xAt = res.winner === 'home' && (res.walkoff || res.cold) && res.home.byInning[last] != null ? last : -1;
     const line = (side) => ({
       name: side.team.name,
       cells: Array.from({ length: n }, (_, i) => {
         const v = side.byInning[i];
-        return v == null ? (i < res.innings ? '×' : '') : String(v);
+        return v == null ? (i < res.innings ? '×' : '') : String(v) + (side === res.home && i === xAt ? 'x' : '');
       }),
       r: String(side.runs), h: String(side.hits), e: String(side.errors),
     });

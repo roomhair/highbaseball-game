@@ -28,17 +28,28 @@ const GameScreen = (() => {
 
   /* ---------- スコアボード ---------- */
 
+  /** 後攻が回の途中で試合を決めた回（0始まり）。無ければ -1 */
+  function endedMidInning(res) {
+    const last = res.innings - 1;
+    if (res.winner !== 'home' || !(res.walkoff || res.cold)) return -1;
+    return res.home.byInning[last] != null ? last : -1;
+  }
+
   function scoreboard(res, awayName, homeName) {
     const n = Math.max(9, res.innings);
     let head = '<th class="sb-team"></th>';
     for (let i = 1; i <= n; i++) head += '<th>' + i + '</th>';
     head += '<th class="sb-tot">R</th><th>H</th><th>E</th>';
 
+    /* 後攻がサヨナラやコールドで回の途中に試合を決めたときは、
+       その回の点に「x」を付ける（スコアボードの決まった書き方） */
+    const xAt = endedMidInning(res);
     const row = (name, side, other) => {
       let s = '<th class="sb-team">' + esc(name) + '</th>';
       for (let i = 0; i < n; i++) {
         const v = side.byInning[i];
-        s += '<td>' + (v == null ? (i < res.innings ? '×' : '') : v) + '</td>';
+        const x = side === res.home && i === xAt ? 'x' : '';
+        s += '<td>' + (v == null ? (i < res.innings ? '×' : '') : v + x) + '</td>';
       }
       s += '<td class="sb-tot">' + side.runs + '</td><td>' + side.hits + '</td><td>' + side.errors + '</td>';
       return '<tr>' + s + '</tr>';
@@ -927,6 +938,9 @@ const GameScreen = (() => {
           if (!inP || !live || !live.bases) { timeMenu(); return; }
           live.bases[r.i] = inP;
           inP.pinchRunner = true;
+          /* 代走は、元の走者の出塁を引き継ぐ（この走者が還ったときの失点は、
+             元の走者を出した投手に付く。失策で出た走者なら自責点にならない） */
+          inP._resp = r.p._resp; inP._uer = r.p._uer;
           const idx = t.lineup.findIndex((s) => s.pid === r.p.id);
           if (idx >= 0) t.lineup[idx] = { pid: inP.id, pos: t.lineup[idx].pos };
           retired().add(r.p.id);

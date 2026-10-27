@@ -79,10 +79,11 @@ const Sim = (() => {
 
   /* 右打者を基準にした方向の割り当て。左打者は左右を入れ替える。
      同じ位置を何度も並べてあるのは、出やすさの重み付けのため。
-     投手・捕手のゴロはあまり出ないので、1つずつしか入れていない。 */
+     捕手の前に転がるゴロ（捕ゴロ）は本当にまれなので、ここには入れず
+     fieldSpot で小さい確率で出す。 */
   const INF_BY_ZONE = {
     pull:   ['3B', '3B', 'SS', 'SS', 'SS'],
-    center: ['SS', '2B', 'SS', '2B', 'SS', '2B', 'SS', '2B', 'P', 'C'],
+    center: ['SS', '2B', 'SS', '2B', 'SS', '2B', 'SS', '2B', 'P', 'P'],
     oppo:   ['1B', '1B', '2B', '2B', '2B'],
   };
   const OF_BY_ZONE = { pull: 'LF', center: 'CF', oppo: 'RF' };
@@ -100,6 +101,9 @@ const Sim = (() => {
       : OF_BY_ZONE[zone];
     /* ライナーは内野を抜けることも、正面を突くこともある */
     if (type === 'LD' && RNG.chance(0.35)) key = RNG.pick(INF_BY_ZONE[zone]);
+    /* 本塁の前で止まるボテボテのゴロと、捕手が追う小飛球（ファウルフライ） */
+    if (type === 'GB' && RNG.chance(0.012)) key = 'C';
+    if (type === 'PU' && RNG.chance(0.10)) key = 'C';
     if (bats === 'L') key = mirror(key);
     return key;
   }
@@ -158,8 +162,11 @@ const Sim = (() => {
     const pw = C((bat.power + f) / 100, 0.02, 1);
 
     /* 三振・四球・死球 */
-    const pK = C(0.150 + 0.36 * (stuff - contact), 0.02, 0.55);
-    const pBB = C(0.082 + 0.17 * (0.5 - ctrl) - 0.03 * (contact - 0.5), 0.015, 0.32);
+    /* 三振。高校野球の全国大会は1打席あたり17%前後 */
+    const pK = C(0.168 + 0.36 * (stuff - contact), 0.02, 0.55);
+    /* 四球。制球の良い投手でも、高校生の打者相手にほとんど出さない
+       （4%を切る）ということはないので、制球の効きは少しゆるめてある */
+    const pBB = C(0.088 + 0.10 * (0.5 - ctrl) - 0.03 * (contact - 0.5), 0.055, 0.30);
     const pHBP = C(0.010 + 0.02 * (0.5 - ctrl), 0.002, 0.045);
 
     let r = RNG.rand();
@@ -175,13 +182,17 @@ const Sim = (() => {
     const spot = fieldSpot(zone, type, bat.bats);
     const isOF = spot === 'LF' || spot === 'CF' || spot === 'RF';
 
-    /* 本塁打。フライとライナーからしか出ない */
+    /* 本塁打。フライとライナーからしか出ない。
+       高校野球（低反発の金属バット）では本塁打はかなり少なく、
+       全国大会でも1チーム1試合あたり0.1〜0.3本ほど。以前は強豪どうしで
+       1試合に2本近く出ていて、野球を知る人ほど違和感があったため、
+       全体を0.25倍にしてある。パワーのある打者ほど出やすい形は同じ */
     if (type === 'FB' || type === 'LD') {
       const pHR = C(
         0.026 + 0.22 * (pw - 0.42) + 0.016 * (bat.traj - 2) +
         0.03 * (contact - 0.5) - 0.050 * (stuff - 0.45),
         0.0008, 0.20
-      ) * (type === 'FB' ? 1.25 : 0.55);
+      ) * (type === 'FB' ? 1.25 : 0.55) * 0.25;
       if (RNG.chance(pHR)) {
         const ofKey = bat.bats === 'L' ? mirror(OF_BY_ZONE[zone]) : OF_BY_ZONE[zone];
         return { code: 'HR', text: posShort(ofKey) + '本', out: 0, spot: ofKey };
@@ -195,7 +206,8 @@ const Sim = (() => {
       const fielder = defenders ? defenders[spot] : null;
       const eff = fielder ? Team.defScore(fielder, spot) : defRating * 100;
       const base = type === 'GB' ? 0.045 : 0.018;
-      const pE = C(base + (52 - eff) / 100 * 0.24, 0.004, 0.26);
+      /* 守備のうまい強豪でも、高校野球では1試合に0.5個ほどは失策が出る */
+      const pE = C(base + (52 - eff) / 100 * 0.24, type === 'GB' ? 0.022 : 0.007, 0.26);
       if (RNG.chance(pE)) {
         return { code: 'E', text: posShort(spot) + '失', out: 0, spot, by: fielder ? fielder.id : null };
       }
@@ -203,8 +215,8 @@ const Sim = (() => {
 
     /* 安打になるか。打球の種類でまったく違う */
     const babip = C(
-      0.300 + 0.30 * (contact - stuff) + 0.07 * (pw - 0.5) +
-      0.05 * (bat.speed / 100 - 0.5) - 0.28 * (defRating - 0.45) +
+      0.315 + 0.30 * (contact - stuff) + 0.07 * (pw - 0.5) +
+      0.05 * (bat.speed / 100 - 0.5) - 0.17 * (defRating - 0.45) +
       /* 制球が悪い投手は、四球だけでなく甘い球も増えて打たれやすい（逆も同じ）。
          これが無いと、球速さえあれば制球が壊滅的でも抑え込めてしまっていた */
       0.10 * (0.5 - ctrl),
@@ -219,10 +231,10 @@ const Sim = (() => {
       const sp = bat.speed / 100;
       if (type === 'FB') {
         const q = RNG.rand();
-        kind = q < 0.42 ? '2B' : (q < 0.42 + 0.02 + sp * 0.05 ? '3B' : '1B');
+        kind = q < 0.45 ? '2B' : (q < 0.45 + 0.02 + sp * 0.05 ? '3B' : '1B');
       } else if (type === 'LD') {
         const q = RNG.rand();
-        kind = q < 0.22 ? '2B' : (q < 0.22 + 0.01 + sp * 0.025 ? '3B' : '1B');
+        kind = q < 0.27 ? '2B' : (q < 0.27 + 0.01 + sp * 0.025 ? '3B' : '1B');
       } else if (type === 'GB') {
         kind = RNG.chance(0.04 + sp * 0.03) ? '2B' : '1B';
       }
@@ -263,7 +275,7 @@ const Sim = (() => {
      バントはやや出しやすく、スクイズはかなり出しやすくなる。
      高いほど打たせたいので、逆にどちらも出しにくくなる */
   const TACTIC_ABILITY_TIERS = [35, 50, 65, 80];
-  const BUNT_ABILITY_MULT    = [1.30, 1.10, 1.00, 0.80, 0.55];
+  const BUNT_ABILITY_MULT    = [1.30, 1.10, 1.00, 0.90, 0.75];
   const SQUEEZE_ABILITY_MULT = [2.00, 1.40, 1.00, 0.70, 0.40];
 
   function battingAbility(bat) { return (bat.meet + bat.power) / 2; }
@@ -342,10 +354,10 @@ const Sim = (() => {
         : { code: 'SQF', text: 'スクイズ失敗', out: 1 };
     }
     if (RNG.chance(skill)) return { code: 'SH', text: '犠打', out: 1 };
-    /* 投前失＝投手（または前に出た内野手）の失策。打者は生きて走者も進む。
+    /* 投失＝バントを処理した投手（または前に出た内野手）の失策。打者は生きて走者も進む。
        バント失敗は普通に打者アウト */
-    return RNG.chance(0.5)
-      ? { code: 'BE', text: '投前失', out: 0, by: pit.id }
+    return RNG.chance(0.3)
+      ? { code: 'BE', text: '投失', out: 0, by: pit.id }
       : { code: 'BF', text: 'バント失敗', out: 1 };
   }
 
@@ -483,7 +495,7 @@ const Sim = (() => {
       if (H.byInning[i] == null) H.byInning[i] = null;
     }
 
-    creditDecision(A, H, log);
+    creditDecision(A, H, log, last);
     log.push({ k: 'end', score: [A.runs, H.runs], cold, walkoff, innings: last });
 
     return {
@@ -569,7 +581,14 @@ const Sim = (() => {
    * していたため、先発が大量に投げても途中で負け越したまま降板し、
    * そのあと救援がその回で追いつき・逆転して勝った場合に、
    * 逆転される前に降りた先発が勝ち投手になってしまっていた。 */
-  function creditDecision(A, H, log) {
+  function creditDecision(A, H, log, innings) {
+    /* 完投。勝っても負けても、1人で投げ切れば完投 */
+    [A, H].forEach((S) => {
+      if (S.usedPitchers.length !== 1) return;
+      const p = Team.find(S.team, S.usedPitchers[0]);
+      if (p) p.game.cg = 1;
+    });
+
     const win = A.runs > H.runs ? A : (H.runs > A.runs ? H : null);
     if (!win) return;
     const lose = win === A ? H : A;
@@ -578,36 +597,63 @@ const Sim = (() => {
 
     const curPitcher = { away: A.usedPitchers[0], home: H.usedPitchers[0] };
     let winPitcherId = null, losePitcherId = null, ahead = false;
+    let lastScore = [0, 0];
+    const marginOf = (sc) => (winSide === 'away' ? sc[0] - sc[1] : sc[1] - sc[0]);
+    /* 救援投手が出てきたときの点差（セーブの条件に使う） */
+    const entryLead = {};
     (log || []).forEach((e) => {
       if (e.k === 'sub' && e.pitcher && (e.side === 'away' || e.side === 'home')) {
         curPitcher[e.side] = e.pitcher;
+        if (e.side === winSide) entryLead[e.pitcher] = marginOf(lastScore);
         return;
       }
       if (!e.score) return;
-      const margin = winSide === 'away' ? e.score[0] - e.score[1] : e.score[1] - e.score[0];
+      const margin = marginOf(e.score);
       const aheadNow = margin > 0;
       if (aheadNow && !ahead) {
         winPitcherId = curPitcher[winSide];
         losePitcherId = curPitcher[loseSide];
+        /* 勝ち越しの1点を、どの投手が出した走者が挙げたか。
+           引き継いだ走者が還って勝ち越されたなら、その走者を出した前の投手が負け投手 */
+        if (e.resp && e.resp.length) {
+          const before = marginOf(lastScore);
+          const k = 1 - before;                   // 何点目で前に出たか（1始まり）
+          if (k >= 1 && k <= e.resp.length) losePitcherId = e.resp[k - 1];
+        }
       }
       ahead = aheadNow;
+      lastScore = e.score;
     });
+
+    /* 先発は5回（5回で終わった試合では4回）を投げ切らないと勝ち投手になれない。
+       そのときは、救援のうちいちばん長く投げた投手を勝ち投手にする */
+    const starterId = win.usedPitchers[0];
+    if (winPitcherId === starterId && win.usedPitchers.length > 1) {
+      const st = Team.find(win.team, starterId);
+      const need = (innings || 9) >= 6 ? 15 : 12;
+      if (st && st.game.outs < need) {
+        let best = null;
+        win.usedPitchers.slice(1).forEach((id) => {
+          const p = Team.find(win.team, id);
+          if (p && (!best || p.game.outs > best.game.outs)) best = p;
+        });
+        if (best) winPitcherId = best.id;
+      }
+    }
 
     const w = winPitcherId != null ? Team.find(win.team, winPitcherId) : null;
     if (w) w.game.w = 1;
     const l = losePitcherId != null ? Team.find(lose.team, losePitcherId) : null;
     if (l) l.game.l = 1;
-    /* 完投・完封 */
-    if (win.usedPitchers.length === 1 && w) {
-      w.game.cg = 1;
-      if (lose.runs === 0) w.game.sho = 1;
-    }
-    /* セーブ。細かい規則までは追わず、勝ち投手ではない最後の投手が、
-       僅差（3点差以内）のまま試合を締めたときに付ける */
+    if (w && win.usedPitchers.length === 1 && lose.runs === 0) w.game.sho = 1;
+
+    /* セーブ。勝ち投手ではない最後の投手が、3点差以内のリードで登板して
+       そのまま締めたとき、または3回以上を投げて締めたときに付ける */
     const lastId = win.usedPitchers[win.usedPitchers.length - 1];
     const closer = lastId != null ? Team.find(win.team, lastId) : null;
-    if (closer && w && closer !== w && closer.game.outs > 0 && win.runs - lose.runs <= 3) {
-      closer.game.sv = 1;
+    if (closer && w && closer !== w && closer.game.outs > 0) {
+      const lead = entryLead[lastId];
+      if ((lead != null && lead >= 1 && lead <= 3) || closer.game.outs >= 9) closer.game.sv = 1;
     }
   }
 
@@ -631,6 +677,8 @@ const Sim = (() => {
       const i1 = (off.order + 7) % 9, i2 = (off.order + 8) % 9;
       bases[0] = Team.find(offTeam, off.team.lineup[i2].pid);
       bases[1] = Team.find(offTeam, off.team.lineup[i1].pid);
+      /* タイブレークの走者は、還っても投手の自責点にはならない */
+      bases.forEach((r) => { if (r) { r._resp = def.pitcherId; r._uer = true; } });
     }
     showBases();
 
@@ -661,7 +709,7 @@ const Sim = (() => {
         const behind = (off.runs - (off === A ? H.runs : A.runs)) <= -2;
         /* やたらとしかけないように、企てる回数は絞ってある。
            そのかわり、行くと決めたときは決まりやすい */
-        const pAttempt = C((runner.speed - 25) / 125, 0.02, 0.40) *
+        const pAttempt = C((runner.speed - 30) / 150, 0.02, 0.34) *
           (outs === 2 ? 0.6 : 1) * (behind ? 0.12 : 1) * (runner.pinchRunner ? 1.35 : 1);
         if (RNG.chance(pAttempt)) {
           const cat = Team.defenders(defTeam, def.pitcherId).C;
@@ -730,12 +778,14 @@ const Sim = (() => {
         if (RNG.chance(pWP)) {
           const isWP = !RNG.chance(C(0.28 * (50 / catchSkill), 0.10, 0.60));
           let wpRuns = 0;
-          if (bases[2]) { const r = bases[2]; bases[2] = null; wpRuns++; if (r.game) r.game.r++; }
+          if (bases[2]) {
+            const r = bases[2]; bases[2] = null; wpRuns++; if (r.game) r.game.r++;
+            chargeRun(defTeam, pit, r, isWP && !r._uer);
+          }
           if (bases[1]) { bases[2] = bases[1]; bases[1] = null; }
           if (bases[0]) { bases[1] = bases[0]; bases[0] = null; }
           if (wpRuns) {
             off.runs += wpRuns; got += wpRuns; def.pitcherRuns += wpRuns;
-            pit.game.r += wpRuns; if (isWP) pit.game.er += wpRuns;
           }
           log.push(snap('steal', {
             text: (isWP ? '暴投' : '捕逸') + '　走者が進塁' + (wpRuns ? '（' + wpRuns + '点）' : ''),
@@ -777,6 +827,17 @@ const Sim = (() => {
 
       recordBat(bat, res, out);
       recordPit(pit, res, out);
+      /* 失点は、その走者を塁に出した投手に付ける（引き継いだ走者が還ったら
+         前の投手の失点）。失策で出た走者や、失策の間に入った点は自責点にしない */
+      const respIds = [];
+      const byError = res.code === 'E' || res.code === 'BE';
+      out.scored.forEach((r) => {
+        const self = r === bat;                      // 本塁打の打者は、いまの投手の失点
+        const rp = chargeRun(defTeam, pit, self ? null : r, !byError && (self || !r._uer));
+        respIds.push(rp.id);
+      });
+      /* いま塁にいる打者は、この投手が出した走者 */
+      if (out.bases.indexOf(bat) >= 0) { bat._resp = pit.id; bat._uer = res.code === 'E' || res.code === 'BE'; }
       /* 球数。1球ずつは投げていないので、打席の結果から見積もる */
       pit.game.np = (pit.game.np || 0) + (res.code === 'K' ? 4 + RNG.int(3)
         : (res.code === 'BB' ? 5 + RNG.int(3) : (res.code === 'HBP' ? 3 : 2 + RNG.int(4))));
@@ -795,6 +856,8 @@ const Sim = (() => {
         pitch: ball ? ball.name : null,
         pitchSpeed: ball ? ball.speed : null,
         desc: out.desc || '',
+        /* 還った走者それぞれの責任投手（入った順）。負け投手を決めるのに使う */
+        resp: respIds,
       }, off, def, inning, half, outs, bases, A, H, bat, pit, before, slotIndex));
       /* ここが「打席と打席のあいだ」。タイムをかけられるのはこの位置 */
       showBases(); yield;
@@ -967,7 +1030,7 @@ const Sim = (() => {
         break;
       }
 
-      case 'BE': {          /* 投前失。バントの処理を失策。打者は生きて、走者はひとつ進む */
+      case 'BE': {          /* 投失。バントの処理を失策。打者は生きて、走者はひとつ進む */
         if (bases[2]) { score(bases[2]); bases[2] = null; }
         if (bases[1]) { bases[2] = bases[1]; bases[1] = null; }
         if (bases[0]) { bases[1] = bases[0]; bases[0] = null; }
@@ -1052,7 +1115,8 @@ const Sim = (() => {
             break;
           }
           if (outs < 2) {
-            const pHome = res.isOF ? (fly ? 0.65 : 0.18) : 0.02;
+            /* 内野フライで三塁走者がタッチアップして還ることは、まず無い */
+            const pHome = res.isOF ? (fly ? 0.65 : 0.18) : 0;
             const pSecond = res.isOF
               ? (spot === 'RF' ? (fly ? 0.40 : 0.10) : (fly ? 0.06 : 0.02))
               : 0.01;
@@ -1071,7 +1135,7 @@ const Sim = (() => {
             }
             if (bases[1] && !bases[2] && RNG.chance(C(pSecond * (1 + z(bases[1]) * 0.35), 0, 0.9))) { bases[2] = bases[1]; bases[1] = null; }
             if (bases[0] && !bases[1] && RNG.chance(pFirst)) { bases[1] = bases[0]; bases[0] = null; }
-            if (scoredNow) { res.text = '犠飛'; res.sf = true; }
+            if (scoredNow) { res.text = posShort(spot) + '犠飛'; res.sf = true; }
             break;
           }
           outs++;
@@ -1084,7 +1148,7 @@ const Sim = (() => {
     /* 得点した走者に得点を付ける */
     scored.forEach((r) => { if (r.game) r.game.r++; });
 
-    return { outs, bases, runs, rbi, desc, prevOuts: outsBefore };
+    return { outs, bases, runs, rbi, desc, prevOuts: outsBefore, scored };
   }
 
   /* ---------- 成績を付ける ---------- */
@@ -1108,12 +1172,19 @@ const Sim = (() => {
     }
   }
 
+  /** 還った走者 r の失点を、その走者を出した投手に付ける。
+      earned が true なら自責点も付ける（null なら失点だけ）。付けた投手を返す */
+  function chargeRun(defTeam, cur, r, earned) {
+    const rp = (r && r._resp != null && Team.find(defTeam, r._resp)) || cur;
+    rp.game.r++;
+    if (earned) rp.game.er++;
+    return rp;
+  }
+
   function recordPit(pit, res, out) {
     const s = pit.game;
     s.outs += Math.max(0, out.outs - out.prevOuts);
-    s.r += out.runs;
-    /* 失策がからんだ点も、ここでは自責点として扱っている（簡略化） */
-    s.er += out.runs;
+    /* 失点・自責点は playHalf で走者ごとに付ける（chargeRun） */
     switch (res.code) {
       case 'K': s.so++; break;
       case 'BB': case 'HBP': s.bb++; break;
@@ -1132,9 +1203,14 @@ const Sim = (() => {
     const pit = Team.find(def.team, def.pitcherId);
     if (!pit) return false;
     const cap = capacityOf(pit);
-    const tired = (def.bf + (pit.staminaCarry || 0)) > cap + 12;
-    const beaten = def.pitcherRuns >= 7 && def.bf >= 12;
-    if (!tired && !beaten) return false;
+    /* 以前は cap + 12 で、スタミナ50の投手でも43人目まで代えず、
+       ほとんどの試合が完投になっていた。いまの高校野球は継投が当たり前
+       なので、スタミナが切れて少ししたところで代える */
+    const tired = (def.bf + (pit.staminaCarry || 0)) > cap + 3;
+    const beaten = def.pitcherRuns >= 6 && def.bf >= 12;
+    /* 球数。スタミナのある投手でも、140球に近づいたら代える */
+    const overPitched = (pit.game.np || 0) >= 125 + (pit.stamina - 50) * 0.4;
+    if (!tired && !beaten && !overPitched) return false;
 
     const nextId = def.penId.shift();
     return changePitcher(def, log, inning, half, nextId);

@@ -377,11 +377,13 @@ const Growth = (() => {
     const where = (ctx.tourName || '') + ctx.roundName + '・' + ctx.oppName + '戦';
     let line;
     if (isPit) {
-      const ip = Math.floor(s.outs / 3) + (s.outs % 3 ? 'と' + (s.outs % 3) + '/3' : '');
-      line = ip + '回 ' + s.h + '安打 ' + s.er + '失点 ' + s.so + '奪三振';
+      /* 投球回は「7回1/3」の書き方。失点は自責点ではなく失点の数 */
+      const ip = Math.floor(s.outs / 3) + '回' + (s.outs % 3 ? (s.outs % 3) + '/3' : '');
+      line = ip + ' ' + s.h + '安打 ' + s.r + '失点 ' + s.so + '奪三振';
       if (s.sho) line += '（完封）';
       else if (s.cg) line += '（完投）';
-      if (ctx.win) line += '（勝利投手）';
+      if (s.w) line += '（勝利投手）';
+      else if (s.sv) line += '（セーブ）';
     } else {
       const found = findKeyHit(p.id, ctx);
       const keyHit = found && found.text;

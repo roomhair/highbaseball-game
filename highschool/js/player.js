@@ -293,6 +293,16 @@ const Player = (() => {
     return p;
   }
 
+  /* 最初から持っている球速。高校生で145km/hを超える投手はひと握りで、
+     150km/h台は全国でも数えるほど。以前はそのまま足し合わせていたため、
+     県大会の1回戦の相手に157km/h、全国大会に165km/hの投手が出ていた。
+     145km/hから上は伸びを半分ほどに縮め、155km/hで頭打ちにする。
+     （入部したあと特訓や試合で伸ばすぶんは、ここでは縛らない） */
+  function softVelo(v) {
+    const over = Math.max(0, v - 145);
+    return RNG.clamp(Math.min(v, 145) + over * 0.5, 105, 155);
+  }
+
   function newPitcher(opt) {
     opt = opt || {};
     const grade = opt.grade || 1;
@@ -315,9 +325,9 @@ const Player = (() => {
          そこに才能とその日ごとのばらつきが乗るだけ。
          結果として148km/hも149km/hも、それぞれの確率で出てくる。
          prestigeBonus（学校の格）も、同じ考え方で少しだけ乗せる */
-      velo: Math.round(RNG.clamp(
+      velo: Math.round(softVelo(
         123 + (GRADE_VELO[grade] || 0) + (ownTeam ? (OWN_VELO_EXTRA[grade] || 0) : 0) + talent * 2.5 + levelShift * 0.38 +
-        (opt.prestigeBonus || 0) * 0.3 + RNG.norm(0, 7.5), 100, 166)),
+        (opt.prestigeBonus || 0) * 0.3 + RNG.norm(0, 7.5))),
       control: makeStat(base, talent, 0, ownTeam, opt.wide),
       stamina: makeStat(base, talent, 0, ownTeam, opt.wide),
       pitches: rollPitches(talent, grade, levelShift / 8),
