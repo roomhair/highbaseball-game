@@ -219,7 +219,7 @@ const Soccer = (() => {
         list.splice(worst, 1);
       }
     };
-    trim(team.batters, 16); trim(team.pitchers, 8);
+    trim(team.batters, 18); trim(team.pitchers, 8);
     /* 足りないときは、打線と継投が組めるだけ補う（あとの新入生で定員まで埋まる） */
     while (team.batters.length < 13) team.batters.push(Player.newBatter({ grade: RNG.chance(0.5) ? 1 : 2, practice: true }));
     while (team.pitchers.length < 6) team.pitchers.push(Player.newPitcher({ grade: RNG.chance(0.5) ? 1 : 2, practice: true }));

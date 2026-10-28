@@ -58,7 +58,7 @@ const Offseason = (() => {
   function promote(team) {
     Team.all(team).forEach((p) => { p.grade++; });
     return {
-      bat: Math.max(0, 16 - team.batters.length),
+      bat: Math.max(0, 18 - team.batters.length),
       pit: Math.max(0, 8 - team.pitchers.length),
     };
   }

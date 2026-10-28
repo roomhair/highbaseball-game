@@ -113,7 +113,7 @@ const UI = (() => {
       '<p class="confirmbox">' + esc(opt.body || '') + '</p>' +
       '<div class="actions actions--modal">' +
         '<button type="button" class="btn" id="cf-no">' + esc(opt.no || 'やめる') + '</button>' +
-        '<button type="button" class="btn btn--danger" id="cf-yes">' + esc(opt.yes || 'はい') + '</button>' +
+        '<button type="button" class="btn ' + (opt.yesClass || 'btn--danger') + '" id="cf-yes">' + esc(opt.yes || 'はい') + '</button>' +
       '</div>',
       {
         kind: 'confirm',
@@ -369,9 +369,8 @@ const UI = (() => {
         ? '<span class="stat__init">獲得時 ' + init.velo + ' km/h</span>' : '';
       abilities += '<div class="stat"><span class="stat__label">最速</span><span class="stat__num stat__num--wide">' + p.velo + ' km/h</span>' + veloInit + '</div>';
       abilities += stat('制球', p.control, null, init.control) + stat('スタミナ', p.stamina, null, init.stamina);
-      abilities += '<div class="stat"><span class="stat__label">回復</span>' +
-        '<span class="stat__num stat__num--wide lufat lufat--' + Team.staminaTier(p) + '">' +
-        esc(Team.staminaLabel(p)) + '</span></div>';
+      abilities += '<div class="stat"><span class="stat__label">体力</span>' +
+        '<span class="stat__num stat__num--wide">' + Team.staminaGauge(p) + '</span></div>';
       abilities += '</div><h4 class="sub">変化球</h4><ul class="pitchlist">' +
         Player.pitchesInOrder(p).map((q) => {
           const iq = (init.pitches || []).find((x) => x.name === q.name);
@@ -597,7 +596,7 @@ const UI = (() => {
   }
 
   /* ---------- オーダー変更 ----------
-     野手16人をひとつづきの並びで出す。上から9人がスタメンで、
+     野手18人をひとつづきの並びで出す。上から9人がスタメンで、
      残りが控え。控えの選手を上に持ち上げれば、そのままスタメンに入る。
      守備位置は選手について回るので、1人の守備位置を変えても
      他の選手は動かない。そのかわり重複したら決定を止める。 */
@@ -612,7 +611,7 @@ const UI = (() => {
     team.batters.forEach((p) => { posOf[p.id] = BENCH; });
     team.lineup.forEach((sl) => { posOf[sl.pid] = sl.pos; });
 
-    /* 並び順（16人ぶん）。打順はこの並びのうち、守備位置が付いている人だけで数える */
+    /* 並び順（18人ぶん）。打順はこの並びのうち、守備位置が付いている人だけで数える */
     let order = team.lineup.map((sl) => sl.pid)
       .concat(team.batters.map((p) => p.id).filter((id) => !team.lineup.some((sl) => sl.pid === id)));
 
@@ -677,8 +676,8 @@ const UI = (() => {
             '<span class="lus"><i>' + x[0] + '</i>' + rankNum(x[1]) + '</span>').join('') + '</span>' +
         '<span class="luapts">' + aptRow(p) + '</span>' +
         '<span class="luarrow">' +
-          '<button type="button" class="btn btn--tiny up" data-i="' + i + '">▲</button>' +
-          '<button type="button" class="btn btn--tiny down" data-i="' + i + '">▼</button>' +
+          '<button type="button" class="btn btn--tiny up" data-i="' + i + '"' + (i === 0 ? ' disabled' : '') + '>▲</button>' +
+          '<button type="button" class="btn btn--tiny down" data-i="' + i + '"' + (i === order.length - 1 ? ' disabled' : '') + '>▼</button>' +
         '</span>' +
       '</li>';
     }
@@ -695,8 +694,7 @@ const UI = (() => {
         '</span>' +
         '<span class="lustats">最速<b class="rankval">' + p.velo + '</b>　制' + rankNum(p.control) +
           '　ス' + rankNum(p.stamina) +
-          '　<span class="lufat lufat--' + Team.staminaTier(p) + '">' +
-          esc(Team.staminaLabel(p)) + '</span></span>' +
+          '　体力' + Team.staminaGauge(p) + '</span>' +
         '<span class="luapts lupitch">' + Player.pitchesInOrder(p).map((q) =>
           '<span class="luball">' + esc(q.name) + '<b>' + q.level + '</b></span>').join('') + '</span>' +
         '<span class="luarrow">' +
@@ -811,14 +809,21 @@ const UI = (() => {
         [next[i], next[j]] = [next[j], next[i]];
         return next;
       };
-      body.querySelectorAll('.up').forEach((b) => b.addEventListener('click', () => {
-        const next = move(batterIds(), +b.dataset.i, -1);
-        if (next) applyBatters(next);
-      }));
-      body.querySelectorAll('.down').forEach((b) => b.addEventListener('click', () => {
-        const next = move(batterIds(), +b.dataset.i, 1);
-        if (next) applyBatters(next);
-      }));
+      /* ▲▼。同じグループ（スタメンどうし・控えどうし）の中では1つ動かす。
+         スタメンの最後の人の▼と、控えの先頭の人の▲は、そのまま入れ替え
+         （控えがその打順と守備位置に入る） */
+      const nudge = (i, d) => {
+        const ids = batterIds().slice();
+        const j = i + d;
+        if (j < 0 || j >= ids.length) return;
+        const a = posOf[ids[i]], b2 = posOf[ids[j]];
+        if ((a === BENCH) !== (b2 === BENCH)) { posOf[ids[i]] = b2; posOf[ids[j]] = a; }
+        [ids[i], ids[j]] = [ids[j], ids[i]];
+        showBad = false;
+        applyBatters(ids);
+      };
+      body.querySelectorAll('.up').forEach((b) => b.addEventListener('click', () => nudge(+b.dataset.i, -1)));
+      body.querySelectorAll('.down').forEach((b) => b.addEventListener('click', () => nudge(+b.dataset.i, 1)));
       body.querySelectorAll('.pup').forEach((b) => b.addEventListener('click', () => {
         const next = move(pitOrderOf(team), +b.dataset.i, -1);
         if (next) { setPitOrder(team, next); refresh(); }

@@ -2152,3 +2152,11 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 .lustats--row .rank { min-width: 0; font-size: 12px; }
 .lustats--row .rankval { font-size: 9.5px; margin-left: 0; }
 .lustats--row .traj { margin-right: 2px; }
+
+/* ===== 体力のゲージ ===== */
+.fatg { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
+.fatg__bar { display: inline-block; width: 46px; height: 7px; border-radius: 4px; background: rgba(120,130,150,.35); overflow: hidden; }
+.fatg__bar i { display: block; height: 100%; border-radius: 4px; background: var(--good); }
+.fatg--mid .fatg__bar i { background: var(--r-c); }
+.fatg--hi .fatg__bar i { background: var(--danger); }
+.fatg b { font-family: var(--font-num); font-size: 10.5px; font-weight: 700; min-width: 1.6em; text-align: right; }

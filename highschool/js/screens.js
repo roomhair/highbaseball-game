@@ -160,8 +160,7 @@ const Screens = (() => {
           '　球速 <b class="rankval">' + sp.velo + '</b>km/h' +
           '　制球 ' + UI.rankNum(sp.control) +
           '　スタミナ ' + UI.rankNum(sp.stamina) +
-          '　<span class="spfat' + (Team.staminaTier(sp) !== 'lo' ? ' is-tired' : '') + '">' +
-            esc(Team.staminaLabel(sp)) + '</span>' +
+          '　体力' + Team.staminaGauge(sp) +
         '</span>' +
         '<span class="spballs">' + pitchText(sp) + '</span></p>' : '') +
       (opts.pickable ? starterPicker(t, opts.pitcherOrder) : '') +
@@ -196,8 +195,7 @@ const Screens = (() => {
       '<div class="spick__list">' + rot.map((p) =>
         '<button type="button" class="spick__item' + (p.id === starterId ? ' is-on' : '') + '" data-pid="' + p.id + '">' +
           '<span class="spick__nm">' + esc(p.name) + '</span>' +
-          '<span class="spick__fat' + (Team.staminaTier(p) !== 'lo' ? ' is-tired' : '') + '">' +
-            esc(Team.staminaLabel(p)) + '</span>' +
+          '<span class="spick__fat">' + Team.staminaGauge(p) + '</span>' +
           '<span class="spick__meta">' + p.grade + '年・' + (p.throws === 'L' ? '左' : '右') +
             '　球速 <b class="rankval">' + p.velo + '</b>km/h' +
             '　制球 ' + UI.rankNum(p.control) + '　スタミナ ' + UI.rankNum(p.stamina) + '</span>' +
@@ -703,10 +701,10 @@ const Screens = (() => {
     ok.onclick = () => { if (picked) onRelease(picked); };
     skip.onclick = onCancel;
 
-    /* 3年生が引退してから新入生が入るまでの間は、部員が定員（野手16・投手8）より
+    /* 3年生が引退してから新入生が入るまでの間は、部員が定員（野手18・投手8）より
        少ない。そのあいだは、放出せずに迎えることもできる。そのぶん、
        春に入ってくる新入生が1人減る（夏の時点での部員の数は変わらない） */
-    const cap = incoming.kind === 'pitcher' ? 8 : 16;
+    const cap = incoming.kind === 'pitcher' ? 8 : 18;
     if (own.length < cap) {
       const box = document.createElement('div');
       box.className = 'poach-none';

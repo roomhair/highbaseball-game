@@ -814,8 +814,8 @@ const GameScreen = (() => {
         (ctx.state.half === 'top' ? '表' : '裏') + '　' +
         (fielding ? '守備中' : '攻撃中') + '</p>' +
       '<div class="time__now">' +
-        (pit ? '<div>いまの投手　<b>' + esc(pit.name) + '</b>　' +
-          esc(Team.staminaLabel(pit)) + '</div>' : '') +
+        (pit ? '<div>いまの投手　<b>' + esc(pit.name) + '</b>　体力' +
+          Team.staminaGauge(pit) + '</div>' : '') +
         (batter ? '<div>次の打者　<b>' + n + '番 ' + esc(batter.name) + '</b></div>' : '') +
       '</div>' +
       '<div class="time__menu">' +
@@ -865,7 +865,7 @@ const GameScreen = (() => {
       '<div class="spick__list">' + list.map((x) =>
         '<button type="button" class="spick__item" data-pid="' + x.p.id + '">' +
           '<span class="spick__nm">' + esc(x.p.name) + '</span>' +
-          '<span class="spick__fat">' + esc(x.right || '') + '</span>' +
+          '<span class="spick__fat">' + (x.rightHtml || esc(x.right || '')) + '</span>' +
           '<span class="spick__meta">' + x.meta + '</span>' +
           (x.balls ? '<span class="spick__balls">' + x.balls + '</span>' : '') +
         '</button>').join('') + '</div>' +
@@ -1009,7 +1009,7 @@ const GameScreen = (() => {
     const t = myTeam();
     const now = Team.find(t, currentPitcherId(t));
     const list = availablePitchers(t).map((p) => ({
-      p, right: Team.staminaLabel(p),
+      p, rightHtml: Team.staminaGauge(p),
       meta: p.grade + '年・' + (p.throws === 'L' ? '左' : '右') +
         '　球速 <b class="rankval">' + p.velo + '</b>km/h' +
         '　制球 ' + UI.rankNum(p.control) + '　スタミナ ' + UI.rankNum(p.stamina),

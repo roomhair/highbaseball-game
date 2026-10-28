@@ -2,7 +2,7 @@
    高校野球  team.js
 
    チーム（部員の集まり）と、打順・守備位置の組み立て。
-   ・野手16人＋投手8人の24人。ここは最初のチーム作りから最後まで変わらない
+   ・野手18人＋投手8人の26人。ここは最初のチーム作りから最後まで変わらない
      （引退した人数だけ新入生が入るので、人数は保たれる）。
    ・DH制で戦う。打順9人のうち1人は指名打者で、投手は打席に立たない。
    ================================================== */
@@ -14,7 +14,7 @@ const Team = (() => {
   function create(name) {
     return {
       name: name,
-      batters: [],     // 野手16人
+      batters: [],     // 野手18人
       pitchers: [],    // 投手8人
       lineup: [],      // [{pid, pos}] × 9（先頭が1番打者）
       rotation: [],    // 投手の起用順（先頭が先発）
@@ -253,6 +253,19 @@ const Team = (() => {
     return '万全';
   }
 
+  /** 体力の残り（0〜100）。前の登板の疲れが全く無ければ100、消耗が大きいほど0に近い */
+  function staminaPct(p) {
+    return Math.round(100 * (1 - Math.min(1, staminaCarryFrac(p) / 0.8)));
+  }
+
+  /** 体力のゲージ（HTML）。緑→橙→赤。数字も添える */
+  function staminaGauge(p) {
+    const v = staminaPct(p);
+    const tier = v >= 60 ? 'lo' : (v >= 30 ? 'mid' : 'hi');
+    return '<span class="fatg fatg--' + tier + '" role="img" aria-label="体力 ' + v + '%" title="体力（前の登板の疲れが抜けた割合）">' +
+      '<span class="fatg__bar"><i style="width:' + v + '%"></i></span><b>' + v + '</b></span>';
+  }
+
   /** いちばん良い選手（負けたときに引き抜かれる1人） */
   function bestPlayer(team) {
     return all(team).slice().sort((a, b) => Player.rating(b) - Player.rating(a))[0] || null;
@@ -274,7 +287,7 @@ const Team = (() => {
   return {
     create, all, find, defScore, autoLineup, autoRotation, orderBatters,
     bench, defenders, strength, bestPlayer, repair,
-    restPitchers, healPitchers, staminaLabel, staminaTier,
+    restPitchers, healPitchers, staminaLabel, staminaTier, staminaPct, staminaGauge,
     captain, checkCaptain,
   };
 })();

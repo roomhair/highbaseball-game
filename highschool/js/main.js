@@ -96,7 +96,7 @@ const Game = (() => {
     save();
     Screens.pick({
       title: '野手を選ぶ',
-      lead: '16人ひと組のチームが' + CONFIG.PICK_SETS + 'つ。どれか1つを選んでください。選手をタップすると詳しく見られます。',
+      lead: '18人ひと組のチームが' + CONFIG.PICK_SETS + 'つ。どれか1つを選んでください。選手をタップすると詳しく見られます。',
       setLabel: 'チーム', pickLabel: 'このチームにする',
       sets: state.sets.list,
       onSelect(i) {
@@ -972,9 +972,11 @@ const Game = (() => {
     if (!S.sets) S.sets = Soccer.freshSets(S, S.need, CONFIG.NEWCOMER_SETS);
     save();
     Screens.soccerNewcomers(state, (i) => {
-      Soccer.enroll(S, S.sets[i]);
-      S.sets = null;
-      soccerAfterNewcomers();
+      confirmNewcomers(S.sets[i], () => {
+        Soccer.enroll(S, S.sets[i]);
+        S.sets = null;
+        soccerAfterNewcomers();
+      });
     });
   }
 
@@ -1033,6 +1035,16 @@ const Game = (() => {
     newcomerBatters();
   }
 
+  /** 新入生の組を決める前の確認（決めたあとは選び直せない） */
+  function confirmNewcomers(list, onYes) {
+    const names = list.map((p) => p.name).join('・');
+    UI.confirmBox({
+      title: 'この新入生たちを迎えますか？',
+      body: list.length + '人（' + names + '）を迎えます。決めたあとは選び直せません。',
+      yes: '迎える', no: '選び直す', yesClass: 'btn--primary',
+    }, onYes);
+  }
+
   function newcomerBatters() {
     if (!state.need.bat) { state.phase = 'new-pit'; newcomerPitchers(); return; }
     state.phase = 'new-bat';
@@ -1045,10 +1057,12 @@ const Game = (() => {
       setLabel: '候補', pickLabel: 'この新入生たちを迎える',
       sets: state.sets.list,
       onSelect(i) {
-        Offseason.enroll(state.team, state.sets.list[i]);
-        state.sets = null;
-        state.phase = 'new-pit';
-        newcomerPitchers();
+        confirmNewcomers(state.sets.list[i], () => {
+          Offseason.enroll(state.team, state.sets.list[i]);
+          state.sets = null;
+          state.phase = 'new-pit';
+          newcomerPitchers();
+        });
       },
     });
   }
@@ -1064,9 +1078,11 @@ const Game = (() => {
       setLabel: '候補', pickLabel: 'この新入生たちを迎える',
       sets: state.sets.list,
       onSelect(i) {
-        Offseason.enroll(state.team, state.sets.list[i]);
-        state.sets = null;
-        afterNewcomers();
+        confirmNewcomers(state.sets.list[i], () => {
+          Offseason.enroll(state.team, state.sets.list[i]);
+          state.sets = null;
+          afterNewcomers();
+        });
       },
     });
   }
