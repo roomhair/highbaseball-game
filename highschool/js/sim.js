@@ -159,7 +159,7 @@ const Sim = (() => {
     return resolveVs(bat, stuff, ctrl, defRating, defenders, offForm);
   }
 
-  function resolveVs(bat, stuff, ctrl, defRating, defenders, form) {
+  function resolveVs(bat, stuff, ctrl, defRating, defenders, form, practice) {
     /* その日の調子。ふだんは小さいが、まれに「今日は打てる」日がある。
        これがあるおかげで、力の差がある相手にもたまに勝てる */
     const f = form || 0;
@@ -193,18 +193,18 @@ const Sim = (() => {
        1試合に2本近く出ていて、野球を知る人ほど違和感があったため、
        全体を0.25倍にしてある。パワーのある打者ほど出やすい形は同じ */
     if (type === 'FB' || type === 'LD') {
-      /* 本塁打の出やすさは、以前の3倍に引き上げてある（パワーが高い打者ほど増える形は同じ）。
-         ただし1つの打球で3割を超えないようにして、パワー最大の打者が
-         打席の2割近くをホームランにしてしまうのを防ぐ */
-      const pHR = Math.min(0.32, C(
+      /* 試合（公式戦）の本塁打は、全体を0.25倍に抑えたまま（高校野球では少ない）。
+         練習試合ぶんの通算成績を作るとき（practice=true）だけ、パワーが高い打者ほど
+         ずっと打てるように引き上げてある。見えない練習試合でたくさん打った、という
+         ことにして通算本塁打を伸ばすためで、目に見える試合の確率は変えない */
+      const base = C(
         0.026 + 0.22 * (pw - 0.42) + 0.016 * (bat.traj - 2) +
         0.03 * (contact - 0.5) - 0.050 * (stuff - 0.45),
         0.0008, 0.20
-      ) * (type === 'FB' ? 1.25 : 0.55) * 3 * (0.25 + 0.5 * Math.pow(Math.max(0, pw - 0.55) / 0.4, 1.5)));
-      /* 上の 0.25 は、パワーが平均以下の打者の本塁打の少なさ。
-         パワーが55を超えると本塁打が急に増え、パワーが高いほど
-         ずっと打てるようにしてある（以前は全員一律0.25倍で、パワー100の
-         打者でも1年に数本しか打てなかった） */
+      ) * (type === 'FB' ? 1.25 : 0.55);
+      const pHR = practice
+        ? Math.min(0.32, base * 3 * (0.25 + 0.5 * Math.pow(Math.max(0, pw - 0.55) / 0.4, 1.5)))
+        : base * 0.25;
       if (RNG.chance(pHR)) {
         const ofKey = effBats(bat) === 'L' ? mirror(OF_BY_ZONE[zone]) : OF_BY_ZONE[zone];
         return { code: 'HR', text: posShort(ofKey) + '本', out: 0, spot: ofKey };
@@ -1300,7 +1300,7 @@ const Sim = (() => {
     const pf = peerProfile(level);
     const s = Player.emptyBat();
     for (let i = 0; i < pa; i++) {
-      const res = resolveVs(bat, pf.stuff, pf.ctrl, pf.def, null);
+      const res = resolveVs(bat, pf.stuff, pf.ctrl, pf.def, null, 0, true);
       s.pa++;
       switch (res.code) {
         case 'K':  s.ab++; s.so++; break;
