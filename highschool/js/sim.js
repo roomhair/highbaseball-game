@@ -168,7 +168,7 @@ const Sim = (() => {
 
     /* 三振・四球・死球 */
     /* 三振。高校野球の全国大会は1打席あたり17%前後 */
-    const pK = C(0.168 + 0.36 * (stuff - contact), 0.02, 0.55);
+    const pK = C(0.168 + 0.40 * (stuff - contact), 0.02, 0.55);
     /* 四球。制球の良い投手でも、高校生の打者相手にほとんど出さない
        （4%を切る）ということはないので、制球の効きは少しゆるめてある */
     const pBB = C(0.088 + 0.10 * (0.5 - ctrl) - 0.03 * (contact - 0.5), 0.055, 0.30);
@@ -220,7 +220,7 @@ const Sim = (() => {
 
     /* 安打になるか。打球の種類でまったく違う */
     const babip = C(
-      0.315 + 0.30 * (contact - stuff) + 0.07 * (pw - 0.5) +
+      0.315 + 0.34 * (contact - stuff) + 0.07 * (pw - 0.5) +
       0.05 * (bat.speed / 100 - 0.5) - 0.17 * (defRating - 0.45) +
       /* 制球が悪い投手は、四球だけでなく甘い球も増えて打たれやすい（逆も同じ）。
          これが無いと、球速さえあれば制球が壊滅的でも抑え込めてしまっていた */
@@ -374,7 +374,7 @@ const Sim = (() => {
       def.form の符号を反転して渡している。反転しないと攻守で打ち消し合い、
       調子を広げても勝敗がほとんど動かなかった） */
   function rollForm() {
-    return RNG.chance(0.06) ? RNG.norm(0, 15) : RNG.norm(0, 7.5);
+    return RNG.chance(0.04) ? RNG.norm(0, 12) : RNG.norm(0, 6);
   }
 
   function sideState(team, isHome) {
@@ -400,7 +400,7 @@ const Sim = (() => {
       p.gameHl = [];
       /* その日の出来。ふだんは小さいが、10人に1人くらいは大きく振れる。
          「今日は当たっている」「今日はまるで合っていない」を作る */
-      p.gameForm = RNG.chance(0.10) ? RNG.norm(0, 9) : RNG.norm(0, 3.2);
+      p.gameForm = RNG.chance(0.07) ? RNG.norm(0, 7) : RNG.norm(0, 2.6);
       /* 代走で出たかどうかは、その試合だけの印。次の試合には残さない */
       p.pinchRunner = false;
     });

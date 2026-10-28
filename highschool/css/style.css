@@ -2069,13 +2069,12 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 .time__where { background: none; color: var(--brand); padding: 0; border-radius: 0; }
 
 
-/* ===== 弾道の絵（打球の軌道） ===== */
-.traj { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
-.traj svg { width: 34px; height: 20px; overflow: visible; }
-.traj path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-.traj .traj__ground { stroke: var(--line, #9aa); stroke-width: 1; }
-.traj .traj__ball { fill: currentColor; stroke: none; }
-.traj b { font-family: var(--font-num); }
+/* ===== 弾道（傾けた矢印と数字） ===== */
+.traj { display: inline-flex; align-items: center; gap: 1px; vertical-align: middle; white-space: nowrap; }
+.traj svg { width: 16px; height: 13px; overflow: visible; }
+.traj line { stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.traj path { fill: currentColor; stroke: none; }
+.traj b { font-family: var(--font-num); font-size: 11.5px; }
 .traj--1 { color: #2d8f5b; } .traj--2 { color: #3b82c4; }
 .traj--3 { color: #d28a1c; } .traj--4 { color: #d6453d; }
 
@@ -2145,3 +2144,11 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
     drop-shadow(0 2px 0 var(--blue-deep)) drop-shadow(0 -2px 0 var(--blue-deep))
     drop-shadow(0 5px 0 var(--blue-deep));
 }
+
+/* オーダー変更の能力は1行にまとめる */
+.lustats--row { display: flex; flex-wrap: nowrap; align-items: center; gap: 0 5px; font-size: 10px; white-space: nowrap; overflow: hidden; }
+.lustats--row .lus { display: inline-flex; align-items: baseline; gap: 0; }
+.lustats--row .lus i { font-style: normal; font-size: 9.5px; margin-right: 1px; }
+.lustats--row .rank { min-width: 0; font-size: 12px; }
+.lustats--row .rankval { font-size: 9.5px; margin-left: 0; }
+.lustats--row .traj { margin-right: 2px; }

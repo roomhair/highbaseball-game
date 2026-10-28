@@ -184,15 +184,13 @@ const UI = (() => {
     return '流し打ち';
   }
 
-  /** 弾道の絵。1=ライナー（低く鋭く）〜4=高いフライ。
-      本塁から外野へ飛ぶ軌道を、高さの違う弧で見せる。数字も添える */
+  /** 弾道。曲がっていない小さな矢印を、弾道の角度（1が低く、4が高い）で傾けて描き、
+      横に数字を添える */
   function trajIcon(n, withNum) {
-    const peak = { 1: 3, 2: 8, 3: 13, 4: 18 }[n] || 8;
-    const d = 'M3 20 Q18 ' + (20 - peak * 2) + ' 33 ' + (n === 4 ? 20 : n === 3 ? 18 : n === 2 ? 14 : 9);
-    const end = { 1: [33, 9], 2: [33, 14], 3: [33, 18], 4: [33, 20] }[n] || [33, 14];
+    const ang = { 1: 8, 2: 28, 3: 48, 4: 68 }[n] || 28;
     return '<span class="traj traj--' + n + '" title="弾道' + n + '（' + (TRAJ_LABEL[n] || '') + '）">' +
-      '<svg viewBox="0 0 36 22" aria-hidden="true"><path class="traj__ground" d="M0 21.5H36"/>' +
-      '<path d="' + d + '"/><circle class="traj__ball" cx="' + end[0] + '" cy="' + end[1] + '" r="2.4"/></svg>' +
+      '<svg viewBox="0 0 18 14" aria-hidden="true"><g transform="rotate(' + (-ang) + ' 2 12)">' +
+      '<line x1="2" y1="12" x2="14" y2="12"/><path d="M16.5 12 L12 9.6 V14.4Z"/></g></svg>' +
       (withNum === false ? '' : '<b>' + n + '</b>') + '</span>';
   }
 
@@ -672,11 +670,11 @@ const UI = (() => {
         '</span>' +
         '<span class="lumain">' +
           '<button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
-          '<span class="tiny">' + p.grade + '年 ' + handMark(p) + ' ' + trajIcon(p.traj) + '</span>' +
+          '<span class="tiny">' + p.grade + '年 ' + handMark(p) + '</span>' +
         '</span>' +
-        '<span class="lustats">ミ' + rankNum(p.meet) + '　パ' + rankNum(p.power) +
-          '　走' + rankNum(p.speed) + '　肩' + rankNum(p.arm) +
-          '　守' + rankNum(p.field) + '　捕' + rankNum(p.catch) + '</span>' +
+        '<span class="lustats lustats--row">' + trajIcon(p.traj) +
+          [['ミ', p.meet], ['パ', p.power], ['走', p.speed], ['肩', p.arm], ['守', p.field], ['捕', p.catch]].map((x) =>
+            '<span class="lus"><i>' + x[0] + '</i>' + rankNum(x[1]) + '</span>').join('') + '</span>' +
         '<span class="luapts">' + aptRow(p) + '</span>' +
         '<span class="luarrow">' +
           '<button type="button" class="btn btn--tiny up" data-i="' + i + '">▲</button>' +
