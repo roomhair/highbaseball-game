@@ -805,7 +805,13 @@ const Sim = (() => {
       /* 前の試合から抜けきっていないスタミナの持ち越しを、
          今日すでに受けた打者の数に足しておく。これで「持ち越しが
          多い投手は今日のスタミナも早く減る」がそのまま成り立つ */
-      const fatigue = Math.max(0, (def.bf + (pit.staminaCarry || 0) - capacityOf(pit)) / 18);
+      /* 疲れ。試合の中で投げた分に加え、前の登板から抜けきっていない疲れ
+         （staminaCarry）が、最初の1球から球威と制球を落とす。
+         万全なら8〜9回まで投げられるエースも、短い間隔で投げ続けると、
+         登板のたびに落ち込みが大きくなり、長くも持たない */
+      const carry = pit.staminaCarry || 0;
+      const fatigue = Math.max(0, (def.bf + carry - capacityOf(pit)) / 18) +
+        0.9 * Math.min(1, carry / (capacityOf(pit) + 18));
       const defenders = Team.defenders(defTeam, def.pitcherId);
       const defRating = defenseOf(defTeam, def.pitcherId);
       /* まず作戦を考える。出さなければ、ふつうに打つ */
