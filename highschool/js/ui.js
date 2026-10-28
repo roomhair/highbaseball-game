@@ -917,6 +917,36 @@ const UI = (() => {
     modal(render(), { kind: 'lineup', onOpen(body) { wire(body); } });
   }
 
+  /** プロ入りした選手の一覧（info から）。名前を押すと、能力・通算成績・活躍シーンが見られる */
+  function prosList(list) {
+    const sorted = list.slice().sort((a, b) => (a.year - b.year) || (a.round - b.round));
+    const row = (x, i) => {
+      const p = x.player;
+      return '<li class="proslist__row"><button type="button" class="linkbtn pname" data-i="' + i + '">' + esc(p.name) + '</button>' +
+        '<span class="proslist__meta">' + (p.kind === 'pitcher' ? '投手' : posName(p.pos)) + '　' + handMark(p) + '</span>' +
+        '<em class="retire__draft">' + esc(x.text) + '</em>' +
+        '<span class="proslist__sub">' + esc(x.school || '') + '　' + x.year + '年目</span></li>';
+    };
+    const show = () => {
+      closeModal.back = null;
+      html('modal-body',
+        '<h3 class="modal__title">プロ入りした選手（' + sorted.length + '人）</h3>' +
+        (sorted.length
+          ? '<ul class="proslist">' + sorted.map(row).join('') + '</ul>'
+          : '<p class="note">まだプロ入りした選手はいません。引退する3年生が、ドラフトで指名されると、ここに残ります。</p>'));
+      el('modal-body').querySelectorAll('.pname').forEach((b) => b.addEventListener('click', () => {
+        const x = sorted[+b.dataset.i];
+        html('modal-body',
+          '<p class="proslist__tag"><em class="retire__draft">' + esc(x.text) + '</em>　' + esc(x.school || '') + '　' + x.year + '年目</p>' +
+          playerDetail(x.player, { rename: false }) +
+          '<div class="actions actions--modal"><button type="button" class="btn" id="pl-back">一覧に戻る</button></div>');
+        el('modal-body').querySelector('#pl-back').addEventListener('click', show);
+        closeModal.back = show;
+      }));
+    };
+    modal('', { kind: 'pros', onOpen() { show(); } });
+  }
+
   /* ---------- 共通の初期化 ---------- */
 
   function init() {
@@ -981,7 +1011,7 @@ const UI = (() => {
 
   return {
     pitOrderOf,
-    el, esc, html, show, currentScreen, curtain, modal, closeModal, confirmBox, decisionLines,
+    el, esc, html, show, currentScreen, curtain, modal, closeModal, confirmBox, prosList, decisionLines,
     avg, era, ipText, trajIcon, stat, rankSpan, rankNum, aptSpan, pullText, handMark,
     playerRow, rosterTable, rosterPanel, sortPlayers, playerDetail, openPlayer,
     lineupEditor, roleText, makeSortable, wireRename, captainPicker,

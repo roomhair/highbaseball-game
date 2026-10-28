@@ -1013,8 +1013,23 @@ const Game = (() => {
     retired.forEach((f) => {
       if (f.draft) addPrestige(CONFIG.SCHOOL_RANK.DRAFT_BONUS[f.draft.round] || 0);
     });
+    recordPros(retired);
     save();
     Screens.offseason(state, retired);
+  }
+
+  /** プロ入りした選手を、一覧（info）に残す。同じ選手を二度は入れない */
+  function recordPros(retired) {
+    const list = Storage.loadPros();
+    retired.forEach((f) => {
+      if (!f.draft) return;
+      if (list.some((x) => x.player && x.player.id === f.player.id && x.school === state.team.name)) return;
+      list.push({
+        year: state.year, school: state.team.name, round: f.draft.round, text: f.draft.text,
+        player: JSON.parse(JSON.stringify(f.player)),
+      });
+    });
+    Storage.savePros(list);
   }
 
   /** 夏が終わったあと、3年生だけを引退させる。学年はまだ上げない
@@ -1288,6 +1303,7 @@ const Game = (() => {
     on('btn-settings', openSettings);
     on('btn-settings-save', saveSettings);
     on('btn-settings-reset', resetAll);
+    on('btn-pros', () => UI.prosList(Storage.loadPros()));
 
     on('btn-ready-lineup', () => UI.lineupEditor(state.team, () => { save(); Screens.ready(state); }));
     on('btn-ready-next', () => startTraining());

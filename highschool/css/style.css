@@ -2160,3 +2160,12 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 .fatg--mid .fatg__bar i { background: var(--r-c); }
 .fatg--hi .fatg__bar i { background: var(--danger); }
 .fatg b { font-family: var(--font-num); font-size: 10.5px; font-weight: 700; min-width: 1.6em; text-align: right; }
+
+/* ===== プロ入りした選手の一覧 ===== */
+.proslist { list-style: none; margin: 8px 0 0; padding: 0; }
+.proslist__row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: baseline; padding: 10px 2px; border-bottom: 1px solid var(--line, #cbd); }
+.proslist__row .pname { text-align: left; font-size: 15px; font-weight: 800; }
+.proslist__meta { grid-column: 1; font-size: 12px; color: var(--ink-mute); }
+.proslist__row .retire__draft { grid-column: 2; grid-row: 1; }
+.proslist__sub { grid-column: 1 / -1; font-size: 11px; color: var(--ink-faint); }
+.proslist__tag { margin: 0 0 8px; }

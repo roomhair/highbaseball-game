@@ -1002,6 +1002,7 @@ const Screens = (() => {
     UI.el('set-jingu').value = state.settings.jinguName;
     UI.el('set-spring').value = state.settings.springName;
     UI.el('set-poach').checked = !!state.settings.poach;
+    UI.el('pros-n').textContent = Storage.loadPros().length;
     UI.show('screen-settings');
   }
 

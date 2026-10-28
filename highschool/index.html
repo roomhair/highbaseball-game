@@ -64,7 +64,7 @@
 <header class="appbar">
   <a class="appbar__home" href="../">← 部屋</a>
   <button type="button" class="appbar__title" id="btn-home">引き抜き高校野球</button>
-  <button type="button" class="appbar__btn" id="btn-settings">⚙<span>設定</span></button>
+  <button type="button" class="appbar__btn" id="btn-settings">ⓘ<span>info</span></button>
   <button type="button" class="appbar__icon" id="theme-toggle" aria-label="配色を切り替える">◐</button>
 </header>
 
@@ -375,7 +375,14 @@
   <!-- ============ 設定 ============ -->
   <section class="screen" id="screen-settings">
     <div class="container">
-      <h2 class="section-title">設定</h2>
+      <h2 class="section-title">info</h2>
+
+      <h3 class="set-heading">記録</h3>
+      <div class="form">
+        <button type="button" class="btn btn--wide" id="btn-pros">プロ入りした選手一覧（<span id="pros-n">0</span>人）</button>
+        <span class="field__help">これまでにドラフトで指名された選手です。名前を押すと、能力・通算成績・活躍シーンが見られます。「はじめから」をしても残ります。</span>
+      </div>
+
       <p class="note">名前と遊び方を決めます。ここで変えたことは、いつでも直せます。</p>
 
       <h3 class="set-heading">名前</h3>

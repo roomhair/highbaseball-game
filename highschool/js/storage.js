@@ -58,6 +58,20 @@ const Storage = {
     return base;
   },
 
+  /** プロ入りした選手の記録。ゲームを最初からやり直しても残す（別の鍵）。
+      選手は能力・通算成績・活躍シーンまで丸ごと保存する */
+  loadPros() {
+    try {
+      const raw = localStorage.getItem('highschool-pros');
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch (e) { return []; }
+  },
+
+  savePros(list) {
+    try { localStorage.setItem('highschool-pros', JSON.stringify(list)); } catch (e) { /* 保存できなくても続けられる */ }
+  },
+
   saveSettings(settings) {
     try {
       localStorage.setItem(CONFIG.SETTINGS_KEY, JSON.stringify(settings));
