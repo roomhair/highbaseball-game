@@ -293,7 +293,8 @@ const Game = (() => {
       from = F.spring.from * j;
     }
     /* 自分の県の高校の名簿（最初に1回だけ作り、保存しておく） */
-    if (!state.prefSchools || !state.prefSchools.length) {
+    if (!state.prefSchools || !state.prefSchools.length || state.prefSchoolsV !== 2) {
+      state.prefSchoolsV = 2;      // 校名の作り方を変えたので、前の名簿は作り直す
       state.prefSchools = NAMES.prefecturePool(22, [state.team && state.team.name, state.settings.schoolName]);
     }
     state.tour = Tournament.create(kind, from, j, used, state.prefSchools);
