@@ -147,18 +147,31 @@ const Tournament = (() => {
 
   /** 山を組む。kind は 'local'（地方大会）か 'national'（全国大会）。
       scale はその年のゆらぎ（1なら平年） */
-  function create(kind, from, scale, usedNames) {
+  function create(kind, from, scale, usedNames, prefPool) {
     const rounds = roundsFor(kind);
     const levels = strengthLadder(from, rounds, scale, kind);
     /* 同じ大会の中で同じ高校名が出ないようにするだけ。
        年をまたげば同じ名前が出てよい（常連校が何年も出てくるほうが自然） */
     const used = usedNames || new Set();
+    /* 県大会（夏・秋）は同じ県の高校どうしなので、県の名簿から選ぶ。
+       何年かに一度は、前に当たった高校がまた出てくる。
+       それ以外（地区大会・全国大会など）は別の県の高校なので、
+       県の名簿にある名前は使わない */
+    const inPref = prefPool && (kind === 'local' || kind === 'fallPref');
+    if (prefPool && !inPref) prefPool.forEach((n) => used.add(n));
+    const draw = () => {
+      if (inPref) {
+        const rest = prefPool.filter((n) => !used.has(n));
+        if (rest.length) { const n = NAMES.pick(rest); used.add(n); return n; }
+      }
+      return NAMES.schoolName(used, kind);
+    };
     return {
       kind,
       rounds: rounds.map((name, i) => ({
         name,
         level: levels[i],
-        schoolName: NAMES.schoolName(used, kind),
+        schoolName: draw(),
         done: false,
       })),
       index: 0,

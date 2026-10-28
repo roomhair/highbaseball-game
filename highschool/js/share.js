@@ -36,7 +36,7 @@ const Share = (() => {
       let line = g.ab + '打数' + g.h + '安打';
       if (g.hr) line += ' ' + g.hr + '本塁打';
       if (g.rbi) line += ' ' + g.rbi + '打点';
-      return { name: p.name, line };
+      return { name: p.name, line, segs: statSegs(p) };
     });
   }
 
@@ -45,8 +45,31 @@ const Share = (() => {
     return (team.pitchers || []).filter((p) => p.game && p.game.outs > 0).map((p) => {
       const g = p.game;
       const ip = Math.floor(g.outs / 3) + (g.outs % 3 ? ' ' + g.outs % 3 + '/3' : '');
-      return { name: p.name, line: ip + '回 ' + g.h + '安打 ' + g.so + '奪三振 ' + g.er + '自責' };
+      return { name: p.name, line: ip + '回 ' + g.h + '安打 ' + g.so + '奪三振 ' + g.er + '自責', segs: statSegs(p) };
     });
+  }
+
+  /* 能力の評価の色（画面と同じ並び。Sは金） */
+  const RANK_COLOR = { S: '#e0a000', A: '#cf1487', B: '#d11f1f', C: '#d4700b', D: '#a88300', E: '#23893d', F: '#2b8fbd', G: '#858c95' };
+
+  /** 名前の下に出す、能力の並び。
+      野手 … 学年・投打・弾道（数字）・ミート・パワー・走力・肩力・守備・捕球（評価の文字）
+      投手 … 学年・投打・最速・制球・スタミナ（評価の文字）・変化球（球種と数字）
+      segs は { t: 文字, c: 色（評価の文字だけ）, b: 太字 } の並び */
+  function statSegs(p) {
+    const hand = (p.throws === 'L' ? '左' : '右') + '投' + (p.bats === 'L' ? '左' : (p.bats === 'B' ? '両' : '右')) + '打';
+    const segs = [{ t: p.grade + '年 ' + hand + '　' }];
+    const letter = (v) => { const k = rankOf(v); segs.push({ t: k, c: RANK_COLOR[k], b: true }); segs.push({ t: ' ' }); };
+    if (p.kind === 'pitcher') {
+      letter(Math.max(0, Math.min(1, (p.velo - 108) / 52)) * 100);
+      letter(p.control); letter(p.stamina);
+      const ps = Player.pitchesInOrder(p);
+      if (ps.length) segs.push({ t: ' ' + ps.map((q) => q.name + q.level).join(' ') });
+    } else {
+      segs.push({ t: String(p.traj), b: true }); segs.push({ t: ' ' });
+      [p.meet, p.power, p.speed, p.arm, p.field, p.catch].forEach(letter);
+    }
+    return segs;
   }
 
   /** 打席結果の一覧（結果画面の「打席結果」と同じ中身）。
@@ -70,6 +93,7 @@ const Share = (() => {
       no: i < 9 ? String(i + 1) : '―',
       pos: posShort(x.pos),
       name: x.p.name,
+      segs: statSegs(x.p),
       cells: Array.from({ length: innings }, (_, k) => (byPid[x.p.id] || {})[k + 1] || []),
     }));
     return { innings, rows };
@@ -125,7 +149,9 @@ const Share = (() => {
 
     const padX = 30, W = COLW;
     const lineH = 30;
-    const gridRowH = (row) => Math.max(1, ...row.cells.map((c) => c.length)) * 20 + 14;
+    /* 名前の下にステータスの行を1本足すぶん、行を高くする */
+    const gridRowH = (row) => Math.max(2, ...row.cells.map((c) => c.length)) * 20 + 22;
+    const SUB_H = 24;
 
     /* 高さを先に数える */
     let H = 70 + 80 + 70 + 24;                         // 見出し・勝敗・スコア
@@ -133,8 +159,8 @@ const Share = (() => {
     H += decisions.length * 28 + 14;
     if (board) H += 40 + 3 * 34 + 14;
     if (grid) H += 46 + 54 + grid.rows.reduce((a, row) => a + gridRowH(row), 0);
-    if (bat.length) H += 46 + bat.length * lineH;
-    if (pit.length) H += 46 + pit.length * lineH;
+    if (bat.length) H += 46 + bat.length * (lineH + SUB_H);
+    if (pit.length) H += 46 + pit.length * (lineH + SUB_H);
     H += 84;
 
     const cv = document.createElement('canvas');
@@ -171,6 +197,20 @@ const Share = (() => {
       while (px > 9 && ctx.measureText(text).width > maxW) { px -= 1; ctx.font = px + 'px ' + FONT; }
       ctx.textAlign = align || 'left';
       ctx.fillText(text, x, y);
+    };
+    /* 名前の下の、ステータスの小さい行。評価の文字は色つきで、Sは金 */
+    const drawSegs = (segs, x, y, maxW, size) => {
+      let px = size;
+      const width = () => segs.reduce((a, g) => { ctx.font = (g.b ? 'bold ' : '') + px + 'px ' + FONT; return a + ctx.measureText(g.t).width; }, 0);
+      while (px > 8 && width() > maxW) px -= 1;
+      let cx = x; ctx.textAlign = 'left';
+      segs.forEach((g) => {
+        ctx.font = (g.b ? 'bold ' : '') + px + 'px ' + FONT;
+        ctx.fillStyle = g.c || mute;
+        if (g.c === RANK_COLOR.S) { ctx.strokeStyle = '#8a5a00'; ctx.lineWidth = 0.6; ctx.strokeText(g.t, cx, y); }
+        ctx.fillText(g.t, cx, y);
+        cx += ctx.measureText(g.t).width;
+      });
     };
     const hline = (y) => {
       ctx.beginPath(); ctx.moveTo(padX, y); ctx.lineTo(W - padX, y);
@@ -237,7 +277,7 @@ const Share = (() => {
     if (grid) {
       y += 46;
       heading(myName + '　打席結果', y);
-      const noW = 30, posW = 34, nameW = 138;
+      const noW = 30, posW = 34, nameW = 190;
       const innW = (W - padX * 2 - noW - posW - nameW) / grid.innings;
       y += 30;
       ctx.fillStyle = faint; ctx.font = '15px ' + FONT; ctx.textAlign = 'center';
@@ -249,13 +289,15 @@ const Share = (() => {
         const rh = gridRowH(row);
         const top = y - 12;
         if (ri % 2 === 0) { ctx.fillStyle = 'rgba(42,111,219,.07)'; ctx.fillRect(padX, top, W - padX * 2, rh); }
-        const mid = top + rh / 2 + 6;
+        const mid = top + 22;
         ctx.fillStyle = faint; ctx.font = '15px ' + FONT; ctx.textAlign = 'center';
         ctx.fillText(row.no, padX + noW / 2, mid);
         ctx.fillStyle = mute;
         ctx.fillText(row.pos, padX + noW + posW / 2, mid);
         ctx.fillStyle = ink;
         fit(row.name, padX + noW + posW, mid, nameW - 8, 17, 'left');
+        /* 名前の下。打席結果の列にかからない幅（名前の欄＋守備位置の欄）に収める */
+        drawSegs(row.segs, padX + noW + posW, mid + 20, nameW + posW - 4, 12);
         row.cells.forEach((list, i) => {
           const cx = padX + noW + posW + nameW + innW * (i + 0.5);
           list.forEach((e, k) => {
@@ -281,6 +323,9 @@ const Share = (() => {
         ctx.fillText(row.name, padX + 30, y);
         ctx.fillStyle = mute; ctx.textAlign = 'right';
         ctx.fillText(row.line, W - padX - 30, y);
+        y += SUB_H - 4;
+        drawSegs(row.segs, padX + 30, y, W - padX * 2 - 60, 14);
+        y += 4;
       });
       y -= 0;
     };

@@ -629,7 +629,15 @@ td.hl { font-weight: 800; }
   display: inline-block; min-width: 1.15em; text-align: center;
   font-weight: 800; font-size: 13.5px; letter-spacing: 0; font-family: var(--font-num);
 }
-.rank-S, .stat__rank.rank-S { color: var(--r-s); }
+/* S は金色。文字をそのまま金の縦グラデーションにして、ほかの色より目立たせる */
+.rank-S, .stat__rank.rank-S {
+  color: #e0a400;
+  background: linear-gradient(180deg, #ffe680 0%, #f7bd00 48%, #d18a00 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 .5px rgba(190, 125, 0, .8));
+  font-weight: 900;
+}
 
 /* 守備適性の文字は色を付けない（能力の評価と見分けるため） */
 .apt-letter {
@@ -2059,3 +2067,81 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 /* サッカーの時計・タイムの場面表示：青い帯の札をやめて、文字だけにする */
 .sclock { background: none; color: var(--ink); border-radius: 0; border-bottom: 3px solid var(--frame); }
 .time__where { background: none; color: var(--brand); padding: 0; border-radius: 0; }
+
+
+/* ===== 弾道の絵（打球の軌道） ===== */
+.traj { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
+.traj svg { width: 34px; height: 20px; overflow: visible; }
+.traj path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.traj .traj__ground { stroke: var(--line, #9aa); stroke-width: 1; }
+.traj .traj__ball { fill: currentColor; stroke: none; }
+.traj b { font-family: var(--font-num); }
+.traj--1 { color: #2d8f5b; } .traj--2 { color: #3b82c4; }
+.traj--3 { color: #d28a1c; } .traj--4 { color: #d6453d; }
+
+/* ===== 投打を変える ===== */
+.handbtn { font-weight: 700; }
+.handpick { margin-top: 8px; padding: 8px 10px; border: 1px solid var(--line, #bbb); border-radius: 8px; }
+.handpick__row { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+.handpick__row > span { width: 3em; font-size: 12px; }
+.handpick .btn.is-on { outline: 2px solid currentColor; font-weight: 800; }
+
+/* ===== オーダー変更：スタメンと控えの見出し、番号タップの入れ替え ===== */
+.luhead { list-style: none; font-size: 12px; font-weight: 800; letter-spacing: .08em; padding: 6px 4px 3px; color: var(--ink-mute, #667); border-bottom: 1px solid var(--line, #cbd); margin-top: 4px; }
+.luhead--bench { margin-top: 14px; }
+.luno--swap { cursor: pointer; border-radius: 6px; outline: 1px dashed transparent; }
+.luno--swap:hover { outline-color: currentColor; }
+.lurow.is-picked { background: rgba(255, 200, 40, .22); box-shadow: inset 0 0 0 2px #e0a400; }
+.lurow.is-picked .luno--swap { font-weight: 900; }
+
+/* ===== 引き抜きの演出 ===== */
+.pcine { position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center; flex-direction: column;
+  background: radial-gradient(ellipse at center, rgba(14,40,100,.94), rgba(3,8,26,.97)); color: #fff; animation: pcineIn .25s ease-out; overflow: hidden; }
+.pcine.is-out { opacity: 0; transition: opacity .2s; }
+.pcine__card { text-align: center; padding: 22px 34px; border: 2px solid rgba(255,255,255,.35); border-radius: 14px; background: rgba(255,255,255,.07);
+  animation: pcineCard .55s cubic-bezier(.2,1.3,.4,1); }
+.pcine__label { font-size: 13px; letter-spacing: .3em; opacity: .75; }
+.pcine__name { font-size: 30px; font-weight: 900; margin: 8px 0 2px; }
+.pcine__meta { font-size: 14px; opacity: .8; }
+.pcine__dots { margin-top: 14px; }
+.pcine__dots i { display: inline-block; width: 10px; height: 10px; margin: 0 5px; border-radius: 50%; background: #fff; animation: pcineDot .9s infinite; }
+.pcine__dots i:nth-child(2) { animation-delay: .15s; } .pcine__dots i:nth-child(3) { animation-delay: .3s; }
+.pcine__stamp { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%) scale(.2) rotate(-8deg); opacity: 0; text-align: center;
+  font-size: 40px; font-weight: 900; letter-spacing: .06em; text-shadow: 0 3px 14px rgba(0,0,0,.6); }
+.pcine.is-win .pcine__card, .pcine.is-lose .pcine__card { animation: pcineCardOut .35s forwards; }
+.pcine.is-win .pcine__stamp { color: #ffd43b; animation: pcineStamp .5s cubic-bezier(.2,1.5,.4,1) forwards; }
+.pcine.is-lose .pcine__stamp { color: #ff8a98; animation: pcineStamp .5s ease-out forwards; }
+.pcine.is-lose { animation: pcineShake .4s; filter: saturate(.4); }
+.pcine.is-win { background: radial-gradient(ellipse at center, rgba(184,120,0,.9), rgba(30,14,0,.97)); }
+.pcine__confetti { position: absolute; top: -12px; width: 9px; height: 15px; animation: pcineFall 1.6s ease-in forwards; }
+@keyframes pcineIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pcineCard { from { transform: scale(.4) translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes pcineCardOut { to { transform: scale(.8); opacity: 0; } }
+@keyframes pcineDot { 0%, 100% { opacity: .25; transform: scale(.7); } 50% { opacity: 1; transform: scale(1.2); } }
+@keyframes pcineStamp { to { transform: translateY(-50%) scale(1) rotate(-3deg); opacity: 1; } }
+@keyframes pcineShake { 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(4px); } }
+@keyframes pcineFall { to { transform: translateY(105vh) rotate(540deg); } }
+@media (prefers-reduced-motion: reduce) { .pcine, .pcine * { animation-duration: .01s !important; animation-delay: 0s !important; } }
+.poach-none { margin-top: 16px; padding-top: 6px; border-top: 1px dashed var(--line, #bbb); }
+
+/* ===== 「勝利」「敗戦」の文字 =====
+   丸ゴシックの細い線に縁取りが重なって潰れて見えていたので、
+   角のしっかりした極太のゴシックにして、斜体にして勢いを出す。
+   勝利は金の縦グラデーション＋太い縁、敗戦は落ち着いた色のまま */
+.verdict__word {
+  font-family: "Hiragino Kaku Gothic StdN", "Hiragino Kaku Gothic ProN", "Yu Gothic Bold", "YuGothic", "Noto Sans JP", "Meiryo", sans-serif;
+  font-weight: 900; font-style: italic; letter-spacing: .14em;
+  font-size: 64px;
+  padding: 0 .1em;
+}
+.verdict__box.is-win .verdict__word {
+  color: #ffd43b;
+  background: linear-gradient(180deg, #fff3a8 0%, #ffd43b 45%, #f0a500 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  filter:
+    drop-shadow(2px 0 0 var(--blue-deep)) drop-shadow(-2px 0 0 var(--blue-deep))
+    drop-shadow(0 2px 0 var(--blue-deep)) drop-shadow(0 -2px 0 var(--blue-deep))
+    drop-shadow(0 5px 0 var(--blue-deep));
+}

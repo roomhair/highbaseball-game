@@ -184,8 +184,20 @@ const UI = (() => {
     return '流し打ち';
   }
 
+  /** 弾道の絵。1=ライナー（低く鋭く）〜4=高いフライ。
+      本塁から外野へ飛ぶ軌道を、高さの違う弧で見せる。数字も添える */
+  function trajIcon(n, withNum) {
+    const peak = { 1: 3, 2: 8, 3: 13, 4: 18 }[n] || 8;
+    const d = 'M3 20 Q18 ' + (20 - peak * 2) + ' 33 ' + (n === 4 ? 20 : n === 3 ? 18 : n === 2 ? 14 : 9);
+    const end = { 1: [33, 9], 2: [33, 14], 3: [33, 18], 4: [33, 20] }[n] || [33, 14];
+    return '<span class="traj traj--' + n + '" title="弾道' + n + '（' + (TRAJ_LABEL[n] || '') + '）">' +
+      '<svg viewBox="0 0 36 22" aria-hidden="true"><path class="traj__ground" d="M0 21.5H36"/>' +
+      '<path d="' + d + '"/><circle class="traj__ball" cx="' + end[0] + '" cy="' + end[1] + '" r="2.4"/></svg>' +
+      (withNum === false ? '' : '<b>' + n + '</b>') + '</span>';
+  }
+
   function handMark(p) {
-    return (p.throws === 'L' ? '左' : '右') + '投' + (p.bats === 'L' ? '左' : '右') + '打';
+    return (p.throws === 'L' ? '左' : '右') + '投' + Player.batsText(p);
   }
 
   /** 投手の番手の並び。試合前に先発を選んでも番手は動かさないので、
@@ -231,7 +243,7 @@ const UI = (() => {
          '<td class="t-break">' + Player.pitchesInOrder(p).map((q) =>
            '<span class="luball">' + esc(q.name) + '<b>' + q.level + '</b></span>').join('') +
          '</td>'].join('')
-      : ['<td class="c"><b class="rankval">' + p.traj + '</b></td>',
+      : ['<td class="c">' + trajIcon(p.traj) + '</td>',
          '<td class="c">' + rankNum(p.meet) + '</td>',
          '<td class="c">' + rankNum(p.power) + '</td>',
          '<td class="c">' + rankNum(p.speed) + '</td>',
@@ -374,8 +386,8 @@ const UI = (() => {
         stat('走力', p.speed, null, init.speed) + stat('肩力', p.arm, null, init.arm) +
         stat('守備', p.field, null, init.field) + stat('捕球', p.catch, null, init.catch);
       abilities += '</div>';
-      abilities += '<div class="minor"><span>弾道 <b>' + p.traj + '</b>（' + TRAJ_LABEL[p.traj] + '）' +
-        (init.traj != null && init.traj !== p.traj ? '　獲得時 ' + init.traj + '（' + TRAJ_LABEL[init.traj] + '）' : '') + '</span>' +
+      abilities += '<div class="minor"><span>弾道 ' + trajIcon(p.traj) + '（' + TRAJ_LABEL[p.traj] + '）' +
+        (init.traj != null && init.traj !== p.traj ? '　獲得時 ' + trajIcon(init.traj) + '（' + TRAJ_LABEL[init.traj] + '）' : '') + '</span>' +
         '<span>打球方向 <b>' + pullText(p.pull) + '</b>（' + (p.pull > 0 ? '+' : '') + p.pull + '）</span></div>';
       abilities += '<h4 class="sub">守備適性</h4><div class="aptrow">' +
         FIELD_POSITIONS.map((k) => '<span class="apt"><i>' + posShort(k) + '</i>' + aptSpan(p.apt[k]) + '</span>').join('') +
@@ -392,7 +404,8 @@ const UI = (() => {
       '<div class="pdetail__head">' +
         '<div class="pdetail__name" id="pd-name">' + esc(p.name) + '</div>' +
         (opts.rename === false ? '' : '<button type="button" class="linkbtn" id="pd-rename">名前を変える</button>') +
-        '<div class="pdetail__meta">' + p.grade + '年　' + (isPit ? '投手' : posName(p.pos)) + '　' + handMark(p) +
+        '<div class="pdetail__meta">' + p.grade + '年　' + (isPit ? '投手' : posName(p.pos)) + '　' +
+        (opts.rename === false ? handMark(p) : '<button type="button" class="linkbtn handbtn" id="pd-hand">' + handMark(p) + '</button>') +
         (opts.team && opts.team.captainId === p.id ? '　<b class="capmark">主将</b>' : '') +
         (p.awakened ? '　<b class="awake">覚醒</b>' : '') + '</div>' +
         (p.from ? '<div class="pdetail__from">' + p.from.year + '年目に ' + esc(p.from.school) + ' から加入</div>' : '') +
@@ -404,9 +417,37 @@ const UI = (() => {
       '</div>';
   }
 
-  /** 名前の書き換えを受け付ける（詳細をどこに描いても使える） */
+  /** 投打の書き換え。投打の文字を押すと、右投・左投、右打・左打・両打を選べる */
+  function wireHand(body, p, onRename) {
+    const btn = body.querySelector('#pd-hand');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const box = document.createElement('div');
+      box.className = 'handpick';
+      const row = (label, key, opts) =>
+        '<div class="handpick__row"><span>' + label + '</span>' + opts.map((o) =>
+          '<button type="button" class="btn btn--small' + (p[key] === o[0] ? ' is-on' : '') + '" data-k="' + key + '" data-v="' + o[0] + '">' + o[1] + '</button>').join('') + '</div>';
+      const draw = () => {
+        box.innerHTML = row('投げ', 'throws', [['R', '右投'], ['L', '左投']]) +
+          row('打ち', 'bats', [['R', '右打'], ['L', '左打'], ['B', '両打']]) +
+          '<p class="tiny">左投げは、捕手・二塁・三塁・遊撃の適性がGになります（右投げに戻せば元に戻ります）。</p>';
+        box.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+          if (b.dataset.k === 'throws') Player.setThrows(p, b.dataset.v); else p.bats = b.dataset.v;
+          btn.textContent = handMark(p);
+          draw();
+          if (onRename) onRename(p);
+        }));
+      };
+      draw();
+      const old = body.querySelector('.handpick');
+      if (old) { old.remove(); return; }
+      btn.parentNode.appendChild(box);
+    });
+  }
+
   /** 名前の書き換えを受け付ける（詳細をどこに描いても使える） */
   function wireRename(body, p, onRename) {
+    wireHand(body, p, onRename);
     const btn = body.querySelector('#pd-rename');
     if (!btn) return;
     btn.addEventListener('click', () => {
@@ -467,7 +508,7 @@ const UI = (() => {
         const mid = r.top + r.height / 2;
         const next = drag.nextElementSibling;
         const prev = drag.previousElementSibling;
-        if (next) {
+        if (next && next.classList.contains('lurow')) {
           const nr = next.getBoundingClientRect();
           if (mid > nr.top + nr.height / 2) {
             list.insertBefore(next, drag);
@@ -476,7 +517,7 @@ const UI = (() => {
             continue;
           }
         }
-        if (prev) {
+        if (prev && prev.classList.contains('lurow')) {
           const pr = prev.getBoundingClientRect();
           if (mid < pr.top + pr.height / 2) {
             list.insertBefore(drag, prev);
@@ -578,6 +619,7 @@ const UI = (() => {
     let order = team.lineup.map((sl) => sl.pid)
       .concat(team.batters.map((p) => p.id).filter((id) => !team.lineup.some((sl) => sl.pid === id)));
 
+    let picked = null;      // 入れ替えようとして選んだ選手（番号をタップ）
     let tab = 'bat';        // 'bat' か 'pit'
     let showBad = false;    // 決定を押すまでは赤くしない
 
@@ -587,6 +629,8 @@ const UI = (() => {
       order = order.filter((id) => ids.indexOf(id) >= 0)
         .concat(ids.filter((id) => order.indexOf(id) < 0));
       order.forEach((id) => { if (posOf[id] == null) posOf[id] = BENCH; });
+      /* スタメン（打順どおり）を上、控えを下にそろえる */
+      order = order.filter((id) => posOf[id] !== BENCH).concat(order.filter((id) => posOf[id] === BENCH));
       return order;
     }
 
@@ -620,16 +664,16 @@ const UI = (() => {
         .concat(LINEUP_POSITIONS.map((k) =>
           '<option value="' + k + '"' + (k === pos ? ' selected' : '') + '>' + posShort(k) + '</option>')).join('');
       const bad = showBad && !bench && prob.dup.indexOf(pos) >= 0;
-      return '<li class="lurow' + (bench ? ' is-bench' : '') + (bad ? ' is-bad' : '') + '" data-pid="' + p.id + '">' +
+      return '<li class="lurow' + (bench ? ' is-bench' : '') + (bad ? ' is-bad' : '') + (picked === p.id ? ' is-picked' : '') + '" data-pid="' + p.id + '">' +
         '<span class="lugrip" aria-hidden="true"><i></i><i></i><i></i></span>' +
-        '<span class="luno">' + (bench ? '控' : no) + '</span>' +
+        '<span class="luno luno--swap" role="button" tabindex="0" title="タップして入れ替え">' + (bench ? '控' : no) + '</span>' +
         '<span class="lupos">' +
           '<select class="possel' + (bench ? ' is-bench' : '') + '" data-pid="' + p.id + '">' +
             options + '</select>' +
         '</span>' +
         '<span class="lumain">' +
           '<button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
-          '<span class="tiny">' + p.grade + '年 ' + handMark(p) + ' 弾道' + p.traj + '</span>' +
+          '<span class="tiny">' + p.grade + '年 ' + handMark(p) + ' ' + trajIcon(p.traj) + '</span>' +
         '</span>' +
         '<span class="lustats">ミ' + rankNum(p.meet) + '　パ' + rankNum(p.power) +
           '　走' + rankNum(p.speed) + '　肩' + rankNum(p.arm) +
@@ -674,14 +718,19 @@ const UI = (() => {
       const warn = (showBad && msgs.length)
         ? '<p class="luwarn">' + msgs.join('。') + '。直してから決定してください。</p>' : '';
       const hint = tab === 'bat'
-        ? '守備位置の欄で<b>「控」を選べば外れ、守備位置を選べばスタメンに入ります</b>。'
+        ? (picked
+          ? '<b>入れ替える相手の番号をタップ</b>してください（もう一度同じ番号をタップすると取り消し）。スタメンと控えを選べば、その打順にそのまま入ります。'
+          : '<b>番号をタップして、別の番号をタップすると入れ替え</b>。左の取っ手をつまんで上下に動かすと打順を変えられます。守備位置の欄で「控」を選べば外れます。')
         : '左はしの取っ手をつまんで、投げる順番を並べ替えられます。先発は試合前の画面で選べます。';
-      let no = 0;
+      let no = 0, headed = false;
+      const startCount = ids.filter((pid) => posOf[pid] !== BENCH).length;
       const list = tab === 'bat'
-        ? '<ul class="lulist" id="lu-bat">' + ids.map((pid, i) => {
+        ? '<ul class="lulist" id="lu-bat"><li class="luhead">スタメン（打順）</li>' + ids.map((pid, i) => {
+            let head = '';
             if (posOf[pid] !== BENCH) no++;
-            return batRow(pid, no, prob, i);
-          }).join('') + '</ul>'
+            else if (!headed) { headed = true; head = '<li class="luhead luhead--bench">控え</li>'; }
+            return head + batRow(pid, no, prob, i);
+          }).join('') + (!headed && startCount ? '' : '') + '</ul>'
         : '<ul class="lulist" id="lu-pit">' + pitOrderOf(team).map(pitRow).join('') + '</ul>';
       return '<div class="lineup-edit">' +
         '<h3 class="modal__title">オーダー変更</h3>' +
@@ -759,6 +808,8 @@ const UI = (() => {
       const move = (list, i, d) => {
         const j = i + d;
         if (j < 0 || j >= list.length) return null;
+        /* 野手は、スタメンと控えの境目をまたいでは動かさない（入れ替えは番号のタップで） */
+        if (list === order && (posOf[list[i]] === BENCH) !== (posOf[list[j]] === BENCH)) return null;
         const next = list.slice();
         [next[i], next[j]] = [next[j], next[i]];
         return next;
@@ -788,6 +839,26 @@ const UI = (() => {
         showBad = false;
         applyBatters();
       }));
+
+      /* 番号をタップして入れ替え。スタメンどうし・控えどうしは並びを、
+         スタメンと控えの組なら、控えがその打順と守備位置にそのまま入る */
+      body.querySelectorAll('.luno--swap').forEach((n) => {
+        const act = () => {
+          const pid = n.closest('.lurow').dataset.pid;
+          if (!picked) { picked = pid; refresh(); return; }
+          if (picked === pid) { picked = null; refresh(); return; }
+          const ids = batterIds().slice();
+          const i = ids.indexOf(picked), j = ids.indexOf(pid);
+          const a = posOf[picked], b = posOf[pid];
+          if ((a === BENCH) !== (b === BENCH)) { posOf[picked] = b; posOf[pid] = a; }
+          [ids[i], ids[j]] = [ids[j], ids[i]];
+          picked = null;
+          showBad = false;
+          applyBatters(ids);
+        };
+        n.addEventListener('click', act);
+        n.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act(); } });
+      });
 
       body.querySelectorAll('.pname').forEach((b) =>
         b.addEventListener('click', () => openDetail(b.dataset.pid)));
@@ -909,7 +980,7 @@ const UI = (() => {
   return {
     pitOrderOf,
     el, esc, html, show, currentScreen, curtain, modal, closeModal, confirmBox, decisionLines,
-    avg, era, ipText, stat, rankSpan, rankNum, aptSpan, pullText, handMark,
+    avg, era, ipText, trajIcon, stat, rankSpan, rankNum, aptSpan, pullText, handMark,
     playerRow, rosterTable, rosterPanel, sortPlayers, playerDetail, openPlayer,
     lineupEditor, roleText, makeSortable, wireRename, captainPicker,
     careerBatLine, careerPitLine, init,

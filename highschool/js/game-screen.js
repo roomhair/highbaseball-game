@@ -287,7 +287,7 @@ const GameScreen = (() => {
 
   /** 投打（投げる手・打つ手）。右投左打なら「右左」 */
   function handShort(p) {
-    return (p.throws === 'L' ? '左' : '右') + (p.bats === 'L' ? '左' : '右');
+    return (p.throws === 'L' ? '左' : '右') + (p.bats === 'L' ? '左' : (p.bats === 'B' ? '両' : '右'));
   }
 
   /** 名前の下に出す、打つほうの能力だけの小さい行。

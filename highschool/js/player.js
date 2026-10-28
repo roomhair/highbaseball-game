@@ -396,8 +396,24 @@ const Player = (() => {
     );
   }
 
+  function batsText(p) { return p.bats === 'L' ? '左打' : (p.bats === 'B' ? '両打' : '右打'); }
+
   function handLabel(p) {
-    return (p.throws === 'L' ? '左投' : '右投') + (p.bats === 'L' ? '左打' : '右打');
+    return (p.throws === 'L' ? '左投' : '右投') + batsText(p);
+  }
+
+  /** 投げる手を変える（左投げは捕手・二塁・三塁・遊撃の適性がGになる）。
+      右投げに戻したときは、左にする前の適性に戻す */
+  function setThrows(p, hand) {
+    if (p.throws === hand) return;
+    if (hand === 'L') {
+      p._aptR = Object.assign({}, p.apt);
+      RIGHT_ONLY.forEach((k) => { if (p.apt) p.apt[k] = 'G'; });
+    } else if (p._aptR) {
+      p.apt = Object.assign(p.apt || {}, p._aptR);
+      p._aptR = null;
+    }
+    p.throws = hand;
   }
 
   function gradeLabel(g) { return g + '年'; }
@@ -420,7 +436,7 @@ const Player = (() => {
 
   return {
     pitchesInOrder,
-    newBatter, newPitcher, rating, breakScore, aptPenalty, handLabel, gradeLabel, RIGHT_ONLY,
+    newBatter, newPitcher, rating, breakScore, aptPenalty, handLabel, batsText, setThrows, gradeLabel, RIGHT_ONLY,
     tryAptUp, aptUpChance,
     emptyBat, emptyPit, addStats, seedPracticeBat, seedPracticePit, practiceGames,
     rollTalent, nextId, currentSeq, setSeq,

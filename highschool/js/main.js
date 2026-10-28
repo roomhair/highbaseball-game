@@ -114,7 +114,7 @@ const Game = (() => {
 
   function pickPitchers() {
     state.phase = 'pick-pit';
-    state.sets = state.sets && state.sets.kind === 'pit' ? state.sets : { kind: 'pit', list: Dataset.make('pitcher', CONFIG.PICK_SETS) };
+    state.sets = state.sets && state.sets.kind === 'pit' ? state.sets : { kind: 'pit', list: Dataset.make('pitcher', CONFIG.PICK_SETS, null, 0, teamNames()) };
     save();
     Screens.pick({
       title: '投手を選ぶ',
@@ -232,6 +232,12 @@ const Game = (() => {
     toNewSeason();
   }
 
+  /** いまチームにいる選手の名前（新入生・投手の候補と同姓同名にならないように） */
+  function teamNames() {
+    const t = state && state.team;
+    return t ? Team.all(t).map((p) => p.name) : [];
+  }
+
   /* ---------- 大会 ---------- */
 
   function startTournament(kind) {
@@ -246,7 +252,7 @@ const Game = (() => {
     Team.healPitchers(state.team);
     /* 高校名の重複を避けるのはこの大会の中だけ。
        年をまたげば同じ常連校がまた出てくる */
-    const used = new Set();
+    const used = new Set(state.team ? [state.team.name] : []);
     /* 相手の強さは自軍に合わせて動かさない。決められた強さの相手が並ぶので、
        チームが強くなればそのぶん勝ち上がれる。
        年ごとに少しだけゆらぎを入れて、当たり年・外れ年を作る */
@@ -261,7 +267,8 @@ const Game = (() => {
     let from;
     if (kind === 'fallPref') state.springQualified = false;
     if (kind === 'local') {
-      from = F.local.from * j;
+      /* 当たり年でも、1回戦から極端に強い相手が出ないようにする */
+      from = F.local.from * Math.min(j, 1.08);
       state.localJitter = j;
     } else if (kind === 'national') {
       /* 全国大会の1回戦は、地方大会の決勝の続きから。
@@ -286,7 +293,11 @@ const Game = (() => {
       state.springJitter = j;
       from = F.spring.from * j;
     }
-    state.tour = Tournament.create(kind, from, j, used);
+    /* 自分の県の高校の名簿（最初に1回だけ作り、保存しておく） */
+    if (!state.prefSchools || !state.prefSchools.length) {
+      state.prefSchools = NAMES.prefecturePool(22, [state.team && state.team.name, state.settings.schoolName]);
+    }
+    state.tour = Tournament.create(kind, from, j, used, state.prefSchools);
     Growth.resetTour(state.team);
     /* 大きな大会に出場したこと自体で、学校の格が少し上がる */
     const R = CONFIG.SCHOOL_RANK;
@@ -535,13 +546,13 @@ const Game = (() => {
   function attemptPoach(incoming, outgoing) {
     const round = Tournament.currentRound(state.tour);
     const chance = poachSuccessChance(round ? round.level : 50, state.prestigeScore);
-    if (RNG.chance(chance)) {
-      doPoach(incoming, outgoing);
-      save();
-      Screens.poachSuccess(state, incoming, outgoing, () => advanceRound());
-    } else {
-      Screens.poachFailed(state, incoming, () => advanceRound());
-    }
+    const ok = RNG.chance(chance);
+    if (ok) { doPoach(incoming, outgoing); save(); }
+    /* 結果の画面の前に、交渉の演出を入れる（結果はもう決まっている） */
+    Screens.poachCinema(incoming, ok, () => {
+      if (ok) Screens.poachSuccess(state, incoming, outgoing, () => advanceRound());
+      else Screens.poachFailed(state, incoming, () => advanceRound());
+    });
   }
 
   function doPoach(incoming, outgoing) {
@@ -551,6 +562,16 @@ const Game = (() => {
        いま負けた相手として投げたばかりの疲れをそのまま引き継ぐほうが自然 */
 
     const list = incoming.kind === 'pitcher' ? state.team.pitchers : state.team.batters;
+    /* 放出なし（3年生の引退のあと、新入生が入るまでの間だけ選べる）なら、
+       ただ部員に加える。春の新入生は、定員との差ぶんだけ入るので、そのぶん減る */
+    if (!outgoing) {
+      list.push(incoming);
+      if (incoming.kind === 'pitcher') {
+        state.team.rotation = (state.team.rotation || []).concat(incoming.id);
+        if (state.team.pitcherOrder) state.team.pitcherOrder = state.team.pitcherOrder.concat(incoming.id);
+      }
+      return;
+    }
     const idx = list.findIndex((x) => x.id === outgoing.id);
     /* 放出した選手がいた場所に、そのまま入れる。
        オーダーも投手の起用順も、その枠だけ差し替える（勝手に組み直さない） */
@@ -761,8 +782,51 @@ const Game = (() => {
       if (Soccer.advance(S)) { soccerFinishTournament(); return; }
       soccerToPregame();
     } else {
-      soccerLose();
+      soccerToDecide();
     }
+  }
+
+  /** 負けたあと、サッカー部を続けるか、野球部に戻るかを選ぶ */
+  function soccerToDecide() {
+    state.phase = 'soccer-decide';
+    save();
+    Screens.soccerDecide(state);
+  }
+
+  /** 野球部に戻る。野球の能力に、サッカーの練習で上がった分を足して、
+      負けた大会の次の場面から野球を再開する */
+  function soccerBackToBaseball() {
+    const S = state.soccer;
+    const kind = S.tour ? S.tour.kind : 'local';
+    const report = Soccer.backToBaseball(S);
+    const team = Soccer.applyBaseball(S, report);
+    state.soccerReturn = { report, kind, school: S.schoolName, team };
+    state.phase = 'soccer-return';
+    save();
+    Screens.soccerReturn(state, soccerReturnLabel(kind));
+  }
+
+  function soccerReturnLabel(kind) {
+    if (kind === 'local' || kind === 'national') return 'オフシーズンへ';
+    if (kind === 'spring') return '新入生の入部へ';
+    return state.settings.springName + '選考へ';
+  }
+
+  /** 戻った野球部で、負けた大会のあとの流れへ。
+      夏なら3年生の引退から。秋なら特訓 → 春の大会（サッカー部として負けたので選ばれない）→ 新入生 */
+  function soccerReturnContinue() {
+    const R = state.soccerReturn;
+    state.mode = 'baseball';
+    state.team = R.team;
+    state.soccer = null;
+    state.soccerReturn = null;
+    state.tour = null;
+    state.sets = null;
+    state.springQualified = false;
+    state.trainLimits = TRAIN_LIMITS.normal;
+    if (R.kind === 'local' || R.kind === 'national') toOffseason();
+    else if (R.kind === 'spring') toNewSeason();
+    else toPostFallTraining();
   }
 
   /** 山を勝ち切ったとき（野球の finishTournament と同じ分かれ方） */
@@ -974,7 +1038,7 @@ const Game = (() => {
     if (!state.need.bat) { state.phase = 'new-pit'; newcomerPitchers(); return; }
     state.phase = 'new-bat';
     state.sets = state.sets && state.sets.kind === 'nbat'
-      ? state.sets : { kind: 'nbat', list: Dataset.make('batter', CONFIG.NEWCOMER_SETS, state.need.bat, schoolRankNewcomerBonus(state.prestigeScore)) };
+      ? state.sets : { kind: 'nbat', list: Dataset.make('batter', CONFIG.NEWCOMER_SETS, state.need.bat, schoolRankNewcomerBonus(state.prestigeScore), teamNames()) };
     save();
     Screens.pick({
       title: '新入生（野手）',
@@ -993,7 +1057,7 @@ const Game = (() => {
   function newcomerPitchers() {
     if (!state.need.pit) { afterNewcomers(); return; }
     state.sets = state.sets && state.sets.kind === 'npit'
-      ? state.sets : { kind: 'npit', list: Dataset.make('pitcher', CONFIG.NEWCOMER_SETS, state.need.pit, schoolRankNewcomerBonus(state.prestigeScore)) };
+      ? state.sets : { kind: 'npit', list: Dataset.make('pitcher', CONFIG.NEWCOMER_SETS, state.need.pit, schoolRankNewcomerBonus(state.prestigeScore), teamNames()) };
     save();
     Screens.pick({
       title: '新入生（投手）',
@@ -1087,6 +1151,8 @@ const Game = (() => {
       case 'soccer-localwin': Screens.soccerCelebrate(state, 'local'); break;
       case 'soccer-champion': Screens.soccerCelebrate(state, 'national'); break;
       case 'soccer-offseason': Screens.soccerOffseason(state, Soccer.canRevive(state.soccer)); break;
+      case 'soccer-decide': Screens.soccerDecide(state); break;
+      case 'soccer-return': Screens.soccerReturn(state, soccerReturnLabel(state.soccerReturn.kind)); break;
       case 'soccer-training': Screens.soccerTraining(state); break;
       case 'soccer-training-result': Screens.soccerTrainingResult(state, soccerTrainingLabel()); break;
       case 'soccer-spring-result': Screens.soccerSpringResult(state, state.soccer.springQualified); break;
@@ -1257,10 +1323,13 @@ const Game = (() => {
           else toSoccerOffseason();
           break;
         case 'soccer-offseason': soccerAfterOffseason(); break;
+        case 'soccer-decide': soccerLose(); break;
+        case 'soccer-return': soccerReturnContinue(); break;
       }
     });
     on('btn-soccer-secondary', () => {
       if (state.phase === 'soccer-offseason') reviveBaseball();
+      else if (state.phase === 'soccer-decide') soccerBackToBaseball();
     });
 
     if (typeof ADS !== 'undefined') ADS.init();

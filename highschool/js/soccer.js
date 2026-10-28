@@ -101,6 +101,8 @@ const Soccer = (() => {
     };
     s.pos = bestPos(s);
     p.soc = s;
+    /* サッカーを始めたときの能力。野球に戻るとき、ここからどれだけ上がったかを見る */
+    p.socBase = Object.assign({}, s);
     p.socCareer = { g: 0, goals: 0, assists: 0, cs: 0 };
     return p;
   }
@@ -140,8 +142,90 @@ const Soccer = (() => {
     boost.forEach((k) => { p.soc[k] = RNG.stat(p.soc[k] + 12); });
     if (want !== 'GK') p.soc.gk = RNG.stat(p.soc.gk - 8);
     p.soc.pos = bestPos(p.soc);
+    p.socBase = Object.assign({}, p.soc);
     p.socCareer = { g: 0, goals: 0, assists: 0, cs: 0 };
     return p;
+  }
+
+  /* ---------- 野球部に戻る ----------
+     部員は野球の能力をそのまま持っている（サッカーの能力は別に持たせてある）ので、
+     戻るときは「野球をしていた頃の能力」に、サッカーの練習と試合で上がった分を
+     野球の能力に置き換えて足す。 */
+
+  /* サッカーの能力 → 野球の能力。上がった数字に掛ける割合。
+     [野手の行き先, 割合, 投手の行き先]（行き先が null なら、その区分には回さない） */
+  const TO_BASEBALL = {
+    spd: ['speed', 0.5, 'speed'],
+    str: ['power', 0.4, 'power'],
+    sho: ['meet', 0.35, 'meet'],
+    dri: ['meet', 0.2, 'meet'],
+    pas: ['arm', 0.4, 'control'],
+    def: ['field', 0.5, 'field'],
+    gk:  ['catch', 0.5, 'catch'],
+    sta: [null, 0.5, 'stamina'],
+  };
+  const BASEBALL_LABEL = { meet: 'ミート', power: 'パワー', speed: '走力', arm: '肩力', field: '守備', catch: '捕球', control: '制球', stamina: 'スタミナ' };
+  const BASEBALL_ORDER = ['control', 'stamina', 'meet', 'power', 'speed', 'arm', 'field', 'catch'];
+
+  /** 野球部に戻した場合の部員と、どの選手のどの能力がいくつ上がったかの一覧を作る。
+      ここでは能力を書き換えず、書き換えたあとの値を返す（apply で確定） */
+  function backToBaseball(S) {
+    const report = [];
+    S.players.forEach((p) => {
+      const base = p.socBase || p.soc;
+      const isPit = p.kind === 'pitcher';
+      const add = {};
+      Object.keys(TO_BASEBALL).forEach((k) => {
+        const d = (p.soc[k] || 0) - (base[k] || 0);
+        if (d <= 0) return;
+        const [bat, rate, pit] = TO_BASEBALL[k];
+        const to = isPit ? pit : bat;
+        if (to) add[to] = (add[to] || 0) + d * rate;
+      });
+      const ups = [];
+      BASEBALL_ORDER.forEach((bk) => {
+        if (add[bk] == null) return;
+        const gain = Math.round(add[bk]);
+        if (gain < 1) return;
+        const before = p[bk];
+        const after = Math.min(100, before + gain);
+        if (after > before) ups.push({ key: bk, label: BASEBALL_LABEL[bk], amount: after - before, before, after });
+      });
+      if (ups.length) report.push({ pid: p.id, name: p.name, grade: p.grade, role: isPit ? '投手' : (p.pos || ''), ups });
+    });
+    report.sort((a, b) => b.ups.reduce((x, u) => x + u.amount, 0) - a.ups.reduce((x, u) => x + u.amount, 0));
+    return report;
+  }
+
+  /** 戻す。野球の能力に上がった分を足し、部員を野球部（Team）にまとめて返す */
+  function applyBaseball(S, report) {
+    const byId = {};
+    S.players.forEach((p) => { byId[p.id] = p; });
+    report.forEach((r) => {
+      const p = byId[r.pid];
+      if (!p) return;
+      r.ups.forEach((u) => { p[u.key] = u.after; });
+    });
+    const team = Team.create(S.schoolName);
+    S.players.forEach((p) => {
+      delete p.soc; delete p.socBase; delete p.socCareer;
+      if (p.kind === 'pitcher') team.pitchers.push(p); else team.batters.push(p);
+    });
+    /* 定員（野手16・投手8）をこえたぶんは、評価の低い選手から外す */
+    const trim = (list, n) => {
+      while (list.length > n) {
+        let worst = 0;
+        list.forEach((q, i) => { if (Player.rating(q) < Player.rating(list[worst])) worst = i; });
+        list.splice(worst, 1);
+      }
+    };
+    trim(team.batters, 16); trim(team.pitchers, 8);
+    /* 足りないときは、打線と継投が組めるだけ補う（あとの新入生で定員まで埋まる） */
+    while (team.batters.length < 13) team.batters.push(Player.newBatter({ grade: RNG.chance(0.5) ? 1 : 2, practice: true }));
+    while (team.pitchers.length < 6) team.pitchers.push(Player.newPitcher({ grade: RNG.chance(0.5) ? 1 : 2, practice: true }));
+    Dataset.uniqueNames([team.batters.concat(team.pitchers)]);
+    Team.autoLineup(team);
+    return team;
   }
 
   /* ---------- 部の発足 ---------- */
@@ -616,6 +700,6 @@ const Soccer = (() => {
     convert, newRecruit, start, autoLineup, findP, mySide, strength, rating, rateFor,
     createTour, currentRound, playUser, buildOpp, halfLenFor, advance,
     startTraining, trainingChoose, trainingPass, canPass, trainingSummary,
-    retiring, retire, promote, freshSets, enroll, canRevive,
+    retiring, retire, promote, freshSets, enroll, canRevive, backToBaseball, applyBaseball,
   };
 })();

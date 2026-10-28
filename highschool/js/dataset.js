@@ -64,15 +64,29 @@ const Dataset = (() => {
     return players;
   }
 
+  /** 全セットを通して、同姓同名の選手がいないようにする。
+      exclude には、すでにチームにいる選手の名前を渡す（新入生・投手のセット用） */
+  function uniqueNames(sets, exclude) {
+    const seen = new Set(exclude || []);
+    sets.forEach((set) => set.forEach((p) => {
+      for (let i = 0; i < 50 && seen.has(p.name); i++) {
+        const nm = NAMES.personName();
+        p.last = nm.last; p.first = nm.first; p.name = nm.last + nm.first;
+      }
+      seen.add(p.name);
+    }));
+    return sets;
+  }
+
   /** 指定された数だけ用意する */
-  function make(kind, count, n, prestigeBonus) {
+  function make(kind, count, n, prestigeBonus, exclude) {
     const sets = [];
     for (let i = 0; i < (count || 5); i++) {
       sets.push(n == null
         ? (kind === 'batter' ? batterSet() : pitcherSet())
         : freshmanSet(kind, n, prestigeBonus));
     }
-    return sets;
+    return uniqueNames(sets, exclude);
   }
 
   /** セットの目安。一覧の横に出す */
@@ -89,5 +103,5 @@ const Dataset = (() => {
     };
   }
 
-  return { make, batterSet, pitcherSet, freshmanSet, summary, splitGrades };
+  return { make, uniqueNames, batterSet, pitcherSet, freshmanSet, summary, splitGrades };
 })();

@@ -91,6 +91,11 @@ const Sim = (() => {
   /* 内野の守備位置。内野安打かどうかの判定に使う */
   const INF_POS = ['P', 'C', '1B', '2B', '3B', 'SS'];
 
+  /** 実際に打席に立つ側。両打ちは、投手と反対の側に立つ */
+  function effBats(bat) {
+    return bat._eff || (bat.bats === 'B' ? 'L' : bat.bats);
+  }
+
   function mirror(posKey) {
     return { '1B': '3B', '3B': '1B', SS: '2B', '2B': 'SS', LF: 'RF', RF: 'LF' }[posKey] || posKey;
   }
@@ -179,7 +184,7 @@ const Sim = (() => {
     /* ここからインプレー */
     const type = battedType(bat.traj);
     const zone = sprayZone(bat.pull);
-    const spot = fieldSpot(zone, type, bat.bats);
+    const spot = fieldSpot(zone, type, effBats(bat));
     const isOF = spot === 'LF' || spot === 'CF' || spot === 'RF';
 
     /* 本塁打。フライとライナーからしか出ない。
@@ -194,7 +199,7 @@ const Sim = (() => {
         0.0008, 0.20
       ) * (type === 'FB' ? 1.25 : 0.55) * 0.25;
       if (RNG.chance(pHR)) {
-        const ofKey = bat.bats === 'L' ? mirror(OF_BY_ZONE[zone]) : OF_BY_ZONE[zone];
+        const ofKey = effBats(bat) === 'L' ? mirror(OF_BY_ZONE[zone]) : OF_BY_ZONE[zone];
         return { code: 'HR', text: posShort(ofKey) + '本', out: 0, spot: ofKey };
       }
     }
@@ -239,7 +244,7 @@ const Sim = (() => {
         kind = RNG.chance(0.04 + sp * 0.03) ? '2B' : '1B';
       }
       /* 長打の方向は外野で言う */
-      const ofKey = bat.bats === 'L' ? mirror(OF_BY_ZONE[zone]) : OF_BY_ZONE[zone];
+      const ofKey = effBats(bat) === 'L' ? mirror(OF_BY_ZONE[zone]) : OF_BY_ZONE[zone];
       const mark = kind === '1B' ? '安' : (kind === '2B' ? '二' : '三');
       let where = kind === '1B' ? spot : ofKey;
       let infieldHit = kind === '1B' && INF_POS.indexOf(where) >= 0;
@@ -805,6 +810,8 @@ const Sim = (() => {
       const defRating = defenseOf(defTeam, def.pitcherId);
       /* まず作戦を考える。出さなければ、ふつうに打つ */
       const lead = off.runs - (off === A ? H.runs : A.runs);
+      /* 両打ちは、投手の投げる手と反対側で打つ */
+      bat._eff = bat.bats === 'B' ? (pit.throws === 'L' ? 'R' : 'L') : null;
       const tactic = chooseTactic(bat, slotIndex, outs, bases, inning, lead);
       /* 投げた球。見せるためのもので、結果そのものには効かせていない */
       const ball = tactic === 'ibb' ? null : pickPitch(pit, fatigue);
@@ -882,7 +889,7 @@ const Sim = (() => {
     e.batter = bat ? bat.id : null;
     e.batterName = bat ? bat.name : '';
     /* 右打ち・左打ち。試合中の画面で打者の絵をどちら向きに立たせるか */
-    e.batterBats = bat ? bat.bats : null;
+    e.batterBats = bat ? effBats(bat) : null;
     e.pitcher = pit ? pit.id : null;
     /* いま打った打順（1〜9）。盗塁など打席の外の出来事では次打者を指す */
     e.order = (slotIndex == null ? off.order : slotIndex) + 1;

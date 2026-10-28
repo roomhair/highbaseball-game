@@ -546,6 +546,12 @@ const Screens = (() => {
       '<span class="gr__to">' + UI.rankNum(u.after) + '</span>';
   }
 
+  /** 成長画面の選手名の横に出す投打（右投左打など） */
+  function handNote(state, pid) {
+    const q = state.team && Team.find(state.team, pid);
+    return q ? '・' + UI.handMark(q) : '';
+  }
+
   function growth(state) {
     const report = (state.lastReport || []).filter((r) => r.ups && r.ups.length);
     const awake = report.filter((r) => r.awakened);
@@ -553,7 +559,7 @@ const Screens = (() => {
 
     const card = (r) => '<article class="gr' + (r.awakened ? ' is-awake' : '') + '">' +
       '<header class="gr__head"><b><button type="button" class="linkbtn gr__name" data-pid="' + r.pid + '">' + esc(r.name) + '</button></b>' +
-        '<span>' + r.grade + '年・' + esc(r.role || '') + '</span>' +
+        '<span>' + r.grade + '年・' + esc(r.role || '') + handNote(state, r.pid) + '</span>' +
         (r.awakened ? '<em class="gr__awake">覚醒</em>' : '') + '</header>' +
       '<ul class="gr__list">' + r.ups.map((u) =>
         '<li><span class="gr__label">' + esc(u.label) + '</span>' +
@@ -696,7 +702,64 @@ const Screens = (() => {
     });
     ok.onclick = () => { if (picked) onRelease(picked); };
     skip.onclick = onCancel;
+
+    /* 3年生が引退してから新入生が入るまでの間は、部員が定員（野手16・投手8）より
+       少ない。そのあいだは、放出せずに迎えることもできる。そのぶん、
+       春に入ってくる新入生が1人減る（夏の時点での部員の数は変わらない） */
+    const cap = incoming.kind === 'pitcher' ? 8 : 16;
+    if (own.length < cap) {
+      const box = document.createElement('div');
+      box.className = 'poach-none';
+      box.innerHTML =
+        '<h3 class="sub">放出せずに迎える</h3>' +
+        '<p class="note">いまは3年生が引退して部員が' + own.length + '人（定員' + cap + '人）です。' +
+        '誰も放出せずに迎えることもできますが、<b>そのぶん春に入る新入生が1人減ります</b>。</p>' +
+        '<button type="button" class="btn" id="btn-poach-none">放出せずに挑戦する（新入生が1人減ります）</button>';
+      UI.el('poach-body').appendChild(box);
+      box.querySelector('#btn-poach-none').addEventListener('click', () => onRelease(null));
+    }
     UI.show('screen-poach');
+  }
+
+  /** 引き抜きの結果を出す前の演出。交渉中の画面から、成功なら紙吹雪、失敗なら暗転。
+      タップすれば飛ばせる */
+  function poachCinema(incoming, success, done) {
+    const ov = document.createElement('div');
+    ov.className = 'pcine';
+    const pos = incoming.kind === 'pitcher' ? '投手' : posName(incoming.pos);
+    ov.innerHTML =
+      '<div class="pcine__card">' +
+        '<div class="pcine__label">引き抜き交渉</div>' +
+        '<div class="pcine__name">' + esc(incoming.name) + '</div>' +
+        '<div class="pcine__meta">' + incoming.grade + '年・' + esc(pos) + '</div>' +
+        '<div class="pcine__dots"><i></i><i></i><i></i></div>' +
+      '</div>' +
+      '<div class="pcine__stamp"></div>';
+    document.body.appendChild(ov);
+    let finished = false;
+    const finish = () => {
+      if (finished) return; finished = true;
+      clearTimeout(t1); clearTimeout(t2);
+      ov.classList.add('is-out');
+      setTimeout(() => { ov.remove(); done(); }, 220);
+    };
+    const t1 = setTimeout(() => {
+      ov.classList.add(success ? 'is-win' : 'is-lose');
+      const stamp = ov.querySelector('.pcine__stamp');
+      stamp.textContent = success ? '引き抜き成功！' : '引き止められた…';
+      if (success) {
+        for (let i = 0; i < 26; i++) {
+          const c = document.createElement('i');
+          c.className = 'pcine__confetti';
+          c.style.left = (4 + Math.random() * 92) + '%';
+          c.style.animationDelay = (Math.random() * 0.5) + 's';
+          c.style.background = ['#ffc21a', '#2a6fdb', '#ff5a6e', '#1f9447', '#ffffff'][i % 5];
+          ov.appendChild(c);
+        }
+      }
+    }, 1500);
+    const t2 = setTimeout(finish, 3300);
+    ov.addEventListener('click', finish);
   }
 
   /** 引き抜きに成功したとき。放出はすでに選んであるので、結果を伝えるだけ */
@@ -706,8 +769,9 @@ const Screens = (() => {
     UI.el('poach-warn').hidden = true;
     UI.el('poach-title').classList.remove('is-lose');
     UI.el('poach-title').classList.add('is-win');
-    UI.el('poach-lead').textContent =
-      esc(incoming.name) + 'の引き抜きに成功した。代わりに' + esc(outgoing.name) + 'を放出した。';
+    UI.el('poach-lead').textContent = outgoing
+      ? esc(incoming.name) + 'の引き抜きに成功した。代わりに' + esc(outgoing.name) + 'を放出した。'
+      : esc(incoming.name) + 'の引き抜きに成功した。誰も放出しなかったので、春に入る新入生が1人減る。';
     UI.html('poach-body', '<div class="incoming">' + UI.playerDetail(incoming, { rename: false }) + '</div>');
 
     const more = state.tour.index < state.tour.rounds.length - 1;
@@ -1244,8 +1308,7 @@ const Screens = (() => {
     const isLast = S.tour.index >= S.tour.rounds.length - 1;
     UI.el('btn-result-next').textContent = res.win
       ? (isLast ? '次へ' : '次の試合へ')
-      : ((S.tour.kind === 'local' || S.tour.kind === 'national') ? 'オフシーズンへ'
-        : (S.tour.kind === 'fallPref' && isLast ? '秋季地区大会へ' : (S.tour.kind === 'spring' ? '新入生の入部へ' : 'オフシーズンへ')));
+      : '次へ';
     UI.show('screen-result');
   }
 
@@ -1275,6 +1338,39 @@ const Screens = (() => {
         '</div>');
       UI.show('screen-localwin');
     }
+  }
+
+  /** サッカーの試合に負けたあと。サッカー部を続けるか、野球部に戻るかを選ぶ */
+  function soccerDecide(state) {
+    const S = state.soccer;
+    socShow(state, state.year + '年目', 'このまま、サッカー？',
+      '<div class="champ champ--miss">' +
+        '<h2 class="champ__title">サッカーでも、負けた</h2>' +
+        '<p class="champ__school">' + esc(S.schoolName) + ' サッカー部</p>' +
+        '<p class="champ__lead">サッカーでも挫折した選手たちが、野球に戻るか悩んでいる。</p>' +
+      '</div>' +
+      '<p class="note">野球部に戻ると、野球をしていた頃の能力に、サッカーの練習で上がった分が足されます。</p>',
+      'サッカー部のまま', '野球部に戻る');
+  }
+
+  /** 野球部に戻るときの、サッカーの練習で上がった能力の一覧 */
+  function soccerReturn(state, next) {
+    const R = state.soccerReturn;
+    const rows = (R.report || []).map((r) =>
+      '<article class="gr"><header class="gr__head"><b>' + esc(r.name) + '</b><span>' + r.grade + '年・' + esc(r.role || '') + '</span></header>' +
+      '<ul class="gr__list">' + r.ups.map((u) =>
+        '<li><span class="gr__label">' + esc(u.label) + '</span><span class="gr__up">+' + u.amount + '</span>' +
+        '<span class="gr__val"><span class="gr__from">' + rankOf(u.before) + ' ' + u.before + '</span>→<span class="gr__to">' + UI.rankNum(u.after) + '</span></span></li>').join('') +
+      '</ul></article>').join('');
+    UI.el('soccer-eyebrow').textContent = state.year + '年目';
+    UI.el('soccer-title').textContent = '野球部に戻る';
+    UI.html('soccer-body',
+      '<p class="section-lead">' + esc(R.school) + ' 野球部が、もう一度グラウンドに立つ。</p>' +
+      '<p class="section-lead">サッカーの練習で、体と足がこんなふうに仕上がっていた。</p>' +
+      (rows ? '<div class="grlist">' + rows + '</div>' : '<p class="note">目に見えて上がった能力はなかった。</p>'));
+    UI.el('btn-soccer-primary').textContent = next;
+    UI.el('btn-soccer-secondary').hidden = true;
+    UI.show('screen-soccer');
   }
 
   /** 夏のあとのオフシーズン。3年生の引退（能力つき） */
@@ -1402,9 +1498,9 @@ const Screens = (() => {
 
   return {
     pick, ready, training, trainingResult, opening, pregame,
-    poachWin, poachRelease, poachSuccess, poachFailed, champion, celebrate, springResult, offseason, settings, lineupCard, bindRows,
+    poachWin, poachRelease, poachCinema, poachSuccess, poachFailed, champion, celebrate, springResult, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
-    localWin, soccerStart, soccerOpening, soccerPregame, soccerVerdict, soccerGrowth, soccerMatchResult, soccerLineupEditor, soccerCelebrate, soccerOffseason,
+    localWin, soccerStart, soccerOpening, soccerPregame, soccerVerdict, soccerGrowth, soccerMatchResult, soccerLineupEditor, soccerCelebrate, soccerOffseason, soccerDecide, soccerReturn,
     soccerTraining, soccerTrainingResult, soccerSpringResult, soccerNewcomers,
   };
 })();
