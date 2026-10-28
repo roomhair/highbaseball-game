@@ -257,18 +257,15 @@ const Game = (() => {
        チームが強くなればそのぶん勝ち上がれる。
        年ごとに少しだけゆらぎを入れて、当たり年・外れ年を作る */
     const F = CONFIG.FIELD;
-    let j = 1 + (Math.random() * 2 - 1) * F.yearJitter;
-    /* まれに顔ぶれが大きく変わる。手薄な年に当たれば、
-       まだ力の足りないチームにも勝ち上がる目が出る */
-    if (RNG.chance(F.oddYear)) {
-      const r = RNG.chance(0.5) ? F.weakYear : F.strongYear;
-      j = r[0] + Math.random() * (r[1] - r[0]);
-    }
+    /* 年ごとのゆらぎ（当たり年・外れ年）は付けない。1年目も2年目以降も、
+       同じ大会なら相手の強さの決まり方は同じにする。
+       （戻したいときは CONFIG.FIELD.yearJitter / oddYear を使って以前の式に戻す） */
+    let j = 1;
     let from;
     if (kind === 'fallPref') state.springQualified = false;
     if (kind === 'local') {
       /* 当たり年でも、1回戦から極端に強い相手が出ないようにする */
-      from = F.local.from * Math.min(j, 1.08);
+      from = F.local.from;
       state.localJitter = j;
     } else if (kind === 'national') {
       /* 全国大会の1回戦は、地方大会の決勝の続きから。
