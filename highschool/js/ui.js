@@ -386,8 +386,7 @@ const UI = (() => {
         stat('走力', p.speed, null, init.speed) + stat('肩力', p.arm, null, init.arm) +
         stat('守備', p.field, null, init.field) + stat('捕球', p.catch, null, init.catch);
       abilities += '</div>';
-      abilities += '<div class="minor"><span>弾道 ' + trajIcon(p.traj) + '（' + TRAJ_LABEL[p.traj] + '）' +
-        (init.traj != null && init.traj !== p.traj ? '　獲得時 ' + trajIcon(init.traj) + '（' + TRAJ_LABEL[init.traj] + '）' : '') + '</span>' +
+      abilities += '<div class="minor"><span>弾道 ' + trajIcon(p.traj) + '（' + TRAJ_LABEL[p.traj] + '）</span>' +
         '<span>打球方向 <b>' + pullText(p.pull) + '</b>（' + (p.pull > 0 ? '+' : '') + p.pull + '）</span></div>';
       abilities += '<h4 class="sub">守備適性</h4><div class="aptrow">' +
         FIELD_POSITIONS.map((k) => '<span class="apt"><i>' + posShort(k) + '</i>' + aptSpan(p.apt[k]) + '</span>').join('') +
