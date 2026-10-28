@@ -205,7 +205,11 @@ const Player = (() => {
     return s;
   }
 
-  function seedPracticePit(p, games, peerLevel) {
+  function seedPracticePit(p, games0, peerLevel) {
+    /* 投手は野手のように毎試合は出ない。以前は野手と同じ試合数を投げた
+       ことにしていて、3年生で80試合・290回にもなっていたので、
+       試合数を4割にする（3年生で30試合・110回前後） */
+    const games = Math.max(games0 > 0 ? 1 : 0, Math.round(games0 * 0.4));
     const outs = Math.max(0, Math.round(games * RNG.norm(11, 2.2)));
     const s = Sim.careerPit(p, outs, peerLevel == null ? HOME_PEER_LEVEL : peerLevel);
     s.g = games;

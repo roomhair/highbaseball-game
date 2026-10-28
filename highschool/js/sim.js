@@ -197,7 +197,11 @@ const Sim = (() => {
         0.026 + 0.22 * (pw - 0.42) + 0.016 * (bat.traj - 2) +
         0.03 * (contact - 0.5) - 0.050 * (stuff - 0.45),
         0.0008, 0.20
-      ) * (type === 'FB' ? 1.25 : 0.55) * 0.25;
+      ) * (type === 'FB' ? 1.25 : 0.55) * (0.25 + 0.5 * Math.pow(Math.max(0, pw - 0.55) / 0.4, 1.5));
+      /* 上の 0.25 は、パワーが平均以下の打者の本塁打の少なさ。
+         パワーが55を超えると本塁打が急に増え、パワーが高いほど
+         ずっと打てるようにしてある（以前は全員一律0.25倍で、パワー100の
+         打者でも1年に数本しか打てなかった） */
       if (RNG.chance(pHR)) {
         const ofKey = effBats(bat) === 'L' ? mirror(OF_BY_ZONE[zone]) : OF_BY_ZONE[zone];
         return { code: 'HR', text: posShort(ofKey) + '本', out: 0, spot: ofKey };
