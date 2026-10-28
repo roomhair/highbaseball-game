@@ -220,8 +220,10 @@ const Team = (() => {
       const before = p.staminaCarry || 0;
       const cap = Sim.capacityOf(p);
       const limit = cap + 18;
-      const used = cap > 0 ? (bf / cap) * (limit * 0.35) : 0;
-      p.staminaCarry = before * 0.45 + used;
+      /* 以前は 0.35 と 0.45。疲れが溜まりにくく、連投しても万全のままだったので、
+         1試合で積む量を増やし、抜けるのも遅くした */
+      const used = cap > 0 ? (bf / cap) * (limit * 0.55) : 0;
+      p.staminaCarry = before * 0.6 + used;
     });
   }
 
