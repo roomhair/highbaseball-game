@@ -725,7 +725,7 @@ const Sim = (() => {
             log.push(snap('steal', { text: runner.name + ' 盗塁成功', ok: true }, off, def, inning, half, outs, bases, A, H, bat, pit));
             showBases(); yield;
           } else {
-            bases[0] = null; outs++;
+            bases[0] = null; outs++; pit.game.outs++;      // 盗塁死も、投手が取ったアウト
             log.push(snap('steal', { text: runner.name + ' 盗塁失敗', ok: false }, off, def, inning, half, outs, bases, A, H, bat, pit));
             showBases(); yield;
             if (outs >= 3) {
@@ -762,7 +762,7 @@ const Sim = (() => {
             bases[2] = runner; bases[1] = null; runner.game.sb++;
             log.push(snap('steal', { text: runner.name + ' 三盗成功', ok: true }, off, def, inning, half, outs, bases, A, H, bat, pit));
           } else {
-            bases[1] = null; outs++;
+            bases[1] = null; outs++; pit.game.outs++;
             log.push(snap('steal', { text: runner.name + ' 三盗失敗', ok: false }, off, def, inning, half, outs, bases, A, H, bat, pit));
           }
           showBases(); yield;
