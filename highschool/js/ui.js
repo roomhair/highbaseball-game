@@ -384,7 +384,7 @@ const UI = (() => {
         stat('守備', p.field, null, init.field) + stat('捕球', p.catch, null, init.catch);
       abilities += '</div>';
       abilities += '<div class="minor"><span>弾道 ' + trajIcon(p.traj) + '（' + TRAJ_LABEL[p.traj] + '）</span>' +
-        '<span>打球方向 <b>' + pullText(p.pull) + '</b>（' + (p.pull > 0 ? '+' : '') + p.pull + '）</span></div>';
+        '<span>打球傾向 <b>' + pullText(p.pull) + '</b>（' + (p.pull > 0 ? '+' : '') + p.pull + '）</span></div>';
       abilities += '<h4 class="sub">守備適性</h4><div class="aptrow">' +
         FIELD_POSITIONS.map((k) => '<span class="apt"><i>' + posShort(k) + '</i>' + aptSpan(p.apt[k]) + '</span>').join('') +
         '</div>';
