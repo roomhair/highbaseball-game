@@ -758,16 +758,22 @@ const Screens = (() => {
     const t1 = setTimeout(() => {
       ov.classList.add(success ? 'is-win' : 'is-lose');
       const stamp = ov.querySelector('.pcine__stamp');
-      stamp.textContent = success ? '強奪成功！' : '引き止められた…';
       if (success) {
-        for (let i = 0; i < 26; i++) {
-          const c = document.createElement('i');
-          c.className = 'pcine__confetti';
-          c.style.left = (4 + Math.random() * 92) + '%';
-          c.style.animationDelay = (Math.random() * 0.5) + 's';
-          c.style.background = ['#ffc21a', '#2a6fdb', '#ff5a6e', '#1f9447', '#ffffff'][i % 5];
-          ov.appendChild(c);
-        }
+        /* 成功は紙吹雪をやめて、金の光と細い線で静かに見せる */
+        ov.classList.add('is-win2');
+        ov.insertAdjacentHTML('beforeend',
+          '<div class="pcine__rays"></div><div class="pcine__flash"></div>' +
+          '<div class="pcine__win">' +
+            '<div class="pcine__wlabel">SUCCESS</div>' +
+            '<div class="pcine__wrule"><i></i></div>' +
+            '<div class="pcine__wtitle">強奪成功</div>' +
+            '<div class="pcine__wrule"><i></i></div>' +
+            '<div class="pcine__wname">' + esc(incoming.name) + '</div>' +
+            '<div class="pcine__wmeta">' + incoming.grade + '年・' + esc(pos) + '</div>' +
+          '</div>');
+        stamp.remove();
+      } else {
+        stamp.textContent = '引き止められた…';
       }
     }, 1500);
     const t2 = setTimeout(finish, 3300);
