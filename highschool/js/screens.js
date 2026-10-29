@@ -891,7 +891,7 @@ const Screens = (() => {
       '<div class="champ champ--local">' +
         confetti(18, ['#1f9447', '#ffd43b', '#7cc4ff', '#ffffff']) +
         '<p class="champ__eyebrow">' + state.year + '年目</p>' +
-        '<h2 class="champ__title">県大会 優勝</h2>' +
+        '<h2 class="champ__title">夏の県大会 優勝</h2>' +
         '<p class="champ__school">' + esc(t.name) + '</p>' +
         '<div class="champ__rays" aria-hidden="true"></div>' +
         '<p class="champ__record">' + tourLine(state) + '</p>' +
@@ -1389,7 +1389,7 @@ const Screens = (() => {
       UI.html('localwin-body',
         '<div class="champ champ--local">' +
           confetti(18, ['#1f9447', '#ffd43b', '#7cc4ff', '#ffffff']) + year +
-          '<h2 class="champ__title">県大会 優勝</h2>' +
+          '<h2 class="champ__title">夏の県大会 優勝</h2>' +
           '<p class="champ__school">' + esc(S.schoolName) + ' サッカー部</p>' +
           '<div class="champ__rays" aria-hidden="true"></div>' +
           '<p class="champ__lead">サッカー部が県の代表として、' + esc(state.settings.nationalName) + 'へ駒を進めた。</p>' +

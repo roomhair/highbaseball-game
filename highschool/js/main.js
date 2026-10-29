@@ -75,14 +75,14 @@ const Game = (() => {
   Screens.setOnChange(save);
 
   function tourLabel() {
-    if (!state.tour) return '県大会';
+    if (!state.tour) return '夏の県大会';
     switch (state.tour.kind) {
       case 'national': return state.settings.nationalName;
-      case 'fallPref': return '秋季県大会';
+      case 'fallPref': return '秋の県大会';
       case 'fallDistrict': return '秋季地区大会';
       case 'fallJingu': return state.settings.jinguName;
       case 'spring': return state.settings.springName;
-      default: return '県大会';
+      default: return '夏の県大会';
     }
   }
 
@@ -221,7 +221,7 @@ const Game = (() => {
       case 'springOrNextSummer': return state.settings.springName + '選考へ';
       /* 新入生を迎えたあとの特訓が終わったら、次はいよいよ夏の大会 */
       case 'nextSummer': return '夏の大会へ';
-      default: return '県大会へ';
+      default: return '夏の県大会へ';
     }
   }
 
@@ -774,11 +774,11 @@ const Game = (() => {
   function soccerLabel(kind) {
     switch (kind) {
       case 'national': return state.settings.nationalName;
-      case 'fallPref': return '秋季県大会';
+      case 'fallPref': return '秋の県大会';
       case 'fallDistrict': return '秋季地区大会';
       case 'fallJingu': return state.settings.jinguName;
       case 'spring': return state.settings.springName;
-      default: return '県大会';
+      default: return '夏の県大会';
     }
   }
 
