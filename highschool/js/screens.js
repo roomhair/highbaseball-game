@@ -145,14 +145,17 @@ const Screens = (() => {
         '<td class="nm">' + esc(p.name) + '</td>' +
         '<td class="c tiny">' + p.grade + '年</td>' +
         '<td class="c tiny">' + UI.handMark(p) + '</td>' +
-        '<td class="c tiny">' + UI.rankNum(p.meet) + ' ' + UI.rankNum(p.power) + ' ' + UI.rankNum(p.speed) + '</td></tr>';
+        /* 弾道（矢印と数字）・ミート・パワー・走力、右にスクロールすると肩力・守備・捕球 */
+        '<td class="c">' + UI.trajIcon(p.traj) + '</td>' +
+        [p.meet, p.power, p.speed, p.arm, p.field, p.catch].map((v) => '<td class="c tiny">' + UI.rankNum(v) + '</td>').join('') + '</tr>';
     }).join('');
     /* 数字の列が何なのかは、見出しを付けないと分からない */
     const head =
       '<thead><tr>' +
         '<th class="c">打順</th><th class="c">守備</th><th class="nm">選手</th>' +
         '<th class="c tiny">学年</th><th class="c tiny">投打</th>' +
-        '<th class="c tiny">ミート　パワー　走力</th>' +
+        '<th class="c tiny">弾道</th><th class="c tiny">ミート</th><th class="c tiny">パワー</th><th class="c tiny">走力</th>' +
+        '<th class="c tiny">肩力</th><th class="c tiny">守備</th><th class="c tiny">捕球</th>' +
       '</tr></thead>';
     const sp = Team.find(t, t.rotation[0]);
     return '<div class="lineupcard' + (opts.compact ? ' is-compact' : '') + '">' +
