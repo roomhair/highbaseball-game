@@ -120,6 +120,7 @@ const UI = (() => {
         onOpen(body) {
           body.querySelector('#cf-no').addEventListener('click', () => {
             closeModal.back = null; closeModal.after = null; closeModal();
+            if (opt.onNo) opt.onNo();
           });
           body.querySelector('#cf-yes').addEventListener('click', () => {
             closeModal.back = null; closeModal.after = null; closeModal();

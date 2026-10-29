@@ -1484,6 +1484,19 @@ const Game = (() => {
       if (n) { n.addEventListener('input', updateSettingsButton); n.addEventListener('change', updateSettingsButton); }
     });
     on('btn-info-close', closeInfo);
+    on('btn-info-back', closeInfo);
+    /* 設定の←。変えていなければそのまま戻り、変えていれば、保存するかどうかを聞く
+       （×で閉じれば、設定の画面にとどまる） */
+    on('btn-settings-back', () => {
+      if (!settingsChanged()) { closeInfo(); return; }
+      UI.confirmBox({
+        title: '設定が変更されています',
+        body: '変更を保存して戻りますか？',
+        yes: '保存して戻る', yesClass: 'btn--primary',
+        no: '保存せずに戻る',
+        onNo: closeInfo,
+      }, saveSettings);
+    });
     on('btn-teaminfo', () => Screens.teamInfo(state));
     on('btn-teaminfo-back', () => Screens.info());
     on('btn-settings-save', saveSettings);
