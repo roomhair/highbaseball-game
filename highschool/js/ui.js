@@ -1135,13 +1135,15 @@ const UI = (() => {
 
   /** プロ入りした選手の一覧（info から）。名前を押すと、能力・通算成績・活躍シーンが見られる */
   function prosList(list) {
-    const sorted = list.slice().sort((a, b) => (a.year - b.year) || (a.round - b.round));
+    /* 直近のドラフトが上。同じ年の中は指名順 */
+    const sorted = list.slice().sort((a, b) => (b.year - a.year) || (a.round - b.round));
+    const draftYear = (x) => (Body.START_YEAR + x.year - 1) + '年ドラフト';
     const row = (x, i) => {
       const p = x.player;
       return '<li class="proslist__row"><button type="button" class="linkbtn pname" data-i="' + i + '">' + esc(p.name) + '</button>' +
         '<span class="proslist__meta">' + (p.kind === 'pitcher' ? '投手' : posName(p.pos)) + '　' + handMark(p) + '</span>' +
         '<em class="retire__draft">' + esc(x.text) + '</em>' +
-        '<span class="proslist__sub">' + esc(x.school || '') + '　' + x.year + '年目</span></li>';
+        '<span class="proslist__sub">' + esc(x.school || '') + '　' + draftYear(x) + '</span></li>';
     };
     const show = () => {
       closeModal.back = null;
@@ -1154,7 +1156,7 @@ const UI = (() => {
         const x = sorted[+b.dataset.i];
         Body.ensure(x.player);
         html('modal-body',
-          '<p class="proslist__tag"><em class="retire__draft">' + esc(x.text) + '</em>　' + esc(x.school || '') + '　' + x.year + '年目</p>' +
+          '<p class="proslist__tag"><em class="retire__draft">' + esc(x.text) + '</em>　' + esc(x.school || '') + '　' + draftYear(x) + '</p>' +
           playerDetail(x.player, { rename: false }) + proSection(x) +
           '<div class="actions actions--modal"><button type="button" class="btn" id="pl-back">一覧に戻る</button></div>');
         wireBodyLog(el('modal-body'), x.player);
