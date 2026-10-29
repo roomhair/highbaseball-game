@@ -361,7 +361,12 @@ const UI = (() => {
   function openBodyList(team, players) {
     const all = team ? Team.all(team) : players;
     const sortAll = (list) => list.slice().sort((a, b) => (b.grade - a.grade) || (Player.rating(b) - Player.rating(a)));
-    const bats = sortAll(all.filter((p) => p.kind !== 'pitcher'));
+    /* 野手は、打順に並べる（スタメンが先、控えはそのあと学年・総合順） */
+    const lineupNo = (p) => {
+      const i = team && team.lineup ? team.lineup.findIndex((s) => s.pid === p.id) : -1;
+      return i < 0 ? 99 : i;
+    };
+    const bats = sortAll(all.filter((p) => p.kind !== 'pitcher')).sort((a, b) => lineupNo(a) - lineupNo(b));
     const pits = sortAll(all.filter((p) => p.kind === 'pitcher'));
     const apt = (p) => '<td class="bl__apt">' + FIELD_POSITIONS.map((k) =>
       '<b>' + ((p.apt && p.apt[k]) || 'G') + '</b>').join('') + '</td>';
