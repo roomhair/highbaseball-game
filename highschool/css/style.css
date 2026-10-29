@@ -2281,3 +2281,5 @@ a.appbar__title { text-decoration: none; }
   color: var(--ink-mute); font: inherit; font-size: 15px; font-weight: 700; line-height: 1; cursor: pointer;
 }
 .backarrow:active { transform: translateY(1px); }
+
+.bl__name { font-weight: 700; font-size: 11px; text-align: left; white-space: nowrap; }

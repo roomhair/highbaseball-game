@@ -366,7 +366,7 @@ const UI = (() => {
     const apt = (p) => '<td class="bl__apt">' + FIELD_POSITIONS.map((k) =>
       '<b>' + ((p.apt && p.apt[k]) || 'G') + '</b>').join('') + '</td>';
     const body = (p) => '<td class="bl__body">' + (p.ht != null ? Math.round(p.ht) + 'cm<br>' + Math.round(p.wt) + 'kg' : '-') + '</td>';
-    const head = (p) => '<td class="bl__g">' + p.grade + '</td><td class="bl__nm">' + esc(p.name) +
+    const head = (p) => '<td class="bl__g">' + p.grade + '</td><td class="bl__nm"><button type="button" class="linkbtn bl__name" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
       (p.animal ? '<em class="bl__gen">動物</em>' : (p.genius ? '<em class="bl__gen">天才</em>' : '')) + '</td><td class="bl__h">' + esc(handMark(p)) + '</td>';
     const batRow = (p) => '<tr>' + head(p) + body(p) +
       [p.meet, p.power, p.speed, p.arm, p.field, p.catch].map((v) => '<td class="c">' + rankNum(v) + '</td>').join('') + apt(p) + '</tr>';
@@ -378,14 +378,37 @@ const UI = (() => {
       ? '<h4 class="sub">' + title + '（' + rows.length + '人）</h4><div class="bl__wrap"><table class="bl">' +
         '<thead><tr><th>年</th><th>選手</th><th>投打</th><th>体格</th>' + ths + aptTh + '</tr></thead><tbody>' +
         rows.join('') + '</tbody></table></div>' : '';
-    modal(
+    const listHtml =
       '<h3 class="modal__title">体格・能力の一覧</h3>' +
       table('野手', bats.map(batRow), '<th>ミ</th><th>パ</th><th>走</th><th>肩</th><th>守</th><th>捕</th>') +
       table('投手', pits.map(pitRow), '<th>球速</th><th>制球</th><th>スタ</th><th>変化球</th>') +
-      '<div class="actions actions--modal"><button type="button" class="btn btn--wide" data-close>閉じる</button></div>',
-      { kind: 'bodylist', onOpen(b) {
-        b.querySelectorAll('[data-close]').forEach((x) => x.addEventListener('click', () => closeModal()));
-      } });
+      '<div class="actions actions--modal"><button type="button" class="btn btn--wide" data-close>閉じる</button></div>';
+
+    /* 一覧を描き、名前を押したら、その選手の個人画面を一覧の上に出す（戻ると同じ位置から） */
+    const wire = (b) => {
+      b.querySelectorAll('[data-close]').forEach((x) => x.addEventListener('click', () => closeModal()));
+      b.querySelectorAll('.bl__name').forEach((n) => n.addEventListener('click', () => {
+        const q = all.find((x) => x.id === n.dataset.pid);
+        if (!q) return;
+        const panel = document.querySelector('.modal__body');
+        const top = panel ? panel.scrollTop : 0;
+        const back = () => {
+          closeModal.back = null;
+          html('modal-body', listHtml);
+          wire(el('modal-body'));
+          const pn = document.querySelector('.modal__body');
+          if (pn) pn.scrollTop = top;
+        };
+        html('modal-body', playerDetail(q, { team, rename: false }) +
+          '<div class="actions actions--modal"><button type="button" class="btn" id="bl-pback">一覧に戻る</button></div>');
+        const body = el('modal-body');
+        wireBodyLog(body, q);
+        body.querySelector('#bl-pback').addEventListener('click', back);
+        closeModal.back = back;
+        if (panel) panel.scrollTop = 0;
+      }));
+    };
+    modal(listHtml, { kind: 'bodylist', onOpen: wire });
   }
 
   /* ---------- 選手の詳細 ---------- */
