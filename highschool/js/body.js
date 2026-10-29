@@ -97,7 +97,7 @@ const Body = (() => {
   const VELO_K = 2.0;           // idx 1 あたりに足す球速（km/h）
   const GM_K = 0.10;            // idx 1 あたりの伸びやすさの変化
   const CEIL_BASE = 98, CEIL_K = 3.5, CEIL_MIN = 80;
-  const OFF_CAP = 12, VELO_CAP = 7;    // 補正の合計の上限
+  const OFF_CAP = 16, VELO_CAP = 12;    // 補正の合計の上限
 
   /* 同じ学年・同じ区分の平均身長（cm）。投手はやや高い */
   const refOf = (extra) => { const o = {}; [1, 2, 3, 4].forEach((g) => { o[g] = JP_HT[g] * SCALE + extra; }); return o; };
@@ -125,8 +125,8 @@ const Body = (() => {
      ミート・スタミナ・変化球 … 身長とは結びつけない（0） */
   const DIR_H = {
     velo: 1, power: 1, arm: 1,
-    field: -1, catch: -1, control: -1,
-    speed: -0.4, traj: 0.4,
+    field: -0.55, catch: -0.55, control: -0.3,
+    speed: -0.3, traj: 0.4,
     meet: 0, stamina: 0, pitch: 0,
   };
 
@@ -225,11 +225,11 @@ const Body = (() => {
   /* 体重の効き方（標準からの差 z について）。入部時の z0 を基準に、
      「そこからの変化」だけが能力に出る */
   /* 投手の球速: 軽い・標準のうちは、増量で上がる。標準を少し超えると頭打ち、そこから下がる */
-  function gPitch(z) { return z <= 0.4 ? z : 0.4 - 0.7 * (z - 0.4); }
+  function gPitch(z) { return z <= 0.9 ? z : 0.9 - 0.5 * (z - 0.9); }
   /* 野手のパワー: 標準を超えるあたりまで増量で上がる。そのあとは伸びにくい */
-  function gBat(z) { return z <= 0.8 ? z : 0.8 - 0.35 * (z - 0.8); }
+  function gBat(z) { return z <= 1.0 ? z : 1.0 - 0.3 * (z - 1.0); }
   /* 走力・敏捷性: 標準より重くなると下がる */
-  function penSpeed(z) { return Math.max(0, z - 0.6); }
+  function penSpeed(z) { return Math.max(0, z - 1.0); }
   function penField(z) { return Math.max(0, z - 0.9); }
 
   function clampAbs(v, cap) { return Math.max(-cap, Math.min(cap, v)); }
@@ -239,10 +239,12 @@ const Body = (() => {
     const z = zW(p), z0 = p.zW0 == null ? z : p.zW0;
     const resp = p.wtResp == null ? 0.8 : p.wtResp;
     let v = 0;
-    if (key === 'velo' && p.kind === 'pitcher') v = clampAbs(resp * 2.0 * (gPitch(z) - gPitch(z0)), 4);
-    else if (key === 'power' && p.kind !== 'pitcher') v = clampAbs(resp * 3.5 * (gBat(z) - gBat(z0)), 6);
-    else if (key === 'speed') v = clampAbs(-4.5 * (penSpeed(z) - penSpeed(z0)), 6);
-    else if (key === 'field') v = clampAbs(-1.6 * (penField(z) - penField(z0)), 4);
+    if (key === 'velo' && p.kind === 'pitcher') v = clampAbs(resp * 9.0 * (gPitch(z) - gPitch(z0)), 12);
+    else if (key === 'stamina' && p.kind === 'pitcher') v = clampAbs(resp * 4.0 * (gPitch(z) - gPitch(z0)), 6);
+    else if (key === 'power' && p.kind !== 'pitcher') v = clampAbs(resp * 10.0 * (gBat(z) - gBat(z0)), 14);
+    else if (key === 'arm') v = clampAbs(resp * 3.0 * (gBat(z) - gBat(z0)), 6);
+    else if (key === 'speed') v = clampAbs(-2.5 * (penSpeed(z) - penSpeed(z0)), 8);
+    else if (key === 'field') v = clampAbs(-1.0 * (penField(z) - penField(z0)), 4);
     return v;
   }
 
@@ -317,6 +319,13 @@ const Body = (() => {
     return out;
   }
 
+  /* 体づくりの型。冬に体が大きく変わる選手（2割弱）、ふつうの選手、あまり変わらない選手。
+     大きく変わる選手は、体重・身長の伸びが大きく、そのぶん能力も大きく動く */
+  function rollBuild() {
+    const r = RNG.rand();
+    return r < 0.18 ? 2.0 : (r < 0.7 ? 1.0 : 0.35);
+  }
+
   /** 新しい選手の身体（身長・体重・身体能力・個人差）を引く */
   function roll(kind, pos, grade) {
     const g = Math.min(3, Math.max(1, grade || 1));
@@ -337,13 +346,14 @@ const Body = (() => {
       htType: r < 0.25 ? -1 : (r < 0.75 ? 0 : 1),
       wtTrend: RNG.clamp(0.3 + RNG.gauss() * 0.8, -1.5, 1.8),
       wtResp: RNG.clamp(0.8 + RNG.gauss() * 0.5, -0.2, 1.4),
+      build: rollBuild(),
       tilt: rollTilt(kk, (ht - refH) / HT_SD),
     };
   }
 
   function setParts(p, parts) {
     p.ht = parts.ht; p.wt = parts.wt; p.phys = parts.phys;
-    p.htType = parts.htType; p.wtTrend = parts.wtTrend; p.wtResp = parts.wtResp;
+    p.htType = parts.htType; p.wtTrend = parts.wtTrend; p.wtResp = parts.wtResp; p.build = parts.build;
     p.tilt = parts.tilt || null;
     p.bodyT = NOW; p.bodyLog = []; p.bodyV = BODY_VER;
     p.zW0 = zW(p);
@@ -417,6 +427,7 @@ const Body = (() => {
     }
     if (p.bodyT == null) p.bodyT = NOW;
     if (!p.bodyLog) p.bodyLog = [];
+    if (p.build == null && !p.fixedBody) p.build = rollBuild();     // 古い保存データの選手にも体づくりの型を付ける
     return p;
   }
 
@@ -437,7 +448,8 @@ const Body = (() => {
     const to = p.bodyT + 1, mo = monthOf(to);
     const g = Math.min(3, Math.max(1, p.grade || 1));
     const gEff = mo === 4 ? Math.max(1, g - 1) : g;
-    const grow = Math.max(0, (HT_GROW[gEff] != null ? HT_GROW[gEff] : 0.3) * HT_TYPE_FACTOR[String(p.htType || 0)] / 12 + RNG.norm(0, 0.05));
+    const bm = p.build != null ? p.build : 1;       // 体づくりの型（大きく変わる選手ほど大きい）
+    const grow = Math.max(0, (HT_GROW[gEff] != null ? HT_GROW[gEff] : 0.3) * HT_TYPE_FACTOR[String(p.htType || 0)] * (1 + (bm - 1) * 0.5) / 12 + RNG.norm(0, 0.05));
     const htOld = p.ht, wtOld = p.wt;
     const h0 = htOld / 100;
     p.ht = htOld + grow;
@@ -447,7 +459,7 @@ const Body = (() => {
     const oldExp = interp(BMI_REF, Math.max(0, posNew - 1 / 12)) * h0 * h0;
     const expNow = interp(BMI_REF, posNew) * h1 * h1;
     const winter = WINTER[mo] ? 1 : 0;
-    const dw = (expNow - oldExp) * 0.9 + SCALE * (0.10 * (p.wtTrend || 0) * (1 + winter * 1.5) +
+    const dw = (expNow - oldExp) * 0.9 + SCALE * bm * (0.10 * (p.wtTrend || 0) * (1 + winter * 1.5) +
       (WT_SEASON[mo] || 0) + RNG.norm(0, winter ? 0.75 : 0.35) * (1 + winter * 0.25 * Math.abs(p.wtTrend || 0)));
     p.wt = RNG.clamp(wtOld + dw, 48 * SCALE, 125 * SCALE);
     p.bodyT = to;
