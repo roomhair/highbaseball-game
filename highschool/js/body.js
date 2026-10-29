@@ -66,6 +66,7 @@ const Body = (() => {
     OLD_REFS[2].ht.pitcher[g] = JP_HT[g] * sc + 2.0 * sc;
     OLD_REFS[2].bmi[g] = JP_WT[g] * sc / Math.pow(JP_HT[g] * sc / 100, 2);
   });
+  const HT_MIN = 155;           // 身長の下限（cm）。上限は設けない
   const BODY_VER = 3;           // 体格の基準の版（日本の平均の倍率を変えたら上げる）。これより前の選手は ensure で直す
   const HT_SD = 5.5 * SCALE;    // 身長の標準偏差（cm）
   const PHYS_SD = 1.0;          // 身体能力の標準偏差
@@ -285,7 +286,10 @@ const Body = (() => {
     const kk = kind === 'pitcher' ? 'pitcher' : 'batter';
     const posKey = kk === 'pitcher' ? 'P' : (pos || 'LF');
     const refH = refHtAt(kk, g, NOW), refB = bmiRefAt(g, NOW);
-    const ht = refH + posHt(posKey) + RNG.norm(0, 5.2 * SCALE);
+    /* 身長は、端が切れない正規分布から引く。上限は設けない（2mを超える選手も、
+       きわめて小さい確率で出うる）。下限だけ155cm */
+    const zt = Math.sqrt(-2 * Math.log(1 - RNG.rand())) * Math.cos(2 * Math.PI * RNG.rand());
+    const ht = Math.max(HT_MIN, refH + posHt(posKey) + zt * 5.2 * SCALE);
     const bmi = refB + posBmi(posKey) + RNG.norm(0, 2.0 / SCALE);
     const wt = bmi * Math.pow(ht / 100, 2);
     const r = RNG.rand();
