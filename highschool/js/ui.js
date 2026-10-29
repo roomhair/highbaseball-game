@@ -315,18 +315,23 @@ const UI = (() => {
   /** 並び替えボタン付きの一覧。root（要素）に描く */
   function rosterPanel(root, players, opts) {
     opts = opts || {};
-    let key = opts.sort || (opts.team ? 'order' : 'rating');
+    /* 投手に打順は無いので、投手の一覧は能力順から始め、「打順」のボタンも出さない */
+    const isPit = players.length && players[0].kind === 'pitcher';
+    let key = opts.sort || (opts.team && !isPit ? 'order' : 'rating');
+    if (isPit && key === 'order') key = 'rating';
     function draw() {
       root.innerHTML =
         '<div class="sortbar"><span class="sortbar__label">並び替え</span>' +
-        SORTS.filter((s2) => s2.key !== 'order' || opts.team)
+        SORTS.filter((s2) => s2.key !== 'order' || (opts.team && !isPit))
           .filter((s2) => s2.key !== 'pos' || players[0].kind !== 'pitcher')
           .map((s2) => '<button type="button" class="sortbtn' + (s2.key === key ? ' is-on' : '') +
             '" data-sort="' + s2.key + '">' + s2.label + '</button>').join('') +
+        '<button type="button" class="sortbtn sortbtn--body" data-bodylist="1">体格</button>' +
         '</div>' + rosterTable(sortPlayers(players, key, opts.team), opts);
       root.querySelectorAll('.sortbtn').forEach((b) => b.addEventListener('click', () => {
         key = b.dataset.sort; draw();
       }));
+      root.querySelector('[data-bodylist]').addEventListener('click', () => openBodyList(opts.team, players));
       if (opts.onRow) {
         root.querySelectorAll('tr.prow').forEach((tr) =>
           tr.addEventListener('click', () => opts.onRow(tr.dataset.pid, tr, root)));
@@ -342,6 +347,38 @@ const UI = (() => {
       }
     }
     draw();
+  }
+
+  /* ---------- 体格の一覧 ----------
+     全選手の、名前・学年・投打・守備適性・能力・体格をひと目で見られる表 */
+  function openBodyList(team, players) {
+    const all = team ? Team.all(team) : players;
+    const sortAll = (list) => list.slice().sort((a, b) => (b.grade - a.grade) || (Player.rating(b) - Player.rating(a)));
+    const bats = sortAll(all.filter((p) => p.kind !== 'pitcher'));
+    const pits = sortAll(all.filter((p) => p.kind === 'pitcher'));
+    const apt = (p) => '<td class="bl__apt">' + FIELD_POSITIONS.map((k) =>
+      '<b>' + ((p.apt && p.apt[k]) || 'G') + '</b>').join('') + '</td>';
+    const body = (p) => '<td class="bl__body">' + (p.ht != null ? Math.round(p.ht) + 'cm<br>' + Math.round(p.wt) + 'kg' : '-') + '</td>';
+    const head = (p) => '<td class="bl__g">' + p.grade + '</td><td class="bl__nm">' + esc(p.name) +
+      (p.genius ? '<em class="bl__gen">天才</em>' : '') + '</td><td class="bl__h">' + esc(handMark(p)) + '</td>';
+    const batRow = (p) => '<tr>' + head(p) + apt(p) +
+      [p.meet, p.power, p.speed, p.arm, p.field, p.catch].map((v) => '<td class="c">' + rankNum(v) + '</td>').join('') + body(p) + '</tr>';
+    const pitRow = (p) => '<tr>' + head(p) + apt(p) +
+      '<td class="c"><b class="rankval">' + p.velo + '</b></td><td class="c">' + rankNum(p.control) + '</td><td class="c">' + rankNum(p.stamina) + '</td>' +
+      '<td class="bl__pit">' + esc(Player.pitchesInOrder(p).map((q) => q.name + q.level).join('・')) + '</td>' + body(p) + '</tr>';
+    const aptTh = '<th class="bl__apth">' + FIELD_POSITIONS.map((k) => '<span>' + posShort(k) + '</span>').join('') + '</th>';
+    const table = (title, rows, ths) => rows.length
+      ? '<h4 class="sub">' + title + '（' + rows.length + '人）</h4><div class="bl__wrap"><table class="bl">' +
+        '<thead><tr><th>年</th><th>選手</th><th>投打</th>' + aptTh + ths + '<th>体格</th></tr></thead><tbody>' +
+        rows.join('') + '</tbody></table></div>' : '';
+    modal(
+      '<h3 class="modal__title">体格・能力の一覧</h3>' +
+      table('野手', bats.map(batRow), '<th>ミ</th><th>パ</th><th>走</th><th>肩</th><th>守</th><th>捕</th>') +
+      table('投手', pits.map(pitRow), '<th>球速</th><th>制球</th><th>スタ</th><th>変化球</th>') +
+      '<div class="actions actions--modal"><button type="button" class="btn btn--wide" data-close>閉じる</button></div>',
+      { kind: 'bodylist', onOpen(b) {
+        b.querySelectorAll('[data-close]').forEach((x) => x.addEventListener('click', () => closeModal()));
+      } });
   }
 
   /* ---------- 選手の詳細 ---------- */

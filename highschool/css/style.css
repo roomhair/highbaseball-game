@@ -2211,3 +2211,18 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 .ordbtn.is-on { background: var(--ink, #1c2b4a); border-color: var(--ink, #1c2b4a); }
 .ordbtn.is-on b, .ordbtn.is-on span { color: #fff; }
 .stage__ord { display: inline-block; margin-left: 6px; font-size: 10.5px; font-weight: 700; color: #fff; background: #7a4dff; border-radius: 999px; padding: 0 7px; }
+
+/* 体格の一覧 */
+.sortbtn--body { margin-left: auto; }
+.bl__wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 8px; }
+.bl { border-collapse: collapse; font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bl th { font-weight: 700; color: var(--ink-mute); padding: 3px 5px; border-bottom: 1px solid var(--line, #d8d2c2); position: sticky; top: 0; background: var(--panel, #fff); }
+.bl td { padding: 4px 5px; border-bottom: 1px dotted var(--line, #d8d2c2); vertical-align: middle; }
+.bl__nm { font-weight: 700; }
+.bl__gen { margin-left: 3px; font-size: 9px; font-style: normal; color: #7a4dff; }
+.bl__apt b, .bl__apth span { display: inline-block; width: 1.15em; text-align: center; font-size: 10.5px; }
+.bl__apth span { font-weight: 600; }
+.bl__body { text-align: right; line-height: 1.25; }
+.bl .rank { font-size: 11px; }
+.bl .rankval { font-size: 10px; }
+.bl__pit { font-size: 10px; max-width: 14em; overflow: hidden; text-overflow: ellipsis; }
