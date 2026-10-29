@@ -502,6 +502,14 @@ const GameScreen = (() => {
     return Math.max(0, Math.min(1, 1 - faced / limit));
   }
 
+  /** 試合中の表示（投手欄のスタミナ％）と同じ値で出す、タイム画面のゲージ */
+  function liveStaminaGauge() {
+    const v = Math.round(myPitcherStaminaLeft() * 100);
+    const tier = v >= 60 ? 'lo' : (v >= 30 ? 'mid' : 'hi');
+    return '<span class="fatg fatg--' + tier + '" role="img" aria-label="スタミナ ' + v + '%">' +
+      '<span class="fatg__bar"><i style="width:' + v + '%"></i></span><b>' + v + '%</b></span>';
+  }
+
   /** いまの走者・アウト数が「チャンス（ピンチ）」の場面か。
       得点圏（二塁・三塁）に走者がいるとき、タイブレークの無死一二塁も含む */
   function isChanceEvent(e) {
@@ -821,8 +829,7 @@ const GameScreen = (() => {
         (ctx.state.half === 'top' ? '表' : '裏') + '　' +
         (fielding ? '守備中' : '攻撃中') + '</p>' +
       '<div class="time__now">' +
-        (pit ? '<div>いまの投手　<b>' + esc(pit.name) + '</b>　体力' +
-          Team.staminaGauge(pit) + '</div>' : '') +
+        (pit ? '<div>いまの投手　<b>' + esc(pit.name) + '</b>　スタミナ' + liveStaminaGauge() + '</div>' : '') +
         (batter ? '<div>次の打者　<b>' + n + '番 ' + esc(batter.name) + '</b></div>' : '') +
         '<div>采配　<b>' + esc(ordersText()) + '</b></div>' +
       '</div>' +

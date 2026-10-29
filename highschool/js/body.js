@@ -97,7 +97,7 @@ const Body = (() => {
   const VELO_K = 2.0;           // idx 1 あたりに足す球速（km/h）
   const GM_K = 0.10;            // idx 1 あたりの伸びやすさの変化
   const CEIL_BASE = 98, CEIL_K = 3.5, CEIL_MIN = 80;
-  const OFF_CAP = 16, VELO_CAP = 12;    // 補正の合計の上限
+  const OFF_CAP = 20, VELO_CAP = 14;    // 補正の合計の上限
 
   /* 同じ学年・同じ区分の平均身長（cm）。投手はやや高い */
   const refOf = (extra) => { const o = {}; [1, 2, 3, 4].forEach((g) => { o[g] = JP_HT[g] * SCALE + extra; }); return o; };
@@ -125,8 +125,8 @@ const Body = (() => {
      ミート・スタミナ・変化球 … 身長とは結びつけない（0） */
   const DIR_H = {
     velo: 1, power: 1, arm: 1,
-    field: -0.55, catch: -0.55, control: -0.3,
-    speed: -0.3, traj: 0.4,
+    field: -0.2, catch: -0.2, control: -0.1,
+    speed: -0.15, traj: 0.4,
     meet: 0, stamina: 0, pitch: 0,
   };
 
@@ -134,6 +134,10 @@ const Body = (() => {
   const HT_GROW = { 1: 2.6 * SCALE, 2: 1.3 * SCALE, 3: 0.4 * SCALE };
   const HT_TYPE_FACTOR = { '-1': 0.5, '0': 1.0, '1': 1.6 };
 
+  /** その選手の能力として画面に出るもの（投手は球速・制球・スタミナだけ。守備や打撃は体格では動かさない） */
+  function statKeysOf(p) {
+    return p.kind === 'pitcher' ? ['velo', 'control', 'stamina'] : ['meet', 'power', 'speed', 'arm', 'field', 'catch'];
+  }
   const STAT_KEYS = ['meet', 'power', 'speed', 'arm', 'field', 'catch', 'control', 'stamina', 'velo'];
 
   /* ---------- 天才 ----------
@@ -238,13 +242,16 @@ const Body = (() => {
   function weightOffset(p, key) {
     const z = zW(p), z0 = p.zW0 == null ? z : p.zW0;
     const resp = p.wtResp == null ? 0.8 : p.wtResp;
+    /* 体重が標準より増えたときは能力に効くが、減ったときの下がり方はずっと小さい */
+    const soft = (d) => (d < 0 ? d * 0.3 : d);
+    const dP = soft(gPitch(z) - gPitch(z0)), dB = soft(gBat(z) - gBat(z0));
     let v = 0;
-    if (key === 'velo' && p.kind === 'pitcher') v = clampAbs(resp * 9.0 * (gPitch(z) - gPitch(z0)), 12);
-    else if (key === 'stamina' && p.kind === 'pitcher') v = clampAbs(resp * 4.0 * (gPitch(z) - gPitch(z0)), 6);
-    else if (key === 'power' && p.kind !== 'pitcher') v = clampAbs(resp * 10.0 * (gBat(z) - gBat(z0)), 14);
-    else if (key === 'arm') v = clampAbs(resp * 3.0 * (gBat(z) - gBat(z0)), 6);
-    else if (key === 'speed') v = clampAbs(-2.5 * (penSpeed(z) - penSpeed(z0)), 8);
-    else if (key === 'field') v = clampAbs(-1.0 * (penField(z) - penField(z0)), 4);
+    if (key === 'velo' && p.kind === 'pitcher') v = clampAbs(resp * 13.0 * dP, 14);
+    else if (key === 'stamina' && p.kind === 'pitcher') v = clampAbs(resp * 6.0 * dP, 9);
+    else if (key === 'power' && p.kind !== 'pitcher') v = clampAbs(resp * 14.0 * dB, 18);
+    else if (key === 'arm') v = clampAbs(resp * 5.0 * dB, 9);
+    else if (key === 'speed') v = clampAbs(-1.5 * (penSpeed(z) - penSpeed(z0)), 6);
+    else if (key === 'field') v = clampAbs(-0.6 * (penField(z) - penField(z0)), 3);
     return v;
   }
 
@@ -323,7 +330,7 @@ const Body = (() => {
      大きく変わる選手は、体重・身長の伸びが大きく、そのぶん能力も大きく動く */
   function rollBuild() {
     const r = RNG.rand();
-    return r < 0.18 ? 2.0 : (r < 0.7 ? 1.0 : 0.35);
+    return r < 0.2 ? 2.8 : (r < 0.7 ? 1.2 : 0.4);
   }
 
   /** 新しい選手の身体（身長・体重・身体能力・個人差）を引く */
@@ -375,7 +382,7 @@ const Body = (() => {
     if (!p.bodyOff) { p.bodyOff = {}; p.bodyAcc = {}; }
     const changed = {};
     if (p.fixedBody) return changed;           // 体格が変わらない選手（熊）は、体格による補正を受けない
-    STAT_KEYS.forEach((key) => {
+    statKeysOf(p).forEach((key) => {
       if (p[key] == null) return;
       const target = offset(p, key);
       const done = p.bodyOff[key] || 0;

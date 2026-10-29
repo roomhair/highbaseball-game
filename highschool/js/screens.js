@@ -985,7 +985,7 @@ const Screens = (() => {
             '<span>' + (isPit ? '投手' : posName(p.pos)) + '　' + UI.handMark(p) +
             (p.awakened ? '　<b class="awake">覚醒</b>' : '') + '</span>' +
             (f.draft ? '<em class="retire__draft">' + esc(f.draft.text) + '</em>' : '') + '</header>' +
-          (p.from ? '<p class="retire__from">' + p.from.year + '年目に ' + esc(p.from.school) + ' から加入</p>' : '') +
+          (p.from ? '<p class="retire__from">' + UI.fromText(p.from) + '</p>' : '') +
           '<p class="retire__abil">' + esc(abil) + '</p>' +
           (isPit ? UI.careerPitLine(p.career) : UI.careerBatLine(p.career)) +
           '<h4 class="sub">活躍シーン</h4>' + top +
@@ -1102,7 +1102,7 @@ const Screens = (() => {
       '<div class="pdetail__head"><div class="pdetail__name">' + esc(p.name) + '</div>' +
       '<div class="pdetail__meta">' + p.grade + '年　' + esc(Soccer.POS_NAME[p.soc.pos] || '') +
       '　総合 <b>' + Soccer.rating(p) + '</b></div>' +
-      (p.from ? '<div class="pdetail__from">' + p.from.year + '年目に ' + esc(p.from.school) + ' から加入</div>' : '') +
+      (p.from ? '<div class="pdetail__from">' + UI.fromText(p.from) + '</div>' : '') +
       '</div><h4 class="sub">能力</h4>' + mainsHtml + subHtml +
       '<h4 class="sub">サッカー部での成績</h4>' +
       '<p class="note">' + c.g + '試合　得点 ' + c.goals + '　アシスト ' + (c.assists || 0) + '　無失点 ' + c.cs + '</p>' +

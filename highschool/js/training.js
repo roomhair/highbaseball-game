@@ -231,8 +231,9 @@ const Training = (() => {
 
   /* 体格の成長（冬の体づくりや身のこなしの向上）で能力が自然に伸びるようになったぶん、
      特訓の上がり幅を少し絞って、全体の難しさが変わらないようにしてある。
-     体格での伸びは1年で、特訓（1年ぶん）の4〜6%ほど */
-  const BODY_EASE = 0.94;
+     体格での伸びは1年で、特訓（1年ぶん）の1〜2割ほど */
+  const BODY_EASE = { bat: 0.87, pit: 0.88 };
+  const easeOf = (p) => (p.kind === 'pitcher' ? BODY_EASE.pit : BODY_EASE.bat);
 
   function choose(state, team) {
     if (state.done) return state;
@@ -248,7 +249,7 @@ const Training = (() => {
         /* 球速も、身長・身体能力による伸びやすさと上限を受ける */
         Body.ensure(p);
         const vTop = 108 + 52 * Body.ceil(p, 'velo') / 100;
-        let vAdd = Math.max(1, Math.round(t.amount * Body.gm(p, 'velo') * BODY_EASE));
+        let vAdd = Math.max(1, Math.round(t.amount * Body.gm(p, 'velo') * easeOf(p)));
         vAdd = p.velo >= vTop ? 0 : Math.min(vAdd, Math.ceil(vTop - p.velo));
         p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : 168, Math.max(p.velo, Body.veloLimit(p, p.velo + vAdd))); after = p.velo;
       } else if (t.key === 'pitch') {
@@ -266,7 +267,7 @@ const Training = (() => {
            カードの額面（t.amount）に、いまの能力に応じた頭打ちをかける */
         Body.ensure(p);
         before = p[t.key];
-        const add = Math.max(0, Math.round(t.amount * headroom(before, Body.ceil(p, t.key)) * Body.gm(p, t.key) * BODY_EASE));
+        const add = Math.max(0, Math.round(t.amount * headroom(before, Body.ceil(p, t.key)) * Body.gm(p, t.key) * easeOf(p)));
         p[t.key] = Body.stat(p, t.key, before + add);
         after = p[t.key];
       }

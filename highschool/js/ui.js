@@ -199,6 +199,11 @@ const UI = (() => {
       (withNum === false ? '' : '<b>' + n + '</b>') + '</span>';
   }
 
+  /** 強奪で加入した選手の「いつ・どこから」。何年生のときに入ったかで言う（古いデータは年目のまま） */
+  function fromText(f) {
+    return (f.grade ? f.grade + '年生の時に ' : f.year + '年目に ') + esc(f.school) + ' から加入';
+  }
+
   function handMark(p) {
     return (p.throws === 'L' ? '左' : '右') + '投' + Player.batsText(p);
   }
@@ -486,7 +491,7 @@ const UI = (() => {
               ? '<span class="pdetail__bodyinit">（獲得時 ' + Math.round(p.initial.ht) + 'cm・' + Math.round(p.initial.wt) + 'kg）</span>' : '') +
             '<button type="button" class="linkbtn bodylogbtn" id="pd-bodylog">体格の成長履歴</button>' +
             '</div>' : '') +
-        (p.from ? '<div class="pdetail__from">' + p.from.year + '年目に ' + esc(p.from.school) + ' から加入</div>' : '') +
+        (p.from ? '<div class="pdetail__from">' + fromText(p.from) + '</div>' : '') +
       '</div>' +
       abilities +
       '<h4 class="sub">高校通算成績<span class="sub__note">練習試合を含む</span></h4>' +
@@ -1222,7 +1227,7 @@ const UI = (() => {
   return {
     pitOrderOf,
     el, esc, html, show, currentScreen, curtain, modal, closeModal, confirmBox, prosList, decisionLines,
-    avg, era, ipText, trajIcon, stat, rankSpan, rankNum, aptSpan, pullText, handMark,
+    avg, era, ipText, trajIcon, stat, rankSpan, rankNum, aptSpan, pullText, handMark, fromText,
     playerRow, rosterTable, rosterPanel, sortPlayers, playerDetail, openPlayer,
     lineupEditor, roleText, makeSortable, wireRename, captainPicker,
     careerBatLine, careerPitLine, init,

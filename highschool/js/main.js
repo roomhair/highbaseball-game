@@ -356,12 +356,29 @@ const Game = (() => {
     UI.curtain('<b>' + UI.esc(tourLabel()) + '</b><span>開幕</span>', function () {});
   }
 
+  /** 勝ち上がるほど、相手の投手も連戦で疲れている。自軍の先発の疲れ（staminaCarry）を目安に、
+      相手の先発の疲れを決める。同じくらいが半分強、あまり疲れていない・自軍より疲れている、が残り。
+      大会の最初の試合（自軍もまだ疲れていない）では、相手も万全のまま */
+  function tireOpponent(opp) {
+    if (state.tour.index <= 0) return;
+    const mine = Team.find(state.team, (state.team.rotation || [])[0]);
+    const ref = mine ? (mine.staminaCarry || 0) : 0;
+    if (ref <= 0) return;
+    const r = RNG.rand();
+    const f = r < 0.55 ? 0.85 + RNG.rand() * 0.3 : (r < 0.78 ? 0.2 + RNG.rand() * 0.6 : 1.15 + RNG.rand() * 0.6);
+    const starter = Team.find(opp, (opp.rotation || [])[0]);
+    if (starter) starter.staminaCarry = ref * f;
+    /* 先発以外の投手は、登板が少ないぶん軽く */
+    (opp.pitchers || []).forEach((q) => { if (q !== starter) q.staminaCarry = ref * f * 0.4 * RNG.rand(); });
+  }
+
   function toPregame() {
     const r = Tournament.currentRound(state.tour);
     if (!r) { finishTournament(true); return; }
     if (!state.opponent || state.opponent.__round !== state.tour.index) {
       state.opponent = Tournament.buildOpponent(state.tour);
       state.opponent.__round = state.tour.index;
+      tireOpponent(state.opponent);
     }
     /* 先攻・後攻はその都度決める */
     state.mySide = RNG.chance(0.5) ? 'home' : 'away';
@@ -601,7 +618,7 @@ const Game = (() => {
 
   function doPoach(incoming, outgoing) {
     /* どこから来たのかを覚えておく。詳細画面と引退のときに出す */
-    incoming.from = { year: state.year, school: state.opponent.name };
+    incoming.from = { year: state.year, grade: incoming.grade, school: state.opponent.name };
     /* スタミナの持ち越し（staminaCarry）はあえて消さない。投手なら、
        いま負けた相手として投げたばかりの疲れをそのまま引き継ぐほうが自然 */
 
