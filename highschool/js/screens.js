@@ -759,15 +759,17 @@ const Screens = (() => {
       ov.classList.add(success ? 'is-win' : 'is-lose');
       const stamp = ov.querySelector('.pcine__stamp');
       if (success) {
-        /* 成功は紙吹雪をやめて、金の光と細い線で静かに見せる */
+        /* 成功は紙吹雪をやめて、やわらかい光と丸い粒で見せる */
         ov.classList.add('is-win2');
+        let dots = '';
+        for (let i = 0; i < 14; i++) {
+          dots += '<i class="pcine__bub" style="left:' + (6 + Math.random() * 88) + '%;width:' + (8 + Math.random() * 14) +
+            'px;height:' + (8 + Math.random() * 14) + 'px;animation-delay:' + (Math.random() * 1.2) + 's"></i>';
+        }
         ov.insertAdjacentHTML('beforeend',
-          '<div class="pcine__rays"></div><div class="pcine__flash"></div>' +
+          '<div class="pcine__rays"></div><div class="pcine__flash"></div>' + dots +
           '<div class="pcine__win">' +
-            '<div class="pcine__wlabel">SUCCESS</div>' +
-            '<div class="pcine__wrule"><i></i></div>' +
-            '<div class="pcine__wtitle">強奪成功</div>' +
-            '<div class="pcine__wrule"><i></i></div>' +
+            '<div class="pcine__wtitle">強奪成功！</div>' +
             '<div class="pcine__wname">' + esc(incoming.name) + '</div>' +
             '<div class="pcine__wmeta">' + incoming.grade + '年・' + esc(pos) + '</div>' +
           '</div>');

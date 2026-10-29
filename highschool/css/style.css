@@ -2313,29 +2313,27 @@ a.appbar__title { text-decoration: none; }
 /* 文字は、下の「タップで次の打席へ」を除いた高さの真ん中に置く */
 #screen-game .stage > :first-child { padding-bottom: 14px; }
 
-/* ===== 強奪成功の演出（紙吹雪なし・金の光と細い線） ===== */
-.pcine.is-win.is-win2 { background: radial-gradient(ellipse at 50% 45%, #1b2a52 0%, #0a1230 55%, #04070f 100%); }
+/* ===== 強奪成功の演出（紙吹雪なし・やわらかい光と丸い粒） ===== */
+.pcine.is-win.is-win2 { background: radial-gradient(ellipse at 50% 45%, #4a86e8 0%, #2459bd 55%, #153a86 100%); }
 .pcine.is-win2 .pcine__card { animation: pcineCardOut .3s forwards; }
 .pcine__rays {
   position: absolute; left: 50%; top: 46%; width: 190vmax; height: 190vmax; margin: -95vmax 0 0 -95vmax; pointer-events: none;
-  background: repeating-conic-gradient(from 0deg, rgba(255,214,102,.13) 0 4deg, rgba(255,214,102,0) 4deg 16deg);
-  -webkit-mask-image: radial-gradient(circle, #000 0, transparent 38%); mask-image: radial-gradient(circle, #000 0, transparent 38%);
+  background: repeating-conic-gradient(from 0deg, rgba(255,255,255,.12) 0 10deg, rgba(255,255,255,0) 10deg 30deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0, transparent 34%); mask-image: radial-gradient(circle, #000 0, transparent 34%);
   opacity: 0; animation: pcineRays 3.2s linear forwards;
 }
-.pcine__flash { position: absolute; inset: 0; background: radial-gradient(circle at 50% 46%, rgba(255,236,170,.75), rgba(255,236,170,0) 60%); opacity: 0; animation: pcineFlash .7s ease-out forwards; pointer-events: none; }
-.pcine__win { position: relative; text-align: center; width: 100%; padding: 0 28px; }
-.pcine__wlabel { font-size: 12px; letter-spacing: .6em; text-indent: .6em; color: #e8c65a; opacity: 0; animation: pcineUp .5s .15s ease-out forwards; }
-.pcine__wrule { height: 1px; margin: 14px auto; width: min(320px, 80%); }
-.pcine__wrule i { display: block; height: 1px; width: 100%; background: linear-gradient(90deg, transparent, #f2d27a 20%, #fff2c2 50%, #f2d27a 80%, transparent); transform: scaleX(0); animation: pcineLine .7s .25s cubic-bezier(.2,.8,.2,1) forwards; }
+.pcine__flash { position: absolute; inset: 0; background: radial-gradient(circle at 50% 46%, rgba(255,255,255,.6), rgba(255,255,255,0) 60%); opacity: 0; animation: pcineFlash .8s ease-out forwards; pointer-events: none; }
+.pcine__bub { position: absolute; bottom: -30px; border-radius: 50%; background: rgba(255,255,255,.55); box-shadow: 0 0 10px rgba(255,255,255,.5); opacity: 0; animation: pcineBub 2.2s ease-out forwards; }
+.pcine__win { position: relative; text-align: center; width: 100%; padding: 0 20px; }
 .pcine__wtitle {
-  font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif; font-weight: 900; font-size: 52px; letter-spacing: .3em; text-indent: .3em; line-height: 1.2;
-  background: linear-gradient(180deg, #fffbe6 10%, #f6d776 50%, #c4902a 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: #f6d776;
-  filter: drop-shadow(0 2px 10px rgba(246,200,80,.45)); opacity: 0; transform: scale(1.12); animation: pcineTitle .6s .2s cubic-bezier(.2,.9,.2,1) forwards;
+  font-family: var(--font-display); font-weight: 900; font-size: 44px; letter-spacing: .06em; line-height: 1.25;
+  color: #ffe27a; -webkit-text-stroke: 0; text-shadow: 0 3px 0 #d88a00, 0 6px 14px rgba(8,30,90,.45);
+  opacity: 0; transform: scale(.6); animation: pcineTitle .55s .1s cubic-bezier(.2,1.5,.4,1) forwards;
 }
-.pcine__wname { margin-top: 4px; font-size: 22px; font-weight: 800; letter-spacing: .12em; color: #fff; opacity: 0; animation: pcineUp .5s .55s ease-out forwards; }
-.pcine__wmeta { margin-top: 4px; font-size: 13px; letter-spacing: .2em; color: #b9c4dd; opacity: 0; animation: pcineUp .5s .7s ease-out forwards; }
-@keyframes pcineRays { 0% { opacity: 0; transform: rotate(0); } 15% { opacity: 1; } 100% { opacity: .85; transform: rotate(40deg); } }
+.pcine__wname { display: inline-block; margin-top: 14px; padding: 6px 20px; border-radius: 999px; background: rgba(255,255,255,.95); color: #1d3f8f; font-size: 20px; font-weight: 800; letter-spacing: .06em; opacity: 0; animation: pcineUp .45s .45s ease-out forwards; }
+.pcine__wmeta { margin-top: 8px; font-size: 14px; letter-spacing: .1em; color: #e6efff; opacity: 0; animation: pcineUp .45s .6s ease-out forwards; }
+@keyframes pcineRays { 0% { opacity: 0; transform: rotate(0); } 15% { opacity: 1; } 100% { opacity: .8; transform: rotate(30deg); } }
 @keyframes pcineFlash { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes pcineLine { to { transform: scaleX(1); } }
+@keyframes pcineBub { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: .9; } 100% { opacity: 0; transform: translateY(-62vh); } }
 @keyframes pcineTitle { to { opacity: 1; transform: none; } }
 @keyframes pcineUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
