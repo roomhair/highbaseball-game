@@ -50,6 +50,10 @@ const UI = (() => {
     const n = el(id);
     if (n) n.classList.add('is-active');
     current = id;
+    /* 「← 部屋」（部屋のトップへ戻るリンク）は、ゲームのトップ画面だけに出す。
+       プレイ中の画面では、うっかり押して離れてしまわないよう隠す */
+    const home = document.querySelector('.appbar__home');
+    if (home) home.hidden = id !== 'screen-top';
     window.scrollTo(0, 0);
   }
 
