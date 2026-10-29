@@ -604,10 +604,23 @@ const Game = (() => {
       () => advanceRound());
   }
 
+  /** 相手の中でどう使われている選手かによる、強奪の成功率の倍率。
+      スタメン外の野手は取りやすく、1〜4番の野手と、1番手の投手は取りにくい */
+  function poachRoleFactor(p) {
+    const opp = state.opponent;
+    if (!opp || !p) return 1;
+    if (p.kind === 'pitcher') {
+      const first = ((opp.pitcherOrder && opp.pitcherOrder.length ? opp.pitcherOrder : opp.rotation) || [])[0];
+      return first === p.id ? 0.7 : 1;
+    }
+    const i = (opp.lineup || []).findIndex((s) => s.pid === p.id);
+    return i < 0 ? 1.35 : (i < 4 ? 0.7 : 1);
+  }
+
   function attemptPoach(incoming, outgoing) {
     const round = Tournament.currentRound(state.tour);
-    const chance = poachSuccessChance(round ? round.level : 50, state.prestigeScore);
-    const ok = RNG.chance(chance);
+    const chance = poachSuccessChance(round ? round.level : 50, state.prestigeScore) * poachRoleFactor(incoming);
+    const ok = RNG.chance(Math.max(0.02, Math.min(0.95, chance)));
     if (ok) { doPoach(incoming, outgoing); save(); }
     /* 結果の画面の前に、交渉の演出を入れる（結果はもう決まっている） */
     Screens.poachCinema(incoming, ok, () => {
