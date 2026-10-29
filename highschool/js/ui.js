@@ -343,7 +343,7 @@ const UI = (() => {
       root.querySelectorAll('.sortbtn[data-sort]').forEach((b) => b.addEventListener('click', () => {
         key = b.dataset.sort; draw();
       }));
-      root.querySelector('[data-bodylist]').addEventListener('click', () => openBodyList(opts.team, players));
+      root.querySelector('[data-bodylist]').addEventListener('click', () => openBodyList(opts.team, players, key));
       if (opts.onRow) {
         root.querySelectorAll('tr.prow').forEach((tr) =>
           tr.addEventListener('click', () => opts.onRow(tr.dataset.pid, tr, root)));
@@ -363,16 +363,19 @@ const UI = (() => {
 
   /* ---------- 体格の一覧 ----------
      全選手の、名前・学年・投打・守備適性・能力・体格をひと目で見られる表 */
-  function openBodyList(team, players) {
+  function openBodyList(team, players, sortKey) {
     const all = team ? Team.all(team) : players;
-    const sortAll = (list) => list.slice().sort((a, b) => (b.grade - a.grade) || (Player.rating(b) - Player.rating(a)));
-    /* 野手は、打順に並べる（スタメンが先、控えはそのあと学年・総合順） */
-    const lineupNo = (p) => {
-      const i = team && team.lineup ? team.lineup.findIndex((s) => s.pid === p.id) : -1;
-      return i < 0 ? 99 : i;
+    /* 並びは、いま見ている一覧と同じにする（一覧の並び替えで選んだ順）。
+       もう一方の区分（一覧に出ていない側）は、野手は打順・投手は能力順 */
+    const panelKind = players && players[0] ? players[0].kind : null;
+    const keyFor = (kind) => {
+      const k = panelKind && (panelKind === 'pitcher') === (kind === 'pitcher') ? sortKey : null;
+      const d = kind === 'pitcher' ? 'rating' : (team ? 'order' : 'rating');
+      const kk = k || d;
+      return kind === 'pitcher' && kk === 'order' ? 'rating' : kk;
     };
-    const bats = sortAll(all.filter((p) => p.kind !== 'pitcher')).sort((a, b) => lineupNo(a) - lineupNo(b));
-    const pits = sortAll(all.filter((p) => p.kind === 'pitcher'));
+    const bats = sortPlayers(all.filter((p) => p.kind !== 'pitcher'), keyFor('batter'), team);
+    const pits = sortPlayers(all.filter((p) => p.kind === 'pitcher'), keyFor('pitcher'), team);
     const apt = (p) => '<td class="bl__apt">' + FIELD_POSITIONS.map((k) =>
       '<b>' + ((p.apt && p.apt[k]) || 'G') + '</b>').join('') + '</td>';
     const body = (p) => '<td class="bl__body">' + (p.ht != null ? Math.round(p.ht) + 'cm<br>' + Math.round(p.wt) + 'kg' : '-') + '</td>';
