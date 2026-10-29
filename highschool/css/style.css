@@ -1070,9 +1070,9 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .fv-hit { fill: var(--ink); stroke: var(--bg); stroke-width: 1.4; }
 .fv-hit.is-hr { fill: #e05a00; }
 .fv-burst { fill: none; stroke: #ffc94a; stroke-width: 2.4; opacity: 0; }
-.fieldview svg { width: 60px; height: 56px; overflow: visible; }
-@media (max-width: 399px) { .fieldview svg { width: 52px; height: 49px; } }
-@media (min-width: 720px) { .fieldview svg { width: 92px; height: 86px; } }
+.fieldview svg { width: 84px; height: 78px; overflow: visible; }
+@media (max-width: 399px) { .fieldview svg { width: 72px; height: 67px; } }
+@media (min-width: 720px) { .fieldview svg { width: 110px; height: 103px; } }
 .fv-grass { fill: #4cc06a; stroke: none; }
 .fv-fence { fill: none; stroke: #1f7a3a; stroke-width: 2.4; }
 .fv-inf { fill: #d9a066; stroke: #ffffff; stroke-width: 1.4; }
@@ -1228,7 +1228,7 @@ td.role { font-size: 11px; color: var(--ink-mute); }
   .ll__item { line-height: 1.2; }
   .ll { padding: 3px 4px; }
   .scoreboard th, .scoreboard td { font-size: 11.5px; }
-  .fieldview svg { width: 46px; height: 43px; }
+  .fieldview svg { width: 62px; height: 58px; }
   .stage { min-height: 50px; margin: 6px 0; padding: 4px 8px 4px 10px; }
 }
 .ll__item.is-now .ll__no, .ll__item.is-now .ll__pos { color: inherit; opacity: .8; }
