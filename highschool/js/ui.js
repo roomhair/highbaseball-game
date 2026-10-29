@@ -372,15 +372,16 @@ const UI = (() => {
       [p.meet, p.power, p.speed, p.arm, p.field, p.catch].map((v) => '<td class="c">' + rankNum(v) + '</td>').join('') + apt(p) + '</tr>';
     const pitRow = (p) => '<tr>' + head(p) + body(p) +
       '<td class="c"><b class="rankval">' + p.velo + '</b></td><td class="c">' + rankNum(p.control) + '</td><td class="c">' + rankNum(p.stamina) + '</td>' +
-      '<td class="bl__pit">' + esc(Player.pitchesInOrder(p).map((q) => q.name + q.level).join('・')) + '</td>' + apt(p) + '</tr>';
+      '<td class="bl__pit">' + esc(Player.pitchesInOrder(p).map((q) => q.name + q.level).join('・')) + '</td></tr>';
     const aptTh = '<th class="bl__apth">' + FIELD_POSITIONS.map((k) => '<span>' + posShort(k) + '</span>').join('') + '</th>';
-    const table = (title, rows, ths) => rows.length
+    /* 守備適性の列は野手だけ。投手には出さない */
+    const table = (title, rows, ths, withApt) => rows.length
       ? '<h4 class="sub">' + title + '（' + rows.length + '人）</h4><div class="bl__wrap"><table class="bl">' +
-        '<thead><tr><th>年</th><th>選手</th><th>投打</th><th>体格</th>' + ths + aptTh + '</tr></thead><tbody>' +
+        '<thead><tr><th>年</th><th>選手</th><th>投打</th><th>体格</th>' + ths + (withApt ? aptTh : '') + '</tr></thead><tbody>' +
         rows.join('') + '</tbody></table></div>' : '';
     const listHtml =
       '<h3 class="modal__title">体格・能力の一覧</h3>' +
-      table('野手', bats.map(batRow), '<th>ミ</th><th>パ</th><th>走</th><th>肩</th><th>守</th><th>捕</th>') +
+      table('野手', bats.map(batRow), '<th>ミ</th><th>パ</th><th>走</th><th>肩</th><th>守</th><th>捕</th>', true) +
       table('投手', pits.map(pitRow), '<th>球速</th><th>制球</th><th>スタ</th><th>変化球</th>') +
       '<div class="actions actions--modal"><button type="button" class="btn btn--wide" data-close>閉じる</button></div>';
 
