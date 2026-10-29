@@ -30,6 +30,8 @@ const Player = (() => {
      こちらは GRADE_BASE と切り離してある（自軍だけを弱くしたいため） */
   const GRADE_TILT = { 1: -6, 2: 0, 3: 4 };
   const GRADE_VELO = { 1: 0, 2: 5, 3: 9 };
+  /* 相手校の球速の底上げ（遅すぎたため）。基準を上げ、強い相手ほど速くなる傾きも強めてある */
+  const OPP_VELO_BASE = 5, OPP_VELO_SLOPE = 0.5;
 
   /** 隠し才能。まれに「逸材」が出る */
   function rollTalent() {
@@ -432,7 +434,7 @@ const Player = (() => {
          結果として148km/hも149km/hも、それぞれの確率で出てくる。
          prestigeBonus（学校の格）も、同じ考え方で少しだけ乗せる */
       velo: Math.round(softVelo(
-        123 + (GRADE_VELO[grade] || 0) + (ownTeam ? (OWN_VELO_EXTRA[grade] || 0) : 0) + talent * 2.5 + levelShift * 0.38 +
+        123 + (ownTeam ? 0 : OPP_VELO_BASE) + (GRADE_VELO[grade] || 0) + (ownTeam ? (OWN_VELO_EXTRA[grade] || 0) : 0) + talent * 2.5 + levelShift * (ownTeam ? 0.38 : OPP_VELO_SLOPE) +
         (opt.prestigeBonus || 0) * 0.3 + RNG.norm(0, 7.5))),
       control: makeStat(base, talent, 0, ownTeam, opt.wide),
       stamina: makeStat(base, talent, 0, ownTeam, opt.wide),

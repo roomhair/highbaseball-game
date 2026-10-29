@@ -89,7 +89,7 @@ const Body = (() => {
      平均は変えないよう、山の位置を HT_SHIFT だけ下げてある */
   /* 高い側は、ふつうの幅（HT_UP_SD）に、まれに大きく外れる幅（HT_UP_WIDE_SD）を混ぜてある。
      こうすると、185〜190cmの選手を増やさずに、190cm以上の選手の割合を保てる */
-  const HT_UP_SD = 5.0, HT_UP_WIDE_SD = 11.0, HT_UP_WIDE_P = 0.08, HT_DOWN_SD = 4.8;
+  const HT_UP_SD = 4.8, HT_UP_WIDE_SD = 10.5, HT_UP_WIDE_P = 0.065, HT_DOWN_SD = 4.8;
   const HT_UP_MEAN_SD = HT_UP_WIDE_P * HT_UP_WIDE_SD + (1 - HT_UP_WIDE_P) * HT_UP_SD;
   const HT_SHIFT = 0.3989 * (HT_UP_MEAN_SD - HT_DOWN_SD);     // 高い側と低い側を半々で引くときの、平均のずれ
   const PHYS_SD = 1.0;          // 身体能力の標準偏差
