@@ -2226,3 +2226,6 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 .bl .rank { font-size: 11px; }
 .bl .rankval { font-size: 10px; }
 .bl__pit { font-size: 10px; max-width: 14em; overflow: hidden; text-overflow: ellipsis; }
+
+/* 先発を選ぶ列の選手名は、押すと個人画面が開く */
+#pregame-my .spick__nm { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
