@@ -306,9 +306,9 @@ const Player = (() => {
 
   /* ---------- 天才・熊・部屋 ---------- */
 
-  /* ごく稀に（1200人に1人ほど）、1つの能力に天才的な才能を持つ選手が出る。
+  /* まれに（50人に1人ほど）、1つの能力に天才的な才能を持つ選手が出る。
      天才の能力は上限が100ではなくなり（101以上はSS）、伸びやすい（body.js） */
-  const GENIUS_CHANCE = 1 / 1200;
+  const GENIUS_CHANCE = 1 / 50;
   const GENIUS_BAT = ['meet', 'power', 'speed', 'arm', 'field', 'catch'];
   const GENIUS_PIT = ['control', 'stamina', 'velo'];
 
@@ -358,7 +358,9 @@ const Player = (() => {
     const p = newBatter({ grade, pos: 'SS', level: opt.level, practice: false, genius: false });
     p.last = '部屋'; p.first = ''; p.name = '部屋';
     p.throws = 'R'; p.bats = 'L';
-    p.apt = aptitudeFor('SS', 'R');
+    /* 守備適性は、すべての守備位置がA */
+    p.apt = {};
+    FIELD_POSITIONS.forEach((k) => { p.apt[k] = 'A'; });
     p.traj = 4; p.meet = 100; p.power = 100; p.speed = 100; p.arm = 100; p.field = 100; p.catch = 100;
     p.genius = 'all';
     /* 体格による補正は、すでに足した分として数える（あとから変わった分だけが効く） */
