@@ -73,6 +73,23 @@ const Player = (() => {
     return v;
   }
 
+  /** 入部時の能力の下のほう（G＝1〜14）を、さらに減らす。
+      体格の補正（Body.attach）で下がった分も含めて、能力がそろったあとに掛ける。
+        1〜9 … ほとんど無くす（97%は12〜22に引き上げる）
+        10〜14 … 半分ほどを15〜20に引き上げる */
+  function liftLow(v) {
+    if (v <= 9) return RNG.chance(0.97) ? RNG.range(12, 22) : v;
+    if (v <= 14 && RNG.chance(0.5)) return RNG.range(15, 20);
+    return v;
+  }
+  const LIFT_KEYS_BAT = ['meet', 'power', 'speed', 'arm', 'field', 'catch'];
+  const LIFT_KEYS_PIT = ['control', 'stamina', 'meet', 'power', 'speed', 'arm', 'field', 'catch'];
+  function liftLowStats(p) {
+    (p.kind === 'pitcher' ? LIFT_KEYS_PIT : LIFT_KEYS_BAT).forEach((k) => {
+      if (p[k] != null && p[k] <= 14) p[k] = liftLow(p[k]);
+    });
+  }
+
   /* ---------- 守備適性 ---------- */
 
   const APT_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
@@ -290,6 +307,7 @@ const Player = (() => {
     const nm = NAMES.personName();
     p.last = nm.last; p.first = nm.first; p.name = nm.last + nm.first;
     Body.attach(p, body);          // 身長・体重・身体能力の補正（入部時に一度だけ）
+    liftLowStats(p);
     if (opt.genius !== false) maybeGenius(p);
 
     p.career = emptyBat();
@@ -439,6 +457,7 @@ const Player = (() => {
     const nm = NAMES.personName();
     p.last = nm.last; p.first = nm.first; p.name = nm.last + nm.first;
     Body.attach(p, body);          // 身長・体重・身体能力の補正（入部時に一度だけ）
+    liftLowStats(p);
     if (opt.genius !== false) maybeGenius(p);
 
     p.career = emptyPit();
