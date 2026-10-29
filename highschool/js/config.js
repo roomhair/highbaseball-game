@@ -23,7 +23,7 @@ const CONFIG = {
     springName: '抜擢大会',     // 春の全国大会の名前
     jinguName: '神寺大会',      // 秋の全国大会の名前
     schoolName: '',             // 自校名（空なら作成時にランダムで入れる）
-    poach: true,                // 負けたとき相手に引き抜かれるか
+    poach: true,                // 負けたとき相手に強奪されるか
   },
 
   /* チーム作りで見せる組の数。新入生の選択は NEWCOMER_SETS のほう */
@@ -217,7 +217,7 @@ const CONFIG = {
     MAX: 160,
   },
 
-  /* 引き抜きの成功率。相手の強さ（勝った回のレベル）が高いほど失敗しやすく、
+  /* 強奪の成功率。相手の強さ（勝った回のレベル）が高いほど失敗しやすく、
      自校の格（SCHOOL_RANK）が高いほど成功しやすい。確率表そのもの
      （POACH_SUCCESS_TABLE）で持たせてある。行が相手の強さ、
      列が自校の格（弱小・中堅・強豪・名門）の順 */
@@ -249,7 +249,7 @@ function schoolRankNewcomerBonus(score) {
   return CONFIG.SCHOOL_RANK.NEWCOMER_BONUS[schoolRankTier(score)] || 0;
 }
 
-/** 引き抜きの成功率。oppLevel は相手チームを作った回の強さ、
+/** 強奪の成功率。oppLevel は相手チームを作った回の強さ、
     prestigeScore は自校の格スコア */
 function poachSuccessChance(oppLevel, prestigeScore) {
   const T = CONFIG.POACH.OPP_TIERS;

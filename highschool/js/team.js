@@ -22,7 +22,7 @@ const Team = (() => {
     };
   }
 
-  /** キャプテン。卒業や引き抜きで居なくなっていたら null を返す */
+  /** キャプテン。卒業や強奪で居なくなっていたら null を返す */
   function captain(team) {
     if (!team || !team.captainId) return null;
     return find(team, team.captainId);
@@ -266,12 +266,12 @@ const Team = (() => {
       '<span class="fatg__bar"><i style="width:' + v + '%"></i></span><b>' + v + '</b></span>';
   }
 
-  /** いちばん良い選手（負けたときに引き抜かれる1人） */
+  /** いちばん良い選手（負けたときに強奪される1人） */
   function bestPlayer(team) {
     return all(team).slice().sort((a, b) => Player.rating(b) - Player.rating(a))[0] || null;
   }
 
-  /** 打順・守備の並びが壊れていないか直す（引き抜きや卒業のあと） */
+  /** 打順・守備の並びが壊れていないか直す（強奪や卒業のあと） */
   function repair(team) {
     checkCaptain(team);
     const ids = new Set(team.batters.map((p) => p.id));

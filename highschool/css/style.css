@@ -11,7 +11,7 @@
        黄   … 「今」と「決定」。決定ボタン・選択中・今の回・今の打者・今の手順
        緑   … 攻撃中・上がった能力・勝利
        金   … 優勝・覚醒・本塁打・得点
-       赤   … 危ないこと。消す・足りない・引き抜き失敗・アウト
+       赤   … 危ないこと。消す・足りない・強奪失敗・アウト
        灰青 … 補足の文字・罫線
    ・能力の評価（S〜G）の色はパワプロの並びに合わせた別枠で、意味があるので変えない
    ・スマートフォン優先。横に長い表は .tablewrap に入れて、そこだけ横にスクロールさせる
@@ -414,7 +414,7 @@ tr.prow:focus-visible { box-shadow: inset 0 0 0 3px #ff7a00; }
   content: ''; flex: none; width: 6px; align-self: stretch; min-height: 20px; border-radius: 3px;
   background: var(--yel-hi); box-shadow: 0 2px 0 var(--yel-edge);
 }
-/* 引き抜きの成功・失敗は、リボンの色でも分かるように */
+/* 強奪の成功・失敗は、リボンの色でも分かるように */
 #poach-title.is-win { background: linear-gradient(180deg, #2fb35a, #15793a); }
 #poach-title.is-lose { background: linear-gradient(180deg, #e8425a, #a5102a); }
 .section-lead { margin: 0 0 var(--sp-4); font-size: var(--fs-md); color: var(--ink-mute); line-height: 1.75; }
@@ -891,7 +891,7 @@ td.hl { font-weight: 800; }
 .rankval { font-weight: 500; font-size: 11.5px; color: var(--ink-mute); margin-left: 1px; }
 td.role { font-size: 11px; color: var(--ink-mute); }
 .roster td.c .rankval { font-size: 11px; color: var(--ink-mute); }
-/* 引き抜かれた選手のお知らせ（オフシーズン画面の頭） */
+/* 強奪された選手のお知らせ（オフシーズン画面の頭） */
 .taken { margin: 0 0 22px; padding: 14px 16px; border-color: var(--danger-fill); }
 .taken__title {
   display: inline-block; margin: 0 0 6px; padding: 2px 10px; border-radius: 6px;
@@ -1576,7 +1576,7 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .sortbtn.is-on { background: linear-gradient(180deg, var(--yel-hi), var(--yel-lo)); border-color: var(--yel-edge); color: var(--yel-ink); box-shadow: 0 2px 0 var(--yel-edge); }
 
 /* =========================================================
-   引き抜き・オフシーズン
+   強奪・オフシーズン
    ========================================================= */
 /* 選んだ行は黄色で塗り、左に青い印を立てる（色だけでなく形でも分かるように） */
 tr.prow.is-picked, tbody tr.prow.is-picked:nth-child(even) { background: linear-gradient(180deg, #fff3a8, var(--yel-hi)); color: var(--yel-ink); }
@@ -1586,7 +1586,7 @@ tr.prow.is-picked .rank, tr.prow.is-picked .rankval, tr.prow.is-picked td,
 tr.prow.is-picked .nmlink, tr.prow.is-picked .hand, tr.prow.is-picked .luball b { color: var(--yel-ink); }
 tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--yel-ink); border-color: var(--yel-edge); }
 
-/* 引き抜きの手順。いまどこにいるのかを上に出す（js が data-step を付ける） */
+/* 強奪の手順。いまどこにいるのかを上に出す（js が data-step を付ける） */
 .poachsteps {
   list-style: none; margin: 0 0 var(--sp-4); padding: 0; counter-reset: ps;
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
@@ -1748,7 +1748,7 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 .champ--miss .champ__title { color: #c7d3e8; animation: none; }
 
 /* =========================================================
-   選手の詳細（ふきだしの中・引き抜きの資料）
+   選手の詳細（ふきだしの中・強奪の資料）
    ========================================================= */
 .pdetail__head { border-bottom: 3px solid var(--frame); padding-bottom: 8px; margin-bottom: 12px; padding-right: 40px; }
 .pdetail__name { font-family: var(--font-display); font-size: 24px; font-weight: 800; color: var(--brand); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -2102,7 +2102,7 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 .lurow.is-picked { background: rgba(255, 200, 40, .22); box-shadow: inset 0 0 0 2px #e0a400; }
 .lurow.is-picked .luno--swap { font-weight: 900; }
 
-/* ===== 引き抜きの演出 ===== */
+/* ===== 強奪の演出 ===== */
 .pcine { position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center; flex-direction: column;
   background: radial-gradient(ellipse at center, rgba(14,40,100,.94), rgba(3,8,26,.97)); color: #fff; animation: pcineIn .25s ease-out; overflow: hidden; }
 .pcine.is-out { opacity: 0; transition: opacity .2s; }

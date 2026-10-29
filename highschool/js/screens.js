@@ -76,7 +76,7 @@ const Screens = (() => {
       '<h3 class="sub">投手</h3><div id="ready-pit"></div>' +
       '<label class="field field--check field--boxed">' +
         '<input type="checkbox" id="ready-poach"' + (state.settings.poach ? ' checked' : '') + '>' +
-        '<span>敗戦時、相手チームに選手を引き抜かれる<i>（外すと引き抜かれません）</i></span>' +
+        '<span>敗戦時、相手チームに選手を強奪される<i>（外すと強奪されません）</i></span>' +
       '</label>';
     UI.html('ready-body', html);
     const body = UI.el('ready-body');
@@ -600,9 +600,9 @@ const Screens = (() => {
     UI.show('screen-nextup');
   }
 
-  /* ---------- 引き抜き ---------- */
+  /* ---------- 強奪 ---------- */
 
-  /** 引き抜きの画面の、いまの手順を示す。見た目だけで、進み方には関わらない。
+  /** 強奪の画面の、いまの手順を示す。見た目だけで、進み方には関わらない。
       stage は pick（相手を選ぶ）・release（放出する選手を選ぶ）・win / lose（結果） */
   function poachStage(stage) {
     const step = { pick: 0, release: 1, win: 2, lose: 2 }[stage];
@@ -617,11 +617,11 @@ const Screens = (() => {
   function poachWin(state, onTake, onSkip) {
     let picked = null;
     poachStage('pick');
-    UI.el('poach-title').textContent = '引き抜きチャレンジ';
+    UI.el('poach-title').textContent = '強奪チャレンジ';
     UI.el('poach-warn').hidden = true;
     UI.el('poach-title').classList.remove('is-win', 'is-lose');
     UI.el('poach-lead').textContent =
-      esc(state.opponent.name) + 'から1人、引き抜きに挑戦できます（必ず成功するとは限りません）。' +
+      esc(state.opponent.name) + 'から1人、強奪に挑戦できます（必ず成功するとは限りません）。' +
       '選手を選んでから下のボタンを押してください。成功すると、同じ区分（野手／投手）の部員を1人放出します。';
     UI.html('poach-body',
       '<h3 class="sub">' + esc(state.opponent.name) + '　野手</h3><div id="poach-bat"></div>' +
@@ -631,11 +631,11 @@ const Screens = (() => {
     const more = state.tour.index < state.tour.rounds.length - 1;
     const ok = UI.el('btn-poach-ok');
     const skip = UI.el('btn-poach-skip');
-    ok.textContent = more ? '引き抜きチャレンジへ' : '引き抜きチャレンジ';
+    ok.textContent = more ? '強奪チャレンジへ' : '強奪チャレンジ';
     ok.hidden = false;
     ok.disabled = true;
     skip.hidden = false;
-    skip.textContent = more ? '引き抜かず次の試合へ' : '引き抜かず次へ';
+    skip.textContent = more ? '強奪せず次の試合へ' : '強奪せず次へ';
 
     const body = UI.el('poach-body');
     const choose = (pid) => {
@@ -645,7 +645,7 @@ const Screens = (() => {
       ok.disabled = !picked;
       if (picked) UI.el('poach-lead').textContent =
         picked.name + '（' + picked.grade + '年・' +
-        (picked.kind === 'pitcher' ? '投手' : posName(picked.pos)) + '）の引き抜きに挑戦します。';
+        (picked.kind === 'pitcher' ? '投手' : posName(picked.pos)) + '）の強奪に挑戦します。';
     };
     UI.rosterPanel(UI.el('poach-bat'), state.opponent.batters,
       { team: state.opponent, onRow: choose, nameLink: true, nameLinkRename: false });
@@ -665,7 +665,7 @@ const Screens = (() => {
     UI.el('poach-title').textContent = '放出する選手を選ぶ';
     UI.el('poach-title').classList.remove('is-win', 'is-lose');
     UI.el('poach-lead').textContent =
-      esc(incoming.name) + 'の引き抜きに挑戦する前に、迎える代わりに放出する' +
+      esc(incoming.name) + 'の強奪に挑戦する前に、迎える代わりに放出する' +
       (incoming.kind === 'pitcher' ? '投手' : '野手') + 'を1人選んでください。';
     const own = incoming.kind === 'pitcher' ? state.team.pitchers : state.team.batters;
     UI.html('poach-body',
@@ -677,7 +677,7 @@ const Screens = (() => {
     warn.hidden = true; warn.textContent = '';
     const ok = UI.el('btn-poach-ok');
     const skip = UI.el('btn-poach-skip');
-    ok.textContent = more ? 'この内容で引き抜きチャレンジへ' : 'この内容で引き抜きチャレンジ';
+    ok.textContent = more ? 'この内容で強奪チャレンジへ' : 'この内容で強奪チャレンジ';
     ok.hidden = false;
     ok.disabled = true;
     skip.hidden = false;
@@ -692,7 +692,7 @@ const Screens = (() => {
         body.querySelectorAll('tr.prow[data-pid="' + pid + '"]').forEach((x) => x.classList.add('is-picked'));
         picked = Team.find(state.team, pid);
         /* 3年生を迎えるために1・2年生を放出すると、引退のあとに野手が
-           足りなくなる。1・2年生の野手が10人を下回る引き抜きはできない */
+           足りなくなる。1・2年生の野手が10人を下回る強奪はできない */
         const short = !!picked && incoming.kind !== 'pitcher' && incoming.grade >= 3 &&
           picked.grade < 3 && own.filter((x) => x.grade < 3).length <= 10;
         ok.disabled = !picked || short;
@@ -725,7 +725,7 @@ const Screens = (() => {
     UI.show('screen-poach');
   }
 
-  /** 引き抜きの結果を出す前の演出。交渉中の画面から、成功なら紙吹雪、失敗なら暗転。
+  /** 強奪の結果を出す前の演出。交渉中の画面から、成功なら紙吹雪、失敗なら暗転。
       タップすれば飛ばせる */
   function poachCinema(incoming, success, done) {
     const ov = document.createElement('div');
@@ -733,7 +733,7 @@ const Screens = (() => {
     const pos = incoming.kind === 'pitcher' ? '投手' : posName(incoming.pos);
     ov.innerHTML =
       '<div class="pcine__card">' +
-        '<div class="pcine__label">引き抜き交渉</div>' +
+        '<div class="pcine__label">強奪交渉</div>' +
         '<div class="pcine__name">' + esc(incoming.name) + '</div>' +
         '<div class="pcine__meta">' + incoming.grade + '年・' + esc(pos) + '</div>' +
         '<div class="pcine__dots"><i></i><i></i><i></i></div>' +
@@ -750,7 +750,7 @@ const Screens = (() => {
     const t1 = setTimeout(() => {
       ov.classList.add(success ? 'is-win' : 'is-lose');
       const stamp = ov.querySelector('.pcine__stamp');
-      stamp.textContent = success ? '引き抜き成功！' : '引き止められた…';
+      stamp.textContent = success ? '強奪成功！' : '引き止められた…';
       if (success) {
         for (let i = 0; i < 26; i++) {
           const c = document.createElement('i');
@@ -766,16 +766,16 @@ const Screens = (() => {
     ov.addEventListener('click', finish);
   }
 
-  /** 引き抜きに成功したとき。放出はすでに選んであるので、結果を伝えるだけ */
+  /** 強奪に成功したとき。放出はすでに選んであるので、結果を伝えるだけ */
   function poachSuccess(state, incoming, outgoing, onNext) {
     poachStage('win');
-    UI.el('poach-title').textContent = '引き抜き成功！';
+    UI.el('poach-title').textContent = '強奪成功！';
     UI.el('poach-warn').hidden = true;
     UI.el('poach-title').classList.remove('is-lose');
     UI.el('poach-title').classList.add('is-win');
     UI.el('poach-lead').textContent = outgoing
-      ? esc(incoming.name) + 'の引き抜きに成功した。代わりに' + esc(outgoing.name) + 'を放出した。'
-      : esc(incoming.name) + 'の引き抜きに成功した。誰も放出しなかったので、春に入る新入生が1人減る。';
+      ? esc(incoming.name) + 'の強奪に成功した。代わりに' + esc(outgoing.name) + 'を放出した。'
+      : esc(incoming.name) + 'の強奪に成功した。誰も放出しなかったので、春に入る新入生が1人減る。';
     UI.html('poach-body', '<div class="incoming">' + UI.playerDetail(incoming, { rename: false }) + '</div>');
 
     const more = state.tour.index < state.tour.rounds.length - 1;
@@ -789,10 +789,10 @@ const Screens = (() => {
     UI.show('screen-poach');
   }
 
-  /** 引き抜きに失敗したとき。相手に引き止められ、何も変わらずに次へ進む */
+  /** 強奪に失敗したとき。相手に引き止められ、何も変わらずに次へ進む */
   function poachFailed(state, incoming, onNext) {
     poachStage('lose');
-    UI.el('poach-title').textContent = '引き抜き失敗';
+    UI.el('poach-title').textContent = '強奪失敗';
     UI.el('poach-warn').hidden = true;
     UI.el('poach-title').classList.remove('is-win');
     UI.el('poach-title').classList.add('is-lose');
@@ -970,16 +970,16 @@ const Screens = (() => {
       }).join('')
       : '<p class="note">今年は引退する3年生がいませんでした。</p>';
 
-    /* 負けて引き抜かれていたら、誰を取られたのかを頭に出す。
+    /* 負けて強奪されていたら、誰を取られたのかを頭に出す。
        名前とポジションだけでは分からないので、学年も能力も通算成績も並べる */
     const taken = state.poachedFrom && state.poachedFrom.player
       ? (function () {
           const q = state.poachedFrom.player;
           return '<section class="taken">' +
-            '<h3 class="taken__title">引き抜き</h3>' +
+            '<h3 class="taken__title">強奪</h3>' +
             '<p class="taken__lead">' + esc(state.poachedFrom.to) + 'に <b>' + esc(q.name) + '</b>（' +
               q.grade + '年・' + (q.kind === 'pitcher' ? '投手' : posName(q.pos)) + '・' +
-              UI.handMark(q) + '）を引き抜かれた。</p>' +
+              UI.handMark(q) + '）を強奪された。</p>' +
             UI.playerDetail(q, { rename: false }) +
             '<p class="note">空いた枠には、次に新入生を迎えるときに1人多く入る。</p>' +
           '</section>';

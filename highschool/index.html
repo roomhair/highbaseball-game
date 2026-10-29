@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>強奪高校野球｜高校野球の育成シミュレーションゲーム【無料・ブラウザで遊べる】</title>
-  <meta name="description" content="強奪高校野球は、部員を集めて特訓し、県大会から全国大会までを勝ち上がる高校野球の育成シミュレーションゲーム。勝てば相手校の主力を1人引き抜ける。3年生の引退と新入生の入部、秋・春の大会も。スマホ・PCのブラウザで、無料・登録なしで遊べます。">
+  <meta name="description" content="強奪高校野球は、部員を集めて特訓し、県大会から全国大会までを勝ち上がる高校野球の育成シミュレーションゲーム。勝てば相手校の主力を1人強奪できる。3年生の引退と新入生の入部、秋・春の大会も。スマホ・PCのブラウザで、無料・登録なしで遊べます。">
   <meta name="robots" content="index,follow,max-image-preview:large">
   <link rel="canonical" href="https://roomhaird.com/highschool/">
 
@@ -31,7 +31,7 @@
     "alternateName": "Kyoudatsu Koukou Yakyuu",
     "url": "https://roomhaird.com/highschool/",
     "image": "https://roomhaird.com/highschool/ogp-v4.png",
-    "description": "部員を集めて特訓し、県大会から全国大会までを勝ち上がる高校野球の育成シミュレーションゲーム。勝てば相手校の主力を1人引き抜ける。",
+    "description": "部員を集めて特訓し、県大会から全国大会までを勝ち上がる高校野球の育成シミュレーションゲーム。勝てば相手校の主力を1人強奪できる。",
     "inLanguage": "ja",
     "genre": ["シミュレーション", "スポーツ", "育成"],
     "gamePlatform": "Web browser",
@@ -105,12 +105,12 @@
       <section class="about" aria-labelledby="about-title">
         <h2 class="about__title" id="about-title">強奪高校野球とは</h2>
         <p>
-          弱い部員ばかりの高校野球部を、特訓と引き抜きで強くしながら、県大会から全国大会まで勝ち上がっていく
+          弱い部員ばかりの高校野球部を、特訓と強奪で強くしながら、県大会から全国大会まで勝ち上がっていく
           育成シミュレーションです。登録は要らず、スマートフォンでもパソコンでも、ブラウザだけで無料で遊べます。
         </p>
         <p>
           最初に、野手と投手を選んでチームを作ります。特訓のカードで能力を伸ばし、試合に勝つたびに
-          <b>相手校の主力を1人引き抜く</b>ことに挑戦できます。夏が終われば3年生が引退し、新しいチームで秋と春の大会へ。
+          <b>相手校の主力を1人強奪する</b>ことに挑戦できます。夏が終われば3年生が引退し、新しいチームで秋と春の大会へ。
           春には新しい1年生が入部して、1年が巡るたびに、チームは入れ替わりながら強くなっていきます。
         </p>
         <p>
@@ -271,12 +271,12 @@
     </div>
   </section>
 
-  <!-- ============ 引き抜き ============ -->
+  <!-- ============ 強奪 ============ -->
   <section class="screen" id="screen-poach">
     <div class="container">
-      <h2 class="section-title" id="poach-title">引き抜き</h2>
+      <h2 class="section-title" id="poach-title">強奪</h2>
       <!-- いまどの手順にいるか。js/screens.js の poachStage が印を付ける -->
-      <ol class="poachsteps" id="poach-steps" aria-label="引き抜きの手順">
+      <ol class="poachsteps" id="poach-steps" aria-label="強奪の手順">
         <li><span>相手を選ぶ</span></li>
         <li><span>放出する選手を選ぶ</span></li>
         <li><span>結果</span></li>
@@ -284,8 +284,8 @@
       <p class="section-lead" id="poach-lead"></p>
       <div id="poach-body"></div>
       <div class="actions">
-        <button type="button" class="btn btn--primary" id="btn-poach-ok">引き抜いて次の試合へ</button>
-        <button type="button" class="btn" id="btn-poach-skip">引き抜かず次の試合へ</button>
+        <button type="button" class="btn btn--primary" id="btn-poach-ok">強奪して次の試合へ</button>
+        <button type="button" class="btn" id="btn-poach-skip">強奪せず次の試合へ</button>
       </div>
       <p class="poach-warn" id="poach-warn" role="alert" hidden></p>
     </div>
@@ -412,7 +412,7 @@
       <div class="form">
         <label class="field field--check">
           <input type="checkbox" id="set-poach">
-          <span>負けたとき、相手に主力を1人引き抜かれる</span>
+          <span>負けたとき、相手に主力を1人強奪される</span>
         </label>
         <p class="field__help field__help--block">
           入れておくと、夏の大会で負けたときに、いちばん良い選手を相手校に持っていかれます。
