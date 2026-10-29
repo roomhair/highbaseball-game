@@ -35,21 +35,38 @@ const Body = (() => {
 
   /* ---------- 基準値・係数 ---------- */
 
-  /* このゲームの平均の身長・体重は、日本の高校男子の平均のおよそ1.1倍。
+  /* このゲームの平均の身長・体重は、日本の高校男子の平均のおよそ1.02倍。
      日本の平均（学年ごと。文部科学省の学校保健統計のおよその値）に SCALE をかけた
      ものを、学年ごとの基準にしている。基準のほかの値（ばらつき・伸び・体重の増減）も
      同じ倍率にそろえてあるので、能力への効き方（標準化した値）は倍率に左右されない */
-  const SCALE = 1.1;
+  const SCALE = 1.02;
   const JP_HT = { 1: 168.0, 2: 169.8, 3: 170.6, 4: 170.9 };    // 日本の高校男子の平均身長（cm）
   const JP_WT = { 1: 60.0, 2: 62.5, 3: 63.5, 4: 64.0 };         // 同・平均体重（kg）
-  /* 1.1倍にする前の基準（保存データの選手を移すときだけ使う） */
-  const OLD_HT_REF = {
-    batter:  { 1: 169.8, 2: 172.4, 3: 173.7, 4: 174.1 },
-    pitcher: { 1: 171.8, 2: 174.4, 3: 175.7, 4: 176.1 },
+  /* これまでの版の基準（保存データの選手を、いまの基準へ移すときだけ使う）。
+       版1 … 日本の平均の倍率をかける前（身長169.8cmなどの固定の表）
+       版2 … 日本の平均の1.1倍 */
+  const OLD_REFS = {
+    1: {
+      scale: 1,
+      ht: {
+        batter:  { 1: 169.8, 2: 172.4, 3: 173.7, 4: 174.1 },
+        pitcher: { 1: 171.8, 2: 174.4, 3: 175.7, 4: 176.1 },
+      },
+      bmi: { 1: 21.2, 2: 21.8, 3: 22.3, 4: 22.5 },
+      htSd: 5.5, bmiSd: 2.1,
+    },
+    2: {
+      scale: 1.1,
+      ht: { batter: {}, pitcher: {} }, bmi: {}, htSd: 5.5 * 1.1, bmiSd: 2.1 / 1.1,
+    },
   };
-  const OLD_BMI_REF = { 1: 21.2, 2: 21.8, 3: 22.3, 4: 22.5 };
-  const OLD_HT_SD = 5.5, OLD_BMI_SD = 2.1;
-  const BODY_VER = 2;           // 体格の基準を1.1倍にした版。これより前の選手は ensure で直す
+  [1, 2, 3, 4].forEach((g) => {
+    const sc = OLD_REFS[2].scale;
+    OLD_REFS[2].ht.batter[g] = JP_HT[g] * sc;
+    OLD_REFS[2].ht.pitcher[g] = JP_HT[g] * sc + 2.0 * sc;
+    OLD_REFS[2].bmi[g] = JP_WT[g] * sc / Math.pow(JP_HT[g] * sc / 100, 2);
+  });
+  const BODY_VER = 3;           // 体格の基準の版（日本の平均の倍率を変えたら上げる）。これより前の選手は ensure で直す
   const HT_SD = 5.5 * SCALE;    // 身長の標準偏差（cm）
   const PHYS_SD = 1.0;          // 身体能力の標準偏差
   const OFF_K = 3.2;            // idx 1 あたりに足す能力値（1〜100の能力）
@@ -327,23 +344,25 @@ const Body = (() => {
       （いまの能力にはすでに補正が入っていることにする）。 */
   function ensure(p) {
     if (!p) return p;
-    /* 体格の基準を1.1倍にする前の選手は、基準との差（標準化した値）をそのまま
-       新しい基準に移して、身長・体重を直す。能力は動かさない */
+    /* 古い基準の選手は、基準との差（標準化した値）をそのまま新しい基準に移して、
+       身長・体重を直す。能力は動かさない */
     if (p.ht != null && p.bodyV !== BODY_VER) {
       if (!p.fixedBody) {
+        const old = OLD_REFS[p.bodyV || 1] || OLD_REFS[1];
+        const k = SCALE / old.scale;
         const pos = posOf(p.grade, tOf(p));
         const kind = kindOf(p);
-        const z = (p.ht - interp(OLD_HT_REF[kind], pos)) / OLD_HT_SD;
+        const z = (p.ht - interp(old.ht[kind], pos)) / old.htSd;
         const bmiOld = p.wt / Math.pow(p.ht / 100, 2);
-        const zb = (bmiOld - interp(OLD_BMI_REF, pos)) / OLD_BMI_SD;
+        const zb = (bmiOld - interp(old.bmi, pos)) / old.bmiSd;
         const ht0 = p.ht, wt0 = p.wt;
         p.ht = Math.round((interp(HT_REF[kind], pos) + z * HT_SD) * 10) / 10;
         p.wt = Math.round((interp(BMI_REF, pos) + zb * BMI_SD) * Math.pow(p.ht / 100, 2) * 10) / 10;
         if (p.initial && p.initial.ht != null) {
-          p.initial.ht = Math.round((p.ht - (ht0 - p.initial.ht) * SCALE) * 10) / 10;
-          p.initial.wt = Math.round((p.wt - (wt0 - p.initial.wt) * SCALE) * 10) / 10;
+          p.initial.ht = Math.round((p.ht - (ht0 - p.initial.ht) * k) * 10) / 10;
+          p.initial.wt = Math.round((p.wt - (wt0 - p.initial.wt) * k) * 10) / 10;
         }
-        (p.bodyLog || []).forEach((e) => { e.dh = Math.round(e.dh * SCALE * 10) / 10; e.dw = Math.round(e.dw * SCALE * 10) / 10; });
+        (p.bodyLog || []).forEach((e) => { e.dh = Math.round(e.dh * k * 10) / 10; e.dw = Math.round(e.dw * k * 10) / 10; });
         p.zW0 = zW(p);
       }
       p.bodyV = BODY_VER;
