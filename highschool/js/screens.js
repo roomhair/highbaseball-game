@@ -696,16 +696,19 @@ const Screens = (() => {
            足りなくなる。1・2年生の野手が10人を下回る強奪はできない */
         const short = !!picked && incoming.kind !== 'pitcher' && incoming.grade >= 3 &&
           picked.grade < 3 && own.filter((x) => x.grade < 3).length <= 10;
-        ok.disabled = !picked || short;
+        /* 1年生からレギュラー確約の選手（regularLock）は、放出できない */
+        const locked = !!picked && !!picked.regularLock;
+        ok.disabled = !picked || short || locked;
         /* 放出できないときの理由は、押せなくなったボタンのすぐ下に赤字で出す */
-        warn.hidden = !short;
-        warn.textContent = short
-          ? '1・2年生の野手が10人を下回るため、' + picked.name + 'は放出できません。他の選手を選んでください。' : '';
-        if (picked && !short) UI.el('poach-lead').textContent =
+        warn.hidden = !(short || locked);
+        warn.textContent = locked
+          ? picked.name + 'は、1年生からレギュラー確約が条件なので放出できません。他の選手を選んでください。'
+          : (short ? '1・2年生の野手が10人を下回るため、' + picked.name + 'は放出できません。他の選手を選んでください。' : '');
+        if (picked && !short && !locked) UI.el('poach-lead').textContent =
           picked.name + '（' + UI.roleText(state.team, picked) + '）を放出して、挑戦します。';
       },
     });
-    ok.onclick = () => { if (picked) onRelease(picked); };
+    ok.onclick = () => { if (picked && !picked.regularLock) onRelease(picked); };
     skip.onclick = onCancel;
 
     /* 3年生が引退してから新入生が入るまでの間は、部員が定員（野手18・投手8）より
