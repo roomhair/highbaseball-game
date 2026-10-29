@@ -2255,3 +2255,18 @@ a.appbar__title { text-decoration: none; }
 
 /* テストプレイの印 */
 .testbanner { position: fixed; left: 50%; bottom: 8px; transform: translateX(-50%); z-index: 50; padding: 3px 12px; border-radius: 999px; background: rgba(201, 48, 44, .92); color: #fff; font-size: 11px; font-weight: 800; pointer-events: none; }
+
+/* 右上の歯車と、押すと開く「設定／info」のメニュー */
+.appmenuwrap { position: relative; flex: none; }
+.appmenu {
+  position: absolute; right: 0; top: calc(100% + 10px); z-index: 60; min-width: 150px; padding: 4px;
+  background: var(--panel); border: var(--bw-frame) solid var(--frame); border-radius: var(--radius);
+  box-shadow: 0 0 0 2px var(--frame-rim), var(--shadow);
+}
+.appmenu[hidden] { display: none; }
+.appmenu button {
+  display: block; width: 100%; text-align: left; padding: 11px 14px; border: 0; border-radius: 8px;
+  background: none; color: var(--ink); font: inherit; font-size: 15px; font-weight: 800; cursor: pointer;
+}
+.appmenu button + button { border-top: 1px solid var(--line, #d8d2c2); border-radius: 0; }
+.appmenu button:hover, .appmenu button:focus-visible { background: var(--brand-soft, #e6efff); }

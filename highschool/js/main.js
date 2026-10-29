@@ -1273,13 +1273,50 @@ const Game = (() => {
 
   /* ---------- 設定 ---------- */
 
-  function openSettings() {
+  /** 設定・info・チーム情報のあいだを行き来しても、戻り先は最初に開いた画面のまま */
+  function rememberReturn() {
     state = state || fresh();
-    state.returnScreen = UI.currentScreen();
+    const cur = UI.currentScreen();
+    if (['screen-settings', 'screen-info', 'screen-teaminfo'].indexOf(cur) < 0) state.returnScreen = cur;
+  }
+
+  function openSettings() {
+    rememberReturn();
     Screens.settings(state);
+    updateSettingsButton();
+  }
+
+  function openInfo() {
+    rememberReturn();
+    Screens.info();
+  }
+
+  function closeInfo() {
+    const back = state.returnScreen === 'screen-settings' || state.returnScreen === 'screen-info' ? 'screen-top' : state.returnScreen;
+    UI.show(back || 'screen-top');
+  }
+
+  /** 設定の画面に、何か変更が加わっているか */
+  function settingsChanged() {
+    const s = state.settings;
+    const school0 = state.team ? state.team.name : (s.schoolName || '');
+    return UI.el('set-national').value.trim() !== (s.nationalName || '') ||
+      UI.el('set-school').value.trim() !== (school0 || '') ||
+      UI.el('set-jingu').value.trim() !== (s.jinguName || '') ||
+      UI.el('set-spring').value.trim() !== (s.springName || '') ||
+      UI.el('set-poach').checked !== !!s.poach;
+  }
+
+  /** 何も変えていないときは「閉じる」、変えたときだけ「保存して戻る」 */
+  function updateSettingsButton() {
+    const b = UI.el('btn-settings-save');
+    const changed = settingsChanged();
+    b.textContent = changed ? '保存して戻る' : '閉じる';
+    b.classList.toggle('btn--primary', changed);
   }
 
   function saveSettings() {
+    if (!settingsChanged()) { closeInfo(); return; }
     const nat = UI.el('set-national').value.trim();
     const school = UI.el('set-school').value.trim();
     const jingu = UI.el('set-jingu').value.trim();
@@ -1293,7 +1330,7 @@ const Game = (() => {
     Storage.saveSettings(state.settings);
     save();
     applySettings();
-    const back = state.returnScreen === 'screen-settings' ? 'screen-top' : state.returnScreen;
+    const back = state.returnScreen === 'screen-settings' || state.returnScreen === 'screen-info' ? 'screen-top' : state.returnScreen;
     UI.show(back);
     /* 名前を変えたら、いま出ている画面を描き直す */
     if (back === 'screen-ready') Screens.ready(state);
@@ -1429,7 +1466,26 @@ const Game = (() => {
     });
     on('btn-continue', () => { const s = Storage.load(); if (s) resume(s); });
     on('btn-home', () => { showTopButtons(); UI.show('screen-top'); });
-    on('btn-settings', openSettings);
+    /* 右上の歯車: 押すと「設定」と「info」を選べるメニューが開く */
+    const menu = UI.el('appmenu'), menuBtn = UI.el('btn-menu');
+    const closeMenu = () => { menu.hidden = true; menuBtn.setAttribute('aria-expanded', 'false'); };
+    menuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const opening = menu.hidden;
+      menu.hidden = !opening;
+      menuBtn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+    });
+    document.addEventListener('click', closeMenu);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+    on('menu-settings', () => { closeMenu(); openSettings(); });
+    on('menu-info', () => { closeMenu(); openInfo(); });
+    ['set-national', 'set-school', 'set-jingu', 'set-spring', 'set-poach'].forEach((id) => {
+      const n = UI.el(id);
+      if (n) { n.addEventListener('input', updateSettingsButton); n.addEventListener('change', updateSettingsButton); }
+    });
+    on('btn-info-close', closeInfo);
+    on('btn-teaminfo', () => Screens.teamInfo(state));
+    on('btn-teaminfo-back', () => Screens.info());
     on('btn-settings-save', saveSettings);
     on('btn-settings-reset', resetAll);
     on('btn-pros', () => UI.prosList(Storage.loadPros()));

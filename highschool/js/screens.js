@@ -1012,8 +1012,38 @@ const Screens = (() => {
     UI.el('set-jingu').value = state.settings.jinguName;
     UI.el('set-spring').value = state.settings.springName;
     UI.el('set-poach').checked = !!state.settings.poach;
-    UI.el('pros-n').textContent = Storage.loadPros().length;
     UI.show('screen-settings');
+  }
+
+  /* ---------- info ---------- */
+
+  function info() {
+    UI.el('pros-n').textContent = Storage.loadPros().length;
+    UI.show('screen-info');
+  }
+
+  /** いまのチームの選手一覧（チーム完成の画面と同じ、体格ボタンつきの一覧） */
+  function teamInfo(state) {
+    const t = state.team;
+    if (!t) {
+      UI.html('teaminfo-body', '<p class="note">' + (state.mode === 'soccer'
+        ? 'いまはサッカー部のあいだなので、野球部のチーム情報は見られません。'
+        : 'まだチームがありません。チームを作ると、ここで見られます。') + '</p>');
+      UI.show('screen-teaminfo');
+      return;
+    }
+    UI.html('teaminfo-body',
+      '<p class="section-lead">' + esc(t.name) + '　部員' + Team.all(t).length + '人　' +
+        'チーム力 <b>' + Team.strength(t) + '</b></p>' +
+      '<h3 class="sub">野手</h3><div id="ti-bat"></div>' +
+      '<h3 class="sub">投手</h3><div id="ti-pit"></div>');
+    const open = (pid) => {
+      const p = Team.find(t, pid);
+      if (p) UI.openPlayer(p, { team: t, rename: false });
+    };
+    UI.rosterPanel(UI.el('ti-bat'), t.batters, { team: t, onRow: open });
+    UI.rosterPanel(UI.el('ti-pit'), t.pitchers, { team: t, onRow: open });
+    UI.show('screen-teaminfo');
   }
 
   /* ---------- サッカー部（野球部のコールド負けのあとの第二の物語） ----------
@@ -1507,7 +1537,7 @@ const Screens = (() => {
 
   return {
     pick, ready, training, trainingResult, opening, pregame,
-    poachWin, poachRelease, poachCinema, poachSuccess, poachFailed, champion, celebrate, springResult, offseason, settings, lineupCard, bindRows,
+    info, teamInfo, poachWin, poachRelease, poachCinema, poachSuccess, poachFailed, champion, celebrate, springResult, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
     localWin, soccerStart, soccerOpening, soccerPregame, soccerVerdict, soccerGrowth, soccerMatchResult, soccerLineupEditor, soccerCelebrate, soccerOffseason, soccerDecide, soccerReturn,
     soccerTraining, soccerTrainingResult, soccerSpringResult, soccerNewcomers,
