@@ -51,12 +51,12 @@ const Dataset = (() => {
   /* テストプレイ用（?test=bear など）。ふだんは使わない */
   const test = { bear: false, strong: false };
 
-  /** 強めの新入生。何人か作って、いちばん強い1人を選ぶ。
+  /** 強めの新入生。何人か作って、いちばん強い1人を選ぶ（ほかの組の最良の選手より、総合で2〜3ほど上になる強さ）。
       この選手が入ったセットを選ぶと、1年生からレギュラー確約が条件になる（regularLock） */
   function strongFreshman(pos, prestigeBonus) {
     let best = null;
-    for (let i = 0; i < 6; i++) {
-      const p = Player.newBatter({ grade: 1, pos, prestigeBonus: (prestigeBonus || 0) + 26, genius: false });
+    for (let i = 0; i < 3; i++) {
+      const p = Player.newBatter({ grade: 1, pos, prestigeBonus: (prestigeBonus || 0) + 12, genius: false });
       if (!best || Player.rating(p) > Player.rating(best)) best = p;
     }
     best.regularLock = true;

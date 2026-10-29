@@ -346,6 +346,7 @@ const Player = (() => {
     p.bodyOff = {}; p.bodyAcc = {}; p.bodyLog = [];
     p.zW0 = Body.zW(p);
     p.genius = 'power';
+    p.animal = true;           // 画面には「天才：パワー」ではなく「動物」と出す
     p.career = emptyBat();
     addStats(p.career, seedPracticeBat(p, practiceGames(1), opt.level));
     resetInitial(p);

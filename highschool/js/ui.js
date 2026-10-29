@@ -362,7 +362,7 @@ const UI = (() => {
       '<b>' + ((p.apt && p.apt[k]) || 'G') + '</b>').join('') + '</td>';
     const body = (p) => '<td class="bl__body">' + (p.ht != null ? Math.round(p.ht) + 'cm<br>' + Math.round(p.wt) + 'kg' : '-') + '</td>';
     const head = (p) => '<td class="bl__g">' + p.grade + '</td><td class="bl__nm">' + esc(p.name) +
-      (p.genius ? '<em class="bl__gen">天才</em>' : '') + '</td><td class="bl__h">' + esc(handMark(p)) + '</td>';
+      (p.animal ? '<em class="bl__gen">動物</em>' : (p.genius ? '<em class="bl__gen">天才</em>' : '')) + '</td><td class="bl__h">' + esc(handMark(p)) + '</td>';
     const batRow = (p) => '<tr>' + head(p) + body(p) +
       [p.meet, p.power, p.speed, p.arm, p.field, p.catch].map((v) => '<td class="c">' + rankNum(v) + '</td>').join('') + apt(p) + '</tr>';
     const pitRow = (p) => '<tr>' + head(p) + body(p) +
@@ -437,7 +437,8 @@ const UI = (() => {
 
     return '<div class="pdetail">' +
       '<div class="pdetail__head">' +
-        (p.genius ? '<span class="pdetail__genius">天才：' + esc(Body.geniusLabel(p)) + '</span>' : '') +
+        (p.animal ? '<span class="pdetail__genius">動物</span>'
+          : (p.genius ? '<span class="pdetail__genius">天才：' + esc(Body.geniusLabel(p)) + '</span>' : '')) +
         '<div class="pdetail__name" id="pd-name">' + esc(p.name) + '</div>' +
         (opts.rename === false ? '' : '<button type="button" class="linkbtn" id="pd-rename">名前を変える</button>') +
         '<div class="pdetail__meta">' + p.grade + '年　' + (isPit ? '投手' : posName(p.pos)) + '　' +
@@ -446,7 +447,7 @@ const UI = (() => {
         (p.awakened ? '　<b class="awake">覚醒</b>' : '') + '</div>' +
         (p.ht != null
           ? '<div class="pdetail__body">' + esc(Body.label(p)) +
-            (p.initial && p.initial.ht != null
+            (p.initial && p.initial.ht != null && !p.animal
               ? '<span class="pdetail__bodyinit">（獲得時 ' + Math.round(p.initial.ht) + 'cm・' + Math.round(p.initial.wt) + 'kg）</span>' : '') +
             '<button type="button" class="linkbtn bodylogbtn" id="pd-bodylog">体格の成長履歴</button>' +
             '</div>' : '') +
