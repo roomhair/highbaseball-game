@@ -950,12 +950,21 @@ const UI = (() => {
     function openDetail(pid) {
       const p = Team.find(team, pid);
       if (!p) return;
+      /* 戻ったときに、オーダー画面の見ていた位置（スクロール）をそのまま戻す */
+      const panel = document.querySelector('.modal__body');
+      const top = panel ? panel.scrollTop : 0;
+      const back = () => {
+        refresh();
+        const pn = document.querySelector('.modal__body');
+        if (pn) pn.scrollTop = top;
+      };
       html('modal-body', playerDetail(p, {}) +
         '<div class="actions actions--modal"><button type="button" class="btn" id="pd-back">オーダーに戻る</button></div>');
       const body = el('modal-body');
       wireRename(body, p, () => {});
-      body.querySelector('#pd-back').addEventListener('click', refresh);
-      closeModal.back = refresh;
+      body.querySelector('#pd-back').addEventListener('click', back);
+      closeModal.back = back;
+      if (panel) panel.scrollTop = 0;
     }
 
     function wire(body) {
