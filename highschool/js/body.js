@@ -55,6 +55,10 @@ const Body = (() => {
       bmi: { 1: 21.2, 2: 21.8, 3: 22.3, 4: 22.5 },
       htSd: 5.5, bmiSd: 2.1,
     },
+    4: {
+      scale: 1.02,
+      ht: { batter: {}, pitcher: {} }, bmi: {}, htSd: 6.7, bmiSd: 2.1 / 1.02,
+    },
     3: {
       scale: 1.02,
       ht: { batter: {}, pitcher: {} }, bmi: {}, htSd: 5.5 * 1.02, bmiSd: 2.1 / 1.02,
@@ -64,7 +68,7 @@ const Body = (() => {
       ht: { batter: {}, pitcher: {} }, bmi: {}, htSd: 5.5 * 1.1, bmiSd: 2.1 / 1.1,
     },
   };
-  [2, 3].forEach((v) => {
+  [2, 3, 4].forEach((v) => {
     const sc = OLD_REFS[v].scale;
     [1, 2, 3, 4].forEach((g) => {
       OLD_REFS[v].ht.batter[g] = JP_HT[g] * sc;
@@ -73,9 +77,14 @@ const Body = (() => {
     });
   });
   const HT_MIN = 155;           // 身長の下限（cm）。上限は設けない
-  const BODY_VER = 4;           // 体格の基準の版（日本の平均の倍率を変えたら上げる）。これより前の選手は ensure で直す
-  const HT_SD = 6.7;            // 身長の標準偏差（cm）。能力への効きを標準化するときの単位
-  const HT_ROLL_SD = 6.4;       // 選手を作るときの身長のばらつき（cm）。大きいほど高身長・低身長が出やすい
+  const BODY_VER = 5;           // 体格の基準の版（日本の平均の倍率を変えたら上げる）。これより前の選手は ensure で直す
+  const HT_SD = 8.0;            // 身長の標準偏差の目安（cm）。能力への効きを標準化するときの単位
+  /* 選手を作るときの身長のばらつき（cm）。高い側と低い側で幅を変えてある。
+     高い側を広くして（2mを超える選手が500人に1人ほど出る）、
+     低い側は狭くして（下限155cmに貼りつく選手が増えすぎないようにする）。
+     平均は変えないよう、山の位置を HT_SHIFT だけ下げてある */
+  const HT_UP_SD = 9.5, HT_DOWN_SD = 6.0;
+  const HT_SHIFT = 0.3989 * (HT_UP_SD - HT_DOWN_SD);     // 高い側と低い側を半々で引くときの、平均のずれ
   const PHYS_SD = 1.0;          // 身体能力の標準偏差
   const OFF_K = 3.2;            // idx 1 あたりに足す能力値（1〜100の能力）
   const VELO_K = 2.0;           // idx 1 あたりに足す球速（km/h）
@@ -296,7 +305,7 @@ const Body = (() => {
     /* 身長は、端が切れない正規分布から引く。上限は設けない（2mを超える選手も、
        きわめて小さい確率で出うる）。下限だけ155cm */
     const zt = Math.sqrt(-2 * Math.log(1 - RNG.rand())) * Math.cos(2 * Math.PI * RNG.rand());
-    const ht = Math.max(HT_MIN, refH + posHt(posKey) + zt * HT_ROLL_SD);
+    const ht = Math.max(HT_MIN, refH + posHt(posKey) - HT_SHIFT + zt * (zt > 0 ? HT_UP_SD : HT_DOWN_SD));
     const bmi = refB + posBmi(posKey) + RNG.norm(0, 2.0 / SCALE);
     const wt = bmi * Math.pow(ht / 100, 2);
     const r = RNG.rand();
