@@ -271,6 +271,8 @@ const Training = (() => {
         p[t.key] = Body.stat(p, t.key, before + add);
         after = p[t.key];
       }
+      /* 成長履歴に載せる（特訓から次の大会までの月に、均等にばらけて出る） */
+      Body.noteTraining(p, t.key, t.pitch, after - before);
       applied.push({
         pid: p.id, name: p.name, grade: p.grade, kind: p.kind,
         label: t.label, key: t.key, unit: t.unit || '',

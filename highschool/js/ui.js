@@ -532,11 +532,12 @@ const UI = (() => {
   }
 
   /* 体格の成長履歴（月ごと）。選手の詳細の上に重ねて出し、戻るボタンで詳細に戻る */
-  const BODY_STAT_NAME = { meet: 'ミート', power: 'パワー', speed: '走力', arm: '肩力', field: '守備', catch: '捕球', control: '制球', stamina: 'スタミナ', velo: '最速' };
+  const BODY_STAT_NAME = { meet: 'ミート', power: 'パワー', speed: '走力', arm: '肩力', field: '守備', catch: '捕球', control: '制球', stamina: 'スタミナ', velo: '最速', traj: '弾道' };
+  const bodyStatName = (k) => BODY_STAT_NAME[k] || (k.indexOf('pitch:') === 0 ? k.slice(6) : k);
   function signed(v, unit) { return (v > 0 ? '+' : (v < 0 ? '−' : '±')) + Math.abs(v) + (unit || ''); }
   function bodyLogHtml(p) {
     const log = (p.bodyLog || []).slice().reverse();
-    if (!log.length) return '<p class="note">まだ体格の記録はありません。月が進むと、ここに1か月ごとの変化が残ります。</p>';
+    if (!log.length) return '<p class="note">まだ成長の記録はありません。月が進むと、ここに1か月ごとの変化が残ります。</p>';
     let lastYear = null;
     /* その月の終わりの身長・体重。いまの値から、新しい月から順に増減を引いて戻していく */
     const r1 = (v) => Math.round(v * 10) / 10;
@@ -548,7 +549,7 @@ const UI = (() => {
       const head = y !== lastYear ? '<li class="bodylog__year">' + y + '年</li>' : '';
       lastYear = y;
       const stats = Object.keys(e.s || {}).filter((k) => e.s[k]).map((k) =>
-        '<span class="bodylog__st">' + BODY_STAT_NAME[k] + signed(e.s[k], k === 'velo' ? 'km/h' : '') + '</span>').join('');
+        '<span class="bodylog__st">' + bodyStatName(k) + signed(e.s[k], k === 'velo' ? 'km/h' : '') + '</span>').join('');
       return head + '<li class="bodylog__row"><span class="bodylog__m">' + m + '月</span>' +
         '<span class="bodylog__b">身長' + hAt.toFixed(1) + 'cm</span>' +
         '<span class="bodylog__b">体重' + wAt.toFixed(1) + 'kg</span>' + stats + '</li>';

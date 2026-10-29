@@ -544,6 +544,11 @@ const Body = (() => {
     const changed = applyChange(p);
     const knack = bodyKnack(p);
     if (knack) changed[knack.key] = (changed[knack.key] || 0) + knack.d;
+    /* 特訓で伸びた分は、特訓から次の大会までの月に、均等にばらけさせて履歴に載せる */
+    if (p.gainPlan && p.gainPlan[to]) {
+      Object.keys(p.gainPlan[to]).forEach((k) => { changed[k] = (changed[k] || 0) + p.gainPlan[to][k]; });
+      delete p.gainPlan[to];
+    }
     p.bodyLog.push({
       t: to,
       dh: r1(r1(p.ht) - r1(htOld)),
@@ -553,11 +558,59 @@ const Body = (() => {
     return p;
   }
 
+  /* ---------- 成長履歴に載せる、体格以外の成長 ---------- */
+
+  /** 成長の種類を、履歴の見出しにするためのキーにする（変化球は「pitch:名前」） */
+  function logKey(key, label) { return key === 'pitch' || key === 'newpitch' ? 'pitch:' + label : key; }
+
+  /** その月（いまの月）の履歴の行に、成長を足す（試合での成長・覚醒など） */
+  function noteGrowth(p, ups) {
+    if (!p) return;
+    ensure(p);
+    const list = (ups || []).filter((u) => u.amount && u.key !== 'apt');
+    if (!list.length) return;
+    let e = p.bodyLog.length ? p.bodyLog[p.bodyLog.length - 1] : null;
+    if (!e || e.t !== p.bodyT) { e = { t: p.bodyT, dh: 0, dw: 0, s: {} }; p.bodyLog.push(e); }
+    if (!e.s) e.s = {};
+    list.forEach((u) => { const k = logKey(u.key, u.label); e.s[k] = (e.s[k] || 0) + u.amount; });
+  }
+
+  /** 特訓での成長を預かる。次に月が進むとき、その期間に均等にばらけさせて履歴へ載せる */
+  function noteTraining(p, key, label, amount) {
+    if (!p || !amount) return;
+    if (!p.gainQueue) p.gainQueue = [];
+    p.gainQueue.push({ k: logKey(key, label), a: amount });
+  }
+
+  /** 預かった特訓の成長を、これから進む月（bodyT+1〜target）に1ずつ順番に配る */
+  function planGains(p, target) {
+    if (!p.gainQueue || !p.gainQueue.length) return;
+    const n = target - p.bodyT;
+    if (n <= 0) {
+      /* 月が進まないときは、いまの月に載せる */
+      noteGrowth(p, p.gainQueue.map((g) => ({ key: g.k, label: '', amount: g.a })));
+      p.gainQueue = [];
+      return;
+    }
+    if (!p.gainPlan) p.gainPlan = {};
+    p.gainQueue.forEach((g) => {
+      const months = RNG.shuffle(Array.from({ length: n }, (_, i) => p.bodyT + 1 + i));
+      const unit = g.a > 0 ? 1 : -1;
+      for (let i = 0; i < Math.abs(g.a); i++) {
+        const m = months[i % n];
+        const row = p.gainPlan[m] || (p.gainPlan[m] = {});
+        row[g.k] = (row[g.k] || 0) + unit;
+      }
+    });
+    p.gainQueue = [];
+  }
+
   /** 選手たちを、target の月まで1か月ずつ進める（すでに過ぎていれば何もしない） */
   function advanceTo(players, target) {
     players.forEach((p) => {
       if (!p) return;
       ensure(p);
+      planGains(p, target);
       let guard = 0;
       while (p.bodyT < target && guard++ < 60) stepMonth(p);
     });
@@ -581,7 +634,7 @@ const Body = (() => {
   return {
     STAT_KEYS, DIR_H, HT_SD, OFF_K, VELO_K, GM_K,
     roll, attach, applyChange, ensure, stepMonth, advanceTo, setWeight, label,
-    setNow, now, monthIdx, monthOf, yearOf, START_YEAR, rollTilt,
+    noteGrowth, noteTraining, setNow, now, monthIdx, monthOf, yearOf, START_YEAR, rollTilt,
     idxOf, idxHeight, idxPhys, offset, heightPhysOffset, weightOffset, gm, ceil,
     hz, pz, zW, bmiOf, refHt,
     isGenius, geniusLabel, stat, GENIUS_LABEL, veloCap, veloLimit,

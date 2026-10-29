@@ -236,6 +236,7 @@ const Growth = (() => {
     });
 
     records.forEach(({ p, played, perf, ups, awakenRoll }) => {
+      Body.noteGrowth(p, ups);      // 成長履歴にも載せる
       if (ups.length || awakenRoll) {
         report.push({ pid: p.id, name: p.name, grade: p.grade, kind: p.kind, played, awakened: awakenRoll, ups: mergeUps(ups) });
       }
