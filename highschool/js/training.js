@@ -232,7 +232,7 @@ const Training = (() => {
   /* 体格の成長（冬の体づくりや身のこなしの向上）で能力が自然に伸びるようになったぶん、
      特訓の上がり幅を少し絞って、全体の難しさが変わらないようにしてある。
      体格での伸びは1年で、特訓（1年ぶん）の1〜2割ほど */
-  const BODY_EASE = { bat: 0.84, pit: 0.87 };
+  const BODY_EASE = { bat: 0.83, pit: 0.86 };
   const easeOf = (p) => (p.kind === 'pitcher' ? BODY_EASE.pit : BODY_EASE.bat);
 
   function choose(state, team) {

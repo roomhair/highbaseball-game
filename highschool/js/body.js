@@ -238,6 +238,14 @@ const Body = (() => {
 
   function clampAbs(v, cap) { return Math.max(-cap, Math.min(cap, v)); }
 
+  /** 伸びしろの倍率。もとの値（獲得時）が低いほど大きい（真ん中より上は1倍、いちばん低いと2倍） */
+  function roomFactor(p, key) {
+    const base = p.initial && p.initial[key] != null ? p.initial[key] : p[key];
+    if (base == null) return 1;
+    const norm = key === 'velo' ? (base - 108) / 52 : base / 100;
+    return 1 + Math.max(0, Math.min(1, (0.5 - norm) / 0.5));
+  }
+
   /** 体重による補正（入部時の体重からの変化ぶん）。上限つき */
   function weightOffset(p, key) {
     const z = zW(p), z0 = p.zW0 == null ? z : p.zW0;
@@ -252,6 +260,8 @@ const Body = (() => {
     else if (key === 'arm') v = clampAbs(resp * 5.0 * dB, 9);
     else if (key === 'speed') v = clampAbs(-1.5 * (penSpeed(z) - penSpeed(z0)), 6);
     else if (key === 'field') v = clampAbs(-0.6 * (penField(z) - penField(z0)), 3);
+    /* もとの球速・パワーが低い選手ほど、体が大きくなったときに伸びやすい（伸びしろが大きい） */
+    if (v > 0 && (key === 'velo' || key === 'power')) v *= roomFactor(p, key);
     return v;
   }
 
