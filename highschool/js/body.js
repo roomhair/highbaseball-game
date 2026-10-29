@@ -76,6 +76,31 @@ const Body = (() => {
 
   const STAT_KEYS = ['meet', 'power', 'speed', 'arm', 'field', 'catch', 'control', 'stamina', 'velo'];
 
+  /* ---------- 天才 ----------
+     ごく稀に、1つの能力（または部屋さんのように「すべて」）に天才的な才能を持つ選手がいる。
+     p.genius に、能力の key か 'all' が入る。天才の能力は、
+       ・上限が100ではなくなる（101以上はSS。上限なく伸ばせる）
+       ・伸びやすい（gm が大きい）
+     ことが普通の選手と違う。 */
+  const GENIUS_LABEL = {
+    meet: 'ミート', power: 'パワー', speed: '走力', arm: '肩力', field: '守備', catch: '捕球',
+    control: '制球', stamina: 'スタミナ', velo: '球速', all: 'すべて',
+  };
+  const GENIUS_GM = 1.45;
+  const HARD_MAX = 999, VELO_GENIUS_MAX = 178;
+
+  function isGenius(p, key) {
+    if (!p || !p.genius) return false;
+    return p.genius === 'all' ? key !== 'traj' && key !== 'pitch' : p.genius === key;
+  }
+  function geniusLabel(p) { return p && p.genius ? (GENIUS_LABEL[p.genius] || '') : ''; }
+
+  /** 能力 key の値を、その選手の上限に収めて整数にする（天才の能力は100を超えられる） */
+  function stat(p, key, v) {
+    if (key === 'velo') return RNG.clamp(Math.round(v), 100, isGenius(p, 'velo') ? VELO_GENIUS_MAX : 168);
+    return Math.max(1, Math.min(isGenius(p, key) ? HARD_MAX : 100, Math.round(v)));
+  }
+
   /* ---------- 基本 ---------- */
 
   function kindOf(p) { return p.kind === 'pitcher' ? 'pitcher' : 'batter'; }
@@ -166,11 +191,14 @@ const Body = (() => {
     let g = 1 + GM_K * idxOf(p, key);
     /* 太りすぎた野手は、パワーの伸びしろが小さい */
     if (key === 'power' && p.kind !== 'pitcher') g *= 1 - 0.2 * Math.max(0, zW(p) - 1.2);
-    return Math.max(0.6, Math.min(1.5, g));
+    if (isGenius(p, key)) g *= GENIUS_GM;
+    return Math.max(0.6, Math.min(isGenius(p, key) ? 2.2 : 1.5, g));
   }
 
   /** 能力の上限（0〜100の目盛り。球速は 108〜160km/h を0〜100に直した値） */
   function ceil(p, key) {
+    /* 天才の能力は上限なし。いまの値の少し上を、いつも伸びしろとして見せる */
+    if (isGenius(p, key)) return key === 'velo' ? 140 : Math.max(135, (p[key] || 0) + 25);
     return Math.max(CEIL_MIN, Math.min(100, CEIL_BASE + CEIL_K * idxOf(p, key)));
   }
 
@@ -258,6 +286,7 @@ const Body = (() => {
   function applyChange(p) {
     if (!p.bodyOff) { p.bodyOff = {}; p.bodyAcc = {}; }
     const changed = {};
+    if (p.fixedBody) return changed;           // 体格が変わらない選手（熊）は、体格による補正を受けない
     STAT_KEYS.forEach((key) => {
       if (p[key] == null) return;
       const target = offset(p, key);
@@ -269,8 +298,7 @@ const Body = (() => {
       if (whole === 0) return;
       p.bodyAcc[key] -= whole;
       const before = p[key];
-      if (key === 'velo') p[key] = RNG.clamp(Math.round(p[key] + whole), 100, 168);
-      else p[key] = RNG.stat(p[key] + whole);
+      p[key] = stat(p, key, p[key] + whole);
       if (p[key] !== before) changed[key] = p[key] - before;
     });
     return changed;
@@ -280,6 +308,7 @@ const Body = (() => {
       （いまの能力にはすでに補正が入っていることにする）。 */
   function ensure(p) {
     if (!p) return p;
+    if (p.fixedBody && p.bodyT == null) p.bodyT = NOW;
     if (p.ht == null) {
       setParts(p, roll(p.kind, p.pos, p.grade));
       p.bodyOff = {}; p.bodyAcc = {};
@@ -303,6 +332,7 @@ const Body = (() => {
       あとで呼ぶ（その前の学年ぶんの伸びを数える）。履歴に1件残す */
   function stepMonth(p) {
     ensure(p);
+    if (p.fixedBody) { p.bodyT += 1; return p; }
     const to = p.bodyT + 1, mo = monthOf(to);
     const g = Math.min(3, Math.max(1, p.grade || 1));
     const gEff = mo === 4 ? Math.max(1, g - 1) : g;
@@ -361,5 +391,6 @@ const Body = (() => {
     setNow, now, monthIdx, monthOf, yearOf, START_YEAR, rollTilt,
     idxOf, idxHeight, idxPhys, offset, heightPhysOffset, weightOffset, gm, ceil,
     hz, pz, zW, bmiOf, refHt,
+    isGenius, geniusLabel, stat, GENIUS_LABEL,
   };
 })();

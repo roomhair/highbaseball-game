@@ -563,6 +563,11 @@ const GameScreen = (() => {
     st.openHalf = null;
   }
 
+  /** 采配を出した打席には、その名前を添える */
+  function ordTag(e) {
+    return e.ord && e.ord.length ? '<span class="stage__ord">采配：' + esc(e.ord.join('・')) + '</span>' : '';
+  }
+
   function apply(e) {
     const st = ctx.state, cur = ctx.cur;
     if (e.k === 'half') {
@@ -595,7 +600,7 @@ const GameScreen = (() => {
         st.awayR = e.score[0]; st.homeR = e.score[1];
       }
       const html = '<div class="stage__play' + (e.ok ? ' is-good' : ' is-bad') + '">' +
-        '<span class="stage__meta">' + halfLabel(e) + '</span>' +
+        '<span class="stage__meta">' + halfLabel(e) + '</span>' + ordTag(e) +
         '<span class="stage__text">' + esc(e.text) + '</span></div>' +
         fieldView(e.bases.map(Boolean), e.outs, e);
       ctx.prevBases = e.bases.slice();
@@ -629,7 +634,7 @@ const GameScreen = (() => {
         : '';
       const playHtml = '<div class="stage__play' + (e.code === 'HR' ? ' is-hr' : (good ? ' is-good' : '')) + '">' +
         '<span class="stage__meta">' + halfLabel(e) + '　' + e.order + '番 ' + esc(e.batterName) + '</span>' +
-        ball +
+        ordTag(e) + ball +
         '<span class="stage__text">' + esc(e.text) +
           (e.runs ? '<b class="stage__runs">+' + e.runs + '点</b>' : '') + '</span>' +
         '</div>' + fieldView(e.bases.map(Boolean), e.outs, e);
@@ -765,6 +770,7 @@ const GameScreen = (() => {
     /* この止まった場所を控えておく。中断から戻ったとき、
        同じところで同じ交代を入れ直すために使う */
     ctx.timeAt = ctx.live.log.length;
+    ctx.savedOrders = JSON.stringify(ctx.live.state().orders || null);
     /* 「1打席ずつ」でタップ待ちだったかを覚えておく。
        覚えずに戻すと、タイムを閉じた拍子に1打席ぶん進んでしまう */
     ctx.wasWaiting = !!ctx.awaitTap;
@@ -781,6 +787,7 @@ const GameScreen = (() => {
   /** どの閉じ方でもここを通る。二重に呼ばれても平気なようにしてある */
   function resumeTime() {
     if (!ctx || ctx.done || !ctx.paused) return;
+    commitOrders();
     ctx.paused = false;
     render(UI.el('game-stage').innerHTML);
     /* 「1打席ずつ」なら、閉じたあともタップを待つところへ戻す。
@@ -817,8 +824,10 @@ const GameScreen = (() => {
         (pit ? '<div>いまの投手　<b>' + esc(pit.name) + '</b>　体力' +
           Team.staminaGauge(pit) + '</div>' : '') +
         (batter ? '<div>次の打者　<b>' + n + '番 ' + esc(batter.name) + '</b></div>' : '') +
+        '<div>采配　<b>' + esc(ordersText()) + '</b></div>' +
       '</div>' +
       '<div class="time__menu">' +
+        '<button type="button" class="btn btn--wide btn--primary" id="tm-orders">采配</button>' +
         (fielding ? '' :
           '<button type="button" class="btn btn--wide" id="tm-ph">代打を出す</button>') +
         (runners.length ?
@@ -836,6 +845,7 @@ const GameScreen = (() => {
         kind: 'time',
         onOpen(body) {
           const on = (id, fn) => { const b = body.querySelector(id); if (b) b.addEventListener('click', fn); };
+          on('#tm-orders', () => ordersMenu());
           on('#tm-ph', () => pinchHit());
           on('#tm-pr', () => pinchRun());
           on('#tm-sub', () => subPlayer());
@@ -845,6 +855,95 @@ const GameScreen = (() => {
         },
       }
     );
+  }
+
+  /* ---------- 采配 ----------
+     攻撃中は「全員に指示」と「走者に指示」、守備中は守備の指示を出す。
+     出した指示は次の打席だけに効く（sim.js）。ボタンは押すたびに入り切り。
+     同時にできない指示を押したときは、先に押していたほうが外れる。 */
+
+  const ORDER_HINT = {
+    steal: '一二塁なら2人ともスタート', bunt: '送りバントで走者を進める',
+    squeeze: '三塁走者を還す（失敗は憤死）', buster: 'バントの構えから強く打つ',
+    safety: '自分も生きようと転がす', he: '走者スタート。当てにいく',
+    busterHE: 'バントの構えからのエンドラン', meet: '三振が減る・長打が減る',
+    power: '長打が増える・三振も増える', stick: '粘って四球を狙う・球数が増える',
+    roll: 'ゴロを打つ。走者を進めやすい', fly: 'フライを打つ。犠飛・長打狙い',
+    gg: 'ゴロならスタート', ig: '打った瞬間にスタート', sg: 'スイングと同時にスタート',
+    ibb: '勝負を避けて歩かせる', strike: '四球が減る・打たれやすい',
+    edge: '三振が増える・四球も増える', fast: '直球中心。速い投手ほど有利',
+    brk: '変化球中心。切れ味しだい',
+  };
+
+  /** いま出してある采配の文字（タイムの画面に出す） */
+  function ordersText() {
+    const o = ctx.live.state().orders;
+    if (!o) return 'なし';
+    const list = [].concat(o.all || [], o.run || [], o.def || []).map((k) => Sim.ORDER_LABELS[k]).filter(Boolean);
+    return list.length ? list.join('・') : 'なし';
+  }
+
+  /** 采配が変わっていれば、中断から戻ったときに同じにできるよう記録に残す */
+  function commitOrders() {
+    if (!ctx || !ctx.onSub) return;
+    const now = JSON.stringify(ctx.live.state().orders || null);
+    if (now === ctx.savedOrders) return;
+    ctx.savedOrders = now;
+    ctx.onSub({ at: ctx.timeAt, orders: ctx.live.state().orders || null });
+  }
+
+  function ordersMenu() {
+    const st = ctx.live.state();
+    const bases = (st.bases || [null, null, null]);
+    const outs = st.outs || 0;
+    const fielding = iAmFielding();
+    const cur = st.orders || {};
+    const sel = { all: (cur.all || []).slice(), run: (cur.run || []).slice(), def: (cur.def || []).slice() };
+    const groups = fielding ? ['def'] : ['all', 'run'];
+    const title = { all: '全員に指示', run: '走者に指示', def: '守備の指示' };
+    const runnerNames = bases.map((b, i) => (b ? ['一塁', '二塁', '三塁'][i] + ' ' + b.name : null)).filter(Boolean);
+
+    const apply = () => ctx.live.setOrders(sel);
+    const isOn = (k) => sel.all.indexOf(k) >= 0 || sel.run.indexOf(k) >= 0 || sel.def.indexOf(k) >= 0;
+    const drop = (k) => { ['all', 'run', 'def'].forEach((g) => { sel[g] = sel[g].filter((x) => x !== k); }); };
+
+    const draw = () => {
+      const sections = groups.map((g) => {
+        const keys = Sim.ORDER_GROUPS[g].filter((k) => Sim.orderAvailable(k, bases, outs));
+        const body = keys.length
+          ? '<div class="ordgrid">' + keys.map((k) =>
+              '<button type="button" class="ordbtn' + (isOn(k) ? ' is-on' : '') + '" data-k="' + k + '" data-g="' + g + '">' +
+              '<b>' + esc(Sim.ORDER_LABELS[k]) + '</b><span>' + esc(ORDER_HINT[k] || '') + '</span></button>').join('') + '</div>'
+          : '<p class="time__empty">' + (g === 'run' ? '走者がいないので、指示は出せません。' : 'いまの場面で出せる指示はありません。') + '</p>';
+        return '<h4 class="sub">' + title[g] + '</h4>' + body;
+      }).join('');
+      UI.html('modal-body',
+        '<h3 class="modal__title">采配</h3>' +
+        '<p class="time__where">' + ctx.state.inning + '回' + (ctx.state.half === 'top' ? '表' : '裏') + '　' +
+          (fielding ? '守備中' : '攻撃中') + '　' + outs + 'アウト' +
+          (!fielding ? '　' + (runnerNames.length ? esc(runnerNames.join('・')) : '走者なし') : '') + '</p>' +
+        '<p class="tiny">出した指示は、次の1打席だけに効きます。同時にできない指示を押すと、先に押していたほうが外れます。</p>' +
+        sections +
+        '<div class="actions actions--modal">' +
+          '<button type="button" class="btn" id="od-clear">指示をすべて外す</button>' +
+          '<button type="button" class="btn btn--primary" id="od-back">決定</button></div>');
+      const body = UI.el('modal-body');
+      body.querySelectorAll('.ordbtn').forEach((b) => b.addEventListener('click', () => {
+        const k = b.dataset.k, g = b.dataset.g;
+        if (isOn(k)) drop(k);
+        else {
+          /* 同時にできない指示は、先に押していたほうを外す */
+          (Sim.ORDER_CONFLICTS[k] || []).forEach(drop);
+          sel[g].push(k);
+        }
+        apply();
+        draw();
+      }));
+      body.querySelector('#od-clear').addEventListener('click', () => { sel.all = []; sel.run = []; sel.def = []; apply(); draw(); });
+      body.querySelector('#od-back').addEventListener('click', () => { commitOrders(); UI.closeModal.back = null; timeMenu(); });
+    };
+    UI.closeModal.back = () => { commitOrders(); UI.closeModal.back = null; timeMenu(); };
+    draw();
   }
 
   /** 選手を1人選ばせる共通の画面 */
@@ -1053,6 +1152,7 @@ const GameScreen = (() => {
     if (rec.bench) team.bench = rec.bench.slice();
     if (rec.rotation) team.rotation = rec.rotation.slice();
     if (rec.note) live.note(rec.note);
+    if (rec.orders !== undefined) live.setOrders(rec.orders);
     if (rec.pitcher) live.changePitcher(side, rec.pitcher);
   }
 

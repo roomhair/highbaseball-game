@@ -83,7 +83,7 @@ const Growth = (() => {
     if (whole <= 0) return;
     p._veloAcc -= whole;
     const before = p.velo;
-    p.velo = Math.min(166, before + whole);
+    p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : 166, before + whole);
     if (p.velo > before) {
       ups.push({ key: 'velo', label: '球速', amount: p.velo - before, before, after: p.velo, unit: 'km/h' });
     }
@@ -166,7 +166,7 @@ const Growth = (() => {
         const before = p[st.key];
         const add = Math.min(G.MAX_STEP, gainFor(before, share * Body.gm(p, st.key), Body.ceil(p, st.key)));
         if (add > 0) {
-          p[st.key] = RNG.stat(before + add);
+          p[st.key] = Body.stat(p, st.key, before + add);
           if (p[st.key] > before) {
             ups.push({ key: st.key, label: st.label, amount: p[st.key] - before, before, after: p[st.key] });
           }
@@ -214,12 +214,12 @@ const Growth = (() => {
          （velo/pitch はこのすぐ下、traj はさらにその下で別枠として扱う） */
       stats.filter((st) => !st.virtual).forEach((st) => {
         const before = p[st.key];
-        p[st.key] = RNG.stat(before + RNG.range(per[0], per[1]));
+        p[st.key] = Body.stat(p, st.key, before + RNG.range(per[0], per[1]));
         ups.push({ key: st.key, label: st.label, amount: p[st.key] - before, before, after: p[st.key], awake: true });
       });
       if (isPit) {
         const vb = p.velo;
-        p.velo = Math.min(168, vb + RNG.range(3, 7));
+        p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : 168, vb + RNG.range(3, 7));
         ups.push({ key: 'velo', label: '球速', amount: p.velo - vb, before: vb, after: p.velo, unit: 'km/h', awake: true });
         /* 決め球が一段階よくなる */
         if (p.pitches.length) {

@@ -157,7 +157,7 @@ const UI = (() => {
       ? '<span class="stat__init">獲得時 ' + initial + (unit ? esc(unit) : '') + '</span>' : '';
     return '<div class="stat"><span class="stat__label">' + esc(label) + '</span>' +
       '<span class="stat__rank rank-' + r + '">' + r + '</span>' +
-      '<span class="stat__num">' + value + (unit ? esc(unit) : '') + '</span>' + init + '</div>';
+      '<span class="stat__num' + (value >= 101 ? ' is-ss' : '') + '">' + value + (unit ? esc(unit) : '') + '</span>' + init + '</div>';
   }
 
   function rankSpan(value) {
@@ -168,7 +168,7 @@ const UI = (() => {
   /** 評価と素の数字を並べて出す（特訓の画面などで使う） */
   function rankNum(value) {
     const r = rankOf(value);
-    return '<span class="rank rank-' + r + '">' + r + '</span><b class="rankval">' + value + '</b>';
+    return '<span class="rank rank-' + r + '">' + r + '</span><b class="rankval' + (value >= 101 ? ' is-ss' : '') + '">' + value + '</b>';
   }
 
   /* 守備適性は色を付けない。能力の評価（S〜G）と見分けがつかなくなるため */
@@ -398,6 +398,7 @@ const UI = (() => {
 
     return '<div class="pdetail">' +
       '<div class="pdetail__head">' +
+        (p.genius ? '<span class="pdetail__genius">天才：' + esc(Body.geniusLabel(p)) + '</span>' : '') +
         '<div class="pdetail__name" id="pd-name">' + esc(p.name) + '</div>' +
         (opts.rename === false ? '' : '<button type="button" class="linkbtn" id="pd-rename">名前を変える</button>') +
         '<div class="pdetail__meta">' + p.grade + '年　' + (isPit ? '投手' : posName(p.pos)) + '　' +

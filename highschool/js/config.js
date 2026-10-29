@@ -273,6 +273,8 @@ const RANK_TABLE = [
 ];
 
 function rankOf(v) {
+  /* 101以上は天才だけが届く「SS」 */
+  if (Math.round(v) >= 101) return 'SS';
   const n = Math.max(1, Math.min(100, Math.round(v)));
   for (const r of RANK_TABLE) if (n >= r.min) return r.rank;
   return 'G';

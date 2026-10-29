@@ -62,6 +62,22 @@ const Tournament = (() => {
       t.pitchers.push(Player.newPitcher({ grade, level, practice: true }));
     }
     Team.autoLineup(t);
+    /* 1000チームに1チーム、4番ショートに部屋がいる（大会や回戦は関係ない） */
+    if (RNG.chance(1 / 1000)) addHeya(t, batLevel);
+    return t;
+  }
+
+  /** 相手チームのショートを部屋に入れ替えて、4番に置く */
+  function addHeya(t, level) {
+    const h = Player.newHeya({ level });
+    let idx = t.lineup.findIndex((s) => s.pos === 'SS');
+    if (idx < 0) idx = 3;
+    const old = t.lineup[idx] && Team.find(t, t.lineup[idx].pid);
+    if (old) t.batters = t.batters.filter((p) => p.id !== old.id);
+    t.batters.push(h);
+    t.lineup[idx] = { pid: h.id, pos: 'SS' };
+    const tmp = t.lineup[3]; t.lineup[3] = t.lineup[idx]; t.lineup[idx] = tmp;
+    Team.repair(t);
     return t;
   }
 
@@ -208,5 +224,5 @@ const Tournament = (() => {
     };
   }
 
-  return { create, makeTeam, currentRound, buildOpponent, perGame, strengthLadder, stepMean, rollDrift };
+  return { create, makeTeam, addHeya, currentRound, buildOpponent, perGame, strengthLadder, stepMean, rollDrift };
 })();

@@ -290,6 +290,7 @@ const Player = (() => {
     const nm = NAMES.personName();
     p.last = nm.last; p.first = nm.first; p.name = nm.last + nm.first;
     Body.attach(p, body);          // 身長・体重・身体能力の補正（入部時に一度だけ）
+    if (opt.genius !== false) maybeGenius(p);
 
     p.career = emptyBat();
     p.tour = emptyBat();
@@ -299,6 +300,74 @@ const Player = (() => {
     }
     /* 選手詳細で「獲得時」の能力と見比べられるように、素の能力を残しておく */
     p.initial = { meet: p.meet, power: p.power, speed: p.speed, arm: p.arm, field: p.field, catch: p.catch, traj: p.traj, ht: p.ht, wt: p.wt };
+    return p;
+  }
+
+
+  /* ---------- 天才・熊・部屋 ---------- */
+
+  /* ごく稀に（1200人に1人ほど）、1つの能力に天才的な才能を持つ選手が出る。
+     天才の能力は上限が100ではなくなり（101以上はSS）、伸びやすい（body.js） */
+  const GENIUS_CHANCE = 1 / 1200;
+  const GENIUS_BAT = ['meet', 'power', 'speed', 'arm', 'field', 'catch'];
+  const GENIUS_PIT = ['control', 'stamina', 'velo'];
+
+  function setGenius(p, key) {
+    p.genius = key;
+    if (key === 'all') return;
+    /* 天才は、そもそもその能力が少し高い状態で入ってくる */
+    if (key === 'velo') p.velo = Body.stat(p, 'velo', p.velo + 3);
+    else p[key] = Body.stat(p, key, p[key] + 6);
+  }
+
+  function maybeGenius(p) {
+    if (!RNG.chance(GENIUS_CHANCE)) return;
+    setGenius(p, RNG.pick(p.kind === 'pitcher' ? GENIUS_PIT : GENIUS_BAT));
+  }
+
+  /** 選手の「獲得時」の能力を、いまの能力で取り直す */
+  function resetInitial(p) {
+    p.initial = { meet: p.meet, power: p.power, speed: p.speed, arm: p.arm, field: p.field, catch: p.catch, traj: p.traj, ht: p.ht, wt: p.wt };
+  }
+
+  /** 熊。新入生の野手に、1000人に1人の確率で混じる。
+      体格は190cm・150kgのまま変わらず、体格による能力の補正も受けない。
+      パワーの天才なので、パワーは上限なし。それ以外は普通の選手と同じ */
+  function newBear(opt) {
+    opt = opt || {};
+    const p = newBatter({ grade: 1, pos: '1B', practice: false, genius: false, prestigeBonus: opt.prestigeBonus });
+    p.last = '熊'; p.first = ''; p.name = '熊';
+    p.traj = 4; p.meet = 30; p.power = 90; p.speed = 70; p.arm = 80; p.field = 30; p.catch = 10;
+    p.ht = 190; p.wt = 150;
+    p.fixedBody = true;
+    p.bodyOff = {}; p.bodyAcc = {}; p.bodyLog = [];
+    p.zW0 = Body.zW(p);
+    p.genius = 'power';
+    p.career = emptyBat();
+    addStats(p.career, seedPracticeBat(p, practiceGames(1), opt.level));
+    resetInitial(p);
+    return p;
+  }
+
+  /** 部屋。ごく稀に相手チームの4番ショートにいる。
+      右投左打で、すべての能力がS100。すべての能力に上限がない（天才：すべて）。
+      学年はランダム。それ以外は他の選手と同じ（引き抜きも通常どおり） */
+  function newHeya(opt) {
+    opt = opt || {};
+    const grade = RNG.range(1, 3);
+    const p = newBatter({ grade, pos: 'SS', level: opt.level, practice: false, genius: false });
+    p.last = '部屋'; p.first = ''; p.name = '部屋';
+    p.throws = 'R'; p.bats = 'L';
+    p.apt = aptitudeFor('SS', 'R');
+    p.traj = 4; p.meet = 100; p.power = 100; p.speed = 100; p.arm = 100; p.field = 100; p.catch = 100;
+    p.genius = 'all';
+    /* 体格による補正は、すでに足した分として数える（あとから変わった分だけが効く） */
+    p.bodyOff = {};
+    Body.STAT_KEYS.forEach((k) => { if (p[k] != null) p.bodyOff[k] = Body.offset(p, k); });
+    p.bodyAcc = {};
+    p.career = emptyBat();
+    addStats(p.career, seedPracticeBat(p, practiceGames(grade), opt.level));
+    resetInitial(p);
     return p;
   }
 
@@ -362,6 +431,7 @@ const Player = (() => {
     const nm = NAMES.personName();
     p.last = nm.last; p.first = nm.first; p.name = nm.last + nm.first;
     Body.attach(p, body);          // 身長・体重・身体能力の補正（入部時に一度だけ）
+    if (opt.genius !== false) maybeGenius(p);
 
     p.career = emptyPit();
     p.tour = emptyPit();
@@ -448,7 +518,7 @@ const Player = (() => {
 
   return {
     pitchesInOrder,
-    newBatter, newPitcher, rating, breakScore, aptPenalty, handLabel, batsText, setThrows, gradeLabel, RIGHT_ONLY,
+    newBatter, newPitcher, newBear, newHeya, rating, breakScore, aptPenalty, handLabel, batsText, setThrows, gradeLabel, RIGHT_ONLY,
     tryAptUp, aptUpChance,
     emptyBat, emptyPit, addStats, seedPracticeBat, seedPracticePit, practiceGames,
     rollTalent, nextId, currentSeq, setSeq,

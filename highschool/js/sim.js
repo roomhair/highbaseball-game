@@ -17,7 +17,7 @@ const Sim = (() => {
 
   /* ---------- 能力を 0〜1 に直す ---------- */
 
-  function veloScore(p) { return C((p.velo - 116) / 48, 0, 1); }
+  function veloScore(p) { return C((p.velo - 116) / 48, 0, 1.35); }   // 164km/hを超えるのは球速の天才だけ
 
   /** 投手の球威（球速と変化球）。
      変化球だけで押し切れると高校野球らしくないので、球速のほうを重く見る。
@@ -30,7 +30,7 @@ const Sim = (() => {
      そこまで引き上げると今度は打率.17〜.19・防御率2台まで落ち込み、
      金属バットで守備もまだ粗い高校野球としては投高すぎた（これも測定済み）。
      打率.22〜.27・防御率3.4〜4.4あたりに収まる水準として選んだ */
-  function stuffOf(p) { return C((veloScore(p) * 0.68 + Player.breakScore(p) * 0.32) * 1.15, 0, 1); }
+  function stuffOf(p) { return C((veloScore(p) * 0.68 + Player.breakScore(p) * 0.32) * 1.15, 0, 1.5); }
 
   /** 守備陣のまとまり（0〜1）。安打になりにくさに効く */
   function defenseOf(team, pitcherId) {
@@ -40,7 +40,7 @@ const Sim = (() => {
       const p = d[k];
       if (p) { sum += Team.defScore(p, k); n++; }
     });
-    return n ? C(sum / n / 100, 0, 1) : 0.4;
+    return n ? C(sum / n / 100, 0, 1.6) : 0.4;   // 100を超えるのは天才だけ
   }
 
   /* ---------- 打球の種類と方向 ---------- */
@@ -53,8 +53,21 @@ const Sim = (() => {
     4: [0.30, 0.20, 0.45, 0.05],
   };
 
-  function battedType(traj) {
-    const mix = BALL_MIX[traj] || BALL_MIX[2];
+  /* bias は采配（転がす・フライを上げる）による偏り。
+     正ならゴロ寄り、負ならフライ寄り（0.3 でゴロが3割ぶん増える） */
+  function battedType(traj, bias) {
+    let mix = BALL_MIX[traj] || BALL_MIX[2];
+    if (bias) {
+      const d = C(bias, -0.4, 0.4);
+      mix = mix.slice();
+      if (d > 0) {
+        const t = Math.min(d, mix[2] + mix[3] - 0.04);
+        mix[0] += t; mix[2] -= t * 0.9; mix[3] -= t * 0.1;
+      } else {
+        const t = Math.min(-d, mix[0] - 0.08);
+        mix[0] -= t; mix[2] += t * 0.9; mix[3] += t * 0.1;
+      }
+    }
     let r = RNG.rand();
     if ((r -= mix[0]) < 0) return 'GB';
     if ((r -= mix[1]) < 0) return 'LD';
@@ -152,26 +165,31 @@ const Sim = (() => {
     return { name: got.name, speed };
   }
 
-  function resolvePA(bat, pit, defTeam, defRating, fatigue, defenders, offForm, defForm) {
+  function resolvePA(bat, pit, defTeam, defRating, fatigue, defenders, offForm, defForm, mods) {
     const d = 1 - (defForm || 0) / 130;
-    const stuff = C(stuffOf(pit) * (1 - 0.22 * fatigue) * d, 0, 1);
-    const ctrl = C((pit.control / 100) * (1 - 0.28 * fatigue) * d, 0, 1);
-    return resolveVs(bat, stuff, ctrl, defRating, defenders, offForm);
+    const stuff = C(stuffOf(pit) * (1 - 0.22 * fatigue) * d, 0, 1.5);
+    const ctrl = C((pit.control / 100) * (1 - 0.28 * fatigue) * d, 0, 1.6);
+    return resolveVs(bat, stuff, ctrl, defRating, defenders, offForm, false, mods);
   }
 
-  function resolveVs(bat, stuff, ctrl, defRating, defenders, form, practice) {
+  /* mods は采配による補正（打席の結果の確率にかける倍率）。
+       kMul 三振 / bbMul 四球 / hrMul 本塁打 / babipMul 安打 / xbhMul 長打 /
+       gb ゴロ・フライの偏り / gbHit ゴロの安打 */
+  function resolveVs(bat, stuff, ctrl, defRating, defenders, form, practice, mods) {
+    const M = mods || {};
     /* その日の調子。ふだんは小さいが、まれに「今日は打てる」日がある。
        これがあるおかげで、力の差がある相手にもたまに勝てる */
     const f = form || 0;
-    const contact = C((bat.meet + f) / 100, 0.02, 1);
-    const pw = C((bat.power + f) / 100, 0.02, 1);
+    /* 能力が100を超えるのは天才だけ。そのぶん上限を広げてある */
+    const contact = C((bat.meet + f) / 100, 0.02, 3);
+    const pw = C((bat.power + f) / 100, 0.02, 3);
 
     /* 三振・四球・死球 */
     /* 三振。高校野球の全国大会は1打席あたり17%前後 */
-    const pK = C(0.168 + 0.40 * (stuff - contact), 0.02, 0.55);
+    const pK = C(C(0.168 + 0.40 * (stuff - contact), 0.02, 0.55) * (M.kMul || 1), 0.01, 0.7);
     /* 四球。制球の良い投手でも、高校生の打者相手にほとんど出さない
        （4%を切る）ということはないので、制球の効きは少しゆるめてある */
-    const pBB = C(0.088 + 0.10 * (0.5 - ctrl) - 0.03 * (contact - 0.5), 0.055, 0.30);
+    const pBB = C(C(0.088 + 0.10 * (0.5 - ctrl) - 0.03 * (contact - 0.5), 0.055, 0.30) * (M.bbMul || 1), 0.02, 0.5);
     const pHBP = C(0.010 + 0.02 * (0.5 - ctrl), 0.002, 0.045);
 
     let r = RNG.rand();
@@ -182,7 +200,7 @@ const Sim = (() => {
     if ((r -= pHBP) < 0) return { code: 'HBP', text: '死球', out: 0 };
 
     /* ここからインプレー */
-    const type = battedType(bat.traj);
+    const type = battedType(bat.traj, M.gb);
     const zone = sprayZone(bat.pull);
     const spot = fieldSpot(zone, type, effBats(bat));
     const isOF = spot === 'LF' || spot === 'CF' || spot === 'RF';
@@ -204,10 +222,10 @@ const Sim = (() => {
       ) * (type === 'FB' ? 1.25 : 0.55);
       const pHR = practice
         ? Math.min(0.32, base * 3 * (0.25 + 0.5 * Math.pow(Math.max(0, pw - 0.55) / 0.4, 1.5)))
-        : base * 0.25;
+        : base * 0.25 * (M.hrMul || 1);
       if (RNG.chance(pHR)) {
         const ofKey = effBats(bat) === 'L' ? mirror(OF_BY_ZONE[zone]) : OF_BY_ZONE[zone];
-        return { code: 'HR', text: posShort(ofKey) + '本', out: 0, spot: ofKey };
+        return { code: 'HR', text: posShort(ofKey) + '本', out: 0, spot: ofKey, bbType: type };
       }
     }
 
@@ -221,12 +239,12 @@ const Sim = (() => {
       /* 守備のうまい強豪でも、高校野球では1試合に0.5個ほどは失策が出る */
       const pE = C(base + (52 - eff) / 100 * 0.24, type === 'GB' ? 0.022 : 0.007, 0.26);
       if (RNG.chance(pE)) {
-        return { code: 'E', text: posShort(spot) + '失', out: 0, spot, by: fielder ? fielder.id : null };
+        return { code: 'E', text: posShort(spot) + '失', out: 0, spot, by: fielder ? fielder.id : null, bbType: type };
       }
     }
 
     /* 安打になるか。打球の種類でまったく違う */
-    const babip = C(
+    const babip = (M.babipMul || 1) * C(
       0.315 + 0.34 * (contact - stuff) + 0.07 * (pw - 0.5) +
       0.05 * (bat.speed / 100 - 0.5) - 0.17 * (defRating - 0.45) +
       /* 制球が悪い投手は、四球だけでなく甘い球も増えて打たれやすい（逆も同じ）。
@@ -234,21 +252,22 @@ const Sim = (() => {
       0.10 * (0.5 - ctrl),
       0.09, 0.58
     );
-    const byType = { GB: 0.235, LD: 0.660, FB: 0.215, PU: 0.020 }[type];
+    const byType = { GB: 0.235 * (M.gbHit || 1), LD: 0.660, FB: 0.215, PU: 0.020 }[type];
     const pHit = C(byType * (babip / 0.30), 0.01, 0.92);
 
     if (RNG.chance(pHit)) {
       /* 長打になるか。フライとライナーのほうが伸びる */
       let kind = '1B';
       const sp = bat.speed / 100;
+      const xb = M.xbhMul || 1;       // 強振なら長打が増え、ミートに徹すれば減る
       if (type === 'FB') {
         const q = RNG.rand();
-        kind = q < 0.45 ? '2B' : (q < 0.45 + 0.02 + sp * 0.05 ? '3B' : '1B');
+        kind = q < 0.45 * xb ? '2B' : (q < 0.45 * xb + 0.02 + sp * 0.05 ? '3B' : '1B');
       } else if (type === 'LD') {
         const q = RNG.rand();
-        kind = q < 0.27 ? '2B' : (q < 0.27 + 0.01 + sp * 0.025 ? '3B' : '1B');
+        kind = q < 0.27 * xb ? '2B' : (q < 0.27 * xb + 0.01 + sp * 0.025 ? '3B' : '1B');
       } else if (type === 'GB') {
-        kind = RNG.chance(0.04 + sp * 0.03) ? '2B' : '1B';
+        kind = RNG.chance((0.04 + sp * 0.03) * xb) ? '2B' : '1B';
       }
       /* 長打の方向は外野で言う */
       const ofKey = effBats(bat) === 'L' ? mirror(OF_BY_ZONE[zone]) : OF_BY_ZONE[zone];
@@ -265,7 +284,7 @@ const Sim = (() => {
         const pStayInfield = C(0.10 + sp * 0.22, 0.06, 0.34);
         if (!RNG.chance(pStayInfield)) { where = ofKey; infieldHit = false; }
       }
-      return { code: kind, text: posShort(where) + mark, out: 0, spot: where, infieldHit };
+      return { code: kind, text: posShort(where) + mark, out: 0, spot: where, infieldHit, bbType: type };
     }
 
     /* アウト。どういうアウトだったかを文字にする */
@@ -356,8 +375,9 @@ const Sim = (() => {
   }
 
   /** バントの成否。うまい打者ほど決まる */
-  function resolveTactic(kind, bat, pit, defRating) {
-    if (kind === 'ibb') return { code: 'BB', text: '敬遠', out: 0 };
+  function resolveTactic(kind, bat, pit, defRating, bases) {
+    if (kind === 'ibb') return { code: 'BB', text: '申告敬遠', out: 0 };
+    if (kind === 'safety') return resolveSafety(bat, pit, defRating, bases);
     const skill = C(0.68 + (bat.meet / 100) * 0.22 - (stuffOf(pit) - 0.45) * 0.12, 0.48, 0.94);
     if (kind === 'squeeze') {
       /* スクイズは決まれば1点、外されれば三塁走者が憤死する */
@@ -371,6 +391,165 @@ const Sim = (() => {
     return RNG.chance(0.3)
       ? { code: 'BE', text: '投失', out: 0, by: pit.id }
       : { code: 'BF', text: 'バント失敗', out: 1 };
+  }
+
+  /* セーフティバント。自分が生きるために転がす。
+     決まる確率は、足の速さが主で、左打者（一塁に近い）は少し有利。
+     投手の球威が低く、守備が下手なほど決まる。外されると、ただのアウト
+     （走者がいれば進めることもある）。バントの構えで2ストライクから
+     ファウルになれば三振もある */
+  function resolveSafety(bat, pit, defRating, bases) {
+    const hasRunner = !!(bases && bases.some(Boolean));
+    const pHit = C(0.10 + (bat.speed - 50) / 190 + (bat.meet - 50) / 600 +
+      (effBats(bat) === 'L' ? 0.04 : 0) - (defRating - 0.5) * 0.28 - (stuffOf(pit) - 0.45) * 0.06, 0.04, 0.58);
+    const r = RNG.rand();
+    if (r < pHit) {
+      const spot = RNG.pick(['3B', '3B', 'P', '1B']);
+      return { code: '1B', text: posShort(spot) + '安（セーフティ）', out: 0, spot, infieldHit: true, bbType: 'GB', safety: true };
+    }
+    if (r < pHit + 0.05) return { code: 'BE', text: '投失（セーフティ）', out: 0, by: pit.id };
+    if (r < pHit + 0.10) return { code: 'K', text: 'バント三振', out: 1 };
+    if (hasRunner && RNG.chance(0.55)) return { code: 'SH', text: '犠打（セーフティ）', out: 1 };
+    return { code: 'BF', text: 'セーフティ失敗', out: 1 };
+  }
+
+  /* ---------- 采配 ----------
+     人が操るチームは、タイムで「采配」を出せる。出した指示は、次の打席だけに効く。
+     攻撃の指示は2種類。
+       全員に指示 … 盗塁・バント・スクイズ・バスター・セーフティバント・ヒットエンドラン・
+                    バスターエンドラン・ミート・強振・ねばる・転がす・フライを上げる
+       走者に指示 … ゴロゴー・インパクトゴー・スイングゴー
+     守備の指示は、申告敬遠・ストライク優先・際どいコース・直球多め・変化球多め。
+     打席の確率にかける倍率（OFFENSE_MODS・DEFENSE_MODS）と、走者の動き
+     （advance の go）に分けて効かせている。数字は、高校野球の一般的な傾向
+     （盗塁の損益分岐は成功率7割前後、バントは成功すれば1アウトと引き換えに進塁、
+     強振は三振も長打も増え、ミートは三振が減って長打が減る、など）に合わせた目安。 */
+
+  const OFFENSE_MODS = {
+    meet:      { kMul: 0.82, hrMul: 0.55, babipMul: 1.03, xbhMul: 0.85 },
+    power:     { kMul: 1.22, hrMul: 1.55, babipMul: 0.93, xbhMul: 1.25 },
+    stick:     { kMul: 0.90, bbMul: 1.28, babipMul: 0.94, hrMul: 0.80 },
+    roll:      { gb: 0.30, hrMul: 0.20 },
+    fly:       { gb: -0.28, hrMul: 1.30, kMul: 1.08 },
+    buster:    { kMul: 0.90, hrMul: 0.35, gb: 0.12, gbHit: 1.20, xbhMul: 0.80 },
+    he:        { kMul: 0.55, babipMul: 0.96, hrMul: 0.60, gb: 0.10 },
+    busterHE:  { kMul: 0.60, hrMul: 0.35, gb: 0.15, gbHit: 1.15, xbhMul: 0.80 },
+  };
+  const DEFENSE_MODS = {
+    strike: { bbMul: 0.45, kMul: 0.92, babipMul: 1.07, hrMul: 1.15 },   // ストライク優先: 四球は減るが打たれやすい
+    edge:   { bbMul: 1.65, kMul: 1.10, babipMul: 0.96, hrMul: 0.92 },   // 際どいコース: 三振は増えるが四球も増える
+  };
+
+  function mulIn(m, src) {
+    Object.keys(src).forEach((k) => {
+      if (k === 'gb') m.gb += src.gb;
+      else m[k] = (m[k] == null ? 1 : m[k]) * src[k];
+    });
+  }
+
+  /** この打席の補正を組み立てる。O は攻撃の指示、D は守備の指示（Set かnull） */
+  function buildMods(O, D, pit) {
+    const m = { gb: 0 };
+    if (O) O.forEach((k) => { if (OFFENSE_MODS[k]) mulIn(m, OFFENSE_MODS[k]); });
+    if (D) {
+      D.forEach((k) => { if (DEFENSE_MODS[k]) mulIn(m, DEFENSE_MODS[k]); });
+      /* 直球多め: 速い投手ほど効く。遅い投手が直球を増やすと打たれる */
+      if (D.has('fast')) {
+        const e = C(veloScore(pit) - 0.42, -0.35, 0.5);
+        mulIn(m, { kMul: 1 + 0.40 * e, babipMul: 1 - 0.18 * e, hrMul: 1 - 0.30 * e });
+      }
+      /* 変化球多め: 変化球の切れ味の良い投手ほど効く。ゴロも少し増える */
+      if (D.has('brk')) {
+        const e = C(Player.breakScore(pit) - 0.30, -0.3, 0.5);
+        mulIn(m, { kMul: 1 + 0.50 * e, babipMul: 1 - 0.20 * e, bbMul: 1.08, gb: 0.04 });
+      }
+    }
+    return m;
+  }
+
+  /** 走者の動かし方（走者に指示・ヒットエンドラン） */
+  function goOf(O) {
+    if (!O) return null;
+    if (O.has('he') || O.has('busterHE')) return 'he';
+    if (O.has('sg')) return 'sg';
+    if (O.has('ig')) return 'ig';
+    if (O.has('gg')) return 'gg';
+    return null;
+  }
+
+  /* 采配の画面で使う、並び・出せる場面・同時に選べない組み合わせ。
+     同時に選べないものは、あとから押したほうが勝ち、先に押していたほうは外れる */
+  const ORDER_GROUPS = {
+    all: ['steal', 'bunt', 'squeeze', 'buster', 'safety', 'he', 'busterHE', 'meet', 'power', 'stick', 'roll', 'fly'],
+    run: ['gg', 'ig', 'sg'],
+    def: ['ibb', 'strike', 'edge', 'fast', 'brk'],
+  };
+  const ORDER_CONFLICT_PAIRS = [
+    /* バント系は、打つ作戦・走者を動かす作戦とは両立しない */
+    ['bunt', 'squeeze'], ['bunt', 'safety'], ['squeeze', 'safety'],
+    ['bunt', 'steal'], ['squeeze', 'steal'], ['safety', 'steal'],
+    ['bunt', 'buster'], ['squeeze', 'buster'], ['safety', 'buster'],
+    ['bunt', 'he'], ['squeeze', 'he'], ['safety', 'he'],
+    ['bunt', 'busterHE'], ['squeeze', 'busterHE'], ['safety', 'busterHE'],
+    ['bunt', 'meet'], ['squeeze', 'meet'], ['safety', 'meet'],
+    ['bunt', 'power'], ['squeeze', 'power'], ['safety', 'power'],
+    ['bunt', 'stick'], ['squeeze', 'stick'], ['safety', 'stick'],
+    ['bunt', 'roll'], ['squeeze', 'roll'], ['safety', 'roll'],
+    ['bunt', 'fly'], ['squeeze', 'fly'], ['safety', 'fly'],
+    ['bunt', 'gg'], ['squeeze', 'gg'], ['safety', 'gg'],
+    ['bunt', 'ig'], ['squeeze', 'ig'], ['safety', 'ig'],
+    ['bunt', 'sg'], ['squeeze', 'sg'], ['safety', 'sg'],
+    /* 走者が動く作戦どうし */
+    ['steal', 'he'], ['steal', 'busterHE'], ['steal', 'gg'], ['steal', 'ig'], ['steal', 'sg'],
+    ['he', 'busterHE'], ['he', 'gg'], ['he', 'ig'], ['he', 'sg'],
+    ['busterHE', 'gg'], ['busterHE', 'ig'], ['busterHE', 'sg'],
+    ['gg', 'ig'], ['gg', 'sg'], ['ig', 'sg'],
+    /* バスター・エンドランは、強く振る・見送る・上げる打ち方と合わない */
+    ['buster', 'busterHE'], ['buster', 'he'], ['buster', 'power'], ['buster', 'fly'],
+    ['he', 'power'], ['he', 'stick'], ['he', 'fly'],
+    ['busterHE', 'power'], ['busterHE', 'stick'], ['busterHE', 'fly'],
+    /* 打ち方どうし */
+    ['meet', 'power'], ['meet', 'fly'], ['power', 'stick'], ['power', 'roll'], ['roll', 'fly'],
+    /* ゴロゴーはゴロでしか走らない */
+    ['gg', 'fly'],
+    /* 守備 */
+    ['ibb', 'strike'], ['ibb', 'edge'], ['ibb', 'fast'], ['ibb', 'brk'],
+    ['strike', 'edge'], ['fast', 'brk'],
+  ];
+  const ORDER_CONFLICTS = {};
+  ORDER_CONFLICT_PAIRS.forEach((pr) => {
+    (ORDER_CONFLICTS[pr[0]] = ORDER_CONFLICTS[pr[0]] || []).push(pr[1]);
+    (ORDER_CONFLICTS[pr[1]] = ORDER_CONFLICTS[pr[1]] || []).push(pr[0]);
+  });
+
+  /** その指示を、いまの場面（走者・アウト）で出せるか */
+  function orderAvailable(key, bases, outs) {
+    const v = validOrders(new Set([key]), bases, outs);
+    return !!v;
+  }
+
+  /** 盗塁ができる形か（進む先が空いている走者がいるか） */
+  function canSteal(bases) {
+    return !!((bases[0] && !bases[1]) || (bases[1] && !bases[2]));
+  }
+
+  /** 場面に合わない指示を外す。合うものだけ残す（無ければ null） */
+  function validOrders(O, bases, outs) {
+    if (!O || !O.size) return null;
+    const anyR = bases.some(Boolean), r12 = !!(bases[0] || bases[1]);
+    const out = new Set();
+    O.forEach((k) => {
+      let ok = true;
+      switch (k) {
+        case 'steal': ok = canSteal(bases); break;
+        case 'bunt': case 'buster': case 'busterHE': ok = outs < 2 && r12; break;
+        case 'squeeze': ok = outs < 2 && !!bases[2]; break;
+        case 'he': case 'gg': case 'ig': case 'sg': ok = anyR; break;
+        default: ok = true;
+      }
+      if (ok) out.add(k);
+    });
+    return out.size ? out : null;
   }
 
   /* ---------- 試合を組み立てる ---------- */
@@ -557,7 +736,16 @@ const Sim = (() => {
              打席と打席のあいだで配列ごと差し替わるので、参照はそのつど
              取り直すこと（保持しておかない） */
           bases: ctl.bases,
+          /* いまのアウトカウントと、出してある采配（次の打席だけに効く） */
+          outs: ctl.outs || 0,
+          orders: ctl.orders || null,
         };
+      },
+      /** 采配を出す。{ all: [...], run: [...], def: [...] }。空なら取り消し。
+          次の打席だけに効き、使い切ったら消える */
+      setOrders(o) {
+        const has = o && ((o.all && o.all.length) || (o.run && o.run.length) || (o.def && o.def.length));
+        ctl.orders = has ? { all: (o.all || []).slice(), run: (o.run || []).slice(), def: (o.def || []).slice() } : null;
       },
       /** スキップのとき。ここから先は、人が操っている側もAI監督が采配する
           （疲れた投手を、そのまま投げさせ続けない） */
@@ -669,6 +857,19 @@ const Sim = (() => {
     }
   }
 
+  /* 采配の名前（画面の表示と、試合の記録に使う） */
+  const ORDER_LABELS = {
+    steal: '盗塁', bunt: 'バント', squeeze: 'スクイズ', buster: 'バスター', safety: 'セーフティバント',
+    he: 'ヒットエンドラン', busterHE: 'バスターエンドラン', meet: 'ミート', power: '強振', stick: 'ねばる',
+    roll: '転がす', fly: 'フライを上げる', gg: 'ゴロゴー', ig: 'インパクトゴー', sg: 'スイングゴー',
+    ibb: '申告敬遠', strike: 'ストライク優先', edge: '際どいコース', fast: '直球多め', brk: '変化球多め',
+  };
+  function ORDER_LABEL_LIST(O, D, tactic) {
+    const out = [];
+    [O, D].forEach((S) => { if (S) S.forEach((k) => { if (ORDER_LABELS[k]) out.push(ORDER_LABELS[k]); }); });
+    return out;
+  }
+
   /* ---------- 半イニング ---------- */
 
   /* 半分の回を進める。ジェネレータにしてあるのは、
@@ -682,7 +883,7 @@ const Sim = (() => {
     /* タイムの画面から、いまの走者を見たり代走を出したりできるように、
        外から見えるところに置いておく。bases はここから先、新しい配列に
        差し替えられることがあるので、yield のたびに置き直す */
-    const showBases = () => { if (ctl) ctl.bases = bases; };
+    const showBases = () => { if (ctl) { ctl.bases = bases; ctl.outs = outs; } };
 
     /* タイブレークは無死一二塁から。走者は前の打順の2人にしておく */
     if (tie) {
@@ -709,12 +910,57 @@ const Sim = (() => {
       let bat = slot && Team.find(offTeam, slot.pid);
       if (!bat || !pit) { outs = 3; break; }
 
+      /* 采配。人が操る側が出した指示（次の打席だけに効く）を、場面に合うものだけ受け取る */
+      const rawOrders = ctl && !ctl.auto ? ctl.orders : null;
+      let O = null, D = null;
+      if (rawOrders) {
+        if (off.manual) O = new Set([].concat(rawOrders.all || [], rawOrders.run || []));
+        if (def.manual) D = new Set(rawOrders.def || []);
+      }
+      O = validOrders(O, bases, outs);
+      if (D && !D.size) D = null;
+      /* 指示を出したときは、AI監督の自動の作戦（盗塁・バント・スクイズ）は出さない */
+      const userOff = !!O;
+
+      /* 盗塁の指示。一二塁なら2人ともスタートする（重盗）。成功率は走者の足と
+         捕手の肩で決まる（損益分岐点は7割前後。二盗より三盗のほうが難しい） */
+      if (O && O.has('steal')) {
+        const cat = Team.defenders(defTeam, def.pitcherId).C;
+        const arm = cat ? (cat.arm * 0.6 + cat.catch * 0.4) : 40;
+        const pS = (r, third) => C((third ? 0.64 : 0.73) + (r.speed - arm) / (third ? 120 : 115) + (O.has('stick') ? 0.04 : 0), 0.3, 0.95);
+        let text = '', ok = true;
+        const gone = (r) => { outs++; pit.game.outs++; return r; };
+        if (bases[0] && bases[1] && !bases[2]) {
+          const lead = bases[1], back = bases[0];
+          let leadOk = true, backOk = true;
+          if (RNG.chance(0.45)) leadOk = RNG.chance(pS(lead, true)); else backOk = RNG.chance(pS(back, false));
+          bases[0] = null; bases[1] = null;
+          if (leadOk) { bases[2] = lead; lead.game.sb++; } else gone(lead);
+          if (backOk) { bases[1] = back; back.game.sb++; } else gone(back);
+          ok = leadOk && backOk;
+          text = '重盗' + (ok ? '成功' : (leadOk ? '（二塁でアウト）' : '（三塁でアウト）'));
+        } else if (bases[1] && !bases[2]) {
+          const r = bases[1];
+          if (RNG.chance(pS(r, true))) { bases[1] = null; bases[2] = r; r.game.sb++; text = r.name + ' 三盗成功'; }
+          else { bases[1] = null; gone(r); ok = false; text = r.name + ' 三盗失敗'; }
+        } else {
+          const r = bases[0];
+          if (RNG.chance(pS(r, false))) { bases[0] = null; bases[1] = r; r.game.sb++; text = r.name + ' 盗塁成功'; }
+          else { bases[0] = null; gone(r); ok = false; text = r.name + ' 盗塁失敗'; }
+        }
+        log.push(snap('steal', { text, ok, ord: ['盗塁'] }, off, def, inning, half, outs, bases, A, H, bat, pit));
+        showBases(); yield;
+        O.delete('steal');
+        if (outs >= 3) { off.order = slotIndex; break; }
+        O = validOrders(O, bases, outs);
+      }
+
       /* 盗塁。一塁だけが埋まっているときに、足のある選手がしかける。
          2死からもしかけるが、そこは慎重になる。
          走力45以下がまず出ない式にしていたころは、120試合で5個しか
          出ず、通算成績にも並ばなかった。高校野球では見慣れた攻めなので、
          走力なりにきちんと出るようにしてある */
-      if (bases[0] && !bases[1] && outs < 3) {
+      if (bases[0] && !bases[1] && outs < 3 && !userOff) {
         const runner = bases[0];
         /* 2点以上を追っているときは、アウトになると痛いので滅多にしかけない。
            1つの塁より、続く打者の一打のほうが要る場面 */
@@ -757,7 +1003,7 @@ const Sim = (() => {
 
       /* 三盗。二塁だけに走者がいるときに、足の速い選手がまれにしかける。
          二盗よりずっと少なく、一死までしか行かない（二死からは打者に任せる） */
-      if (bases[1] && !bases[0] && !bases[2] && outs < 2) {
+      if (bases[1] && !bases[0] && !bases[2] && outs < 2 && !userOff) {
         const runner = bases[1];
         const pAttempt = C((runner.speed - 55) / 500, 0, 0.06) *
           ((off.runs - (off === A ? H.runs : A.runs)) <= -2 ? 0.2 : 1);
@@ -786,7 +1032,9 @@ const Sim = (() => {
            呼び名は、捕手の捕球が低いほど捕逸になりやすい */
         const cat = Team.defenders(defTeam, def.pitcherId).C;
         const catchSkill = Math.max(10, cat ? cat.catch : 40);
-        const pWP = C((0.065 + 0.07 * (0.5 - pit.control / 100)) * (50 / catchSkill), 0.01, 0.16);
+        /* 変化球多めはワンバウンドが増え、ストライク優先は減る */
+        const wpMul = D ? (D.has('brk') ? 1.4 : 1) * (D.has('strike') ? 0.85 : 1) : 1;
+        const pWP = C((0.065 + 0.07 * (0.5 - pit.control / 100)) * (50 / catchSkill) * wpMul, 0.01, 0.20);
         if (RNG.chance(pWP)) {
           const isWP = !RNG.chance(C(0.28 * (50 / catchSkill), 0.10, 0.60));
           let wpRuns = 0;
@@ -825,14 +1073,29 @@ const Sim = (() => {
       const lead = off.runs - (off === A ? H.runs : A.runs);
       /* 両打ちは、投手の投げる手と反対側で打つ */
       bat._eff = bat.bats === 'B' ? (pit.throws === 'L' ? 'R' : 'L') : null;
-      const tactic = chooseTactic(bat, slotIndex, outs, bases, inning, lead);
+      /* 盗塁などで走者が変わったので、指示をもう一度、場面に合わせて確かめる */
+      O = validOrders(O, bases, outs);
+      let tactic;
+      if (D && D.has('ibb')) tactic = 'ibb';                       // 申告敬遠
+      else if (userOff) tactic = O ? (O.has('squeeze') ? 'squeeze' : (O.has('bunt') ? 'bunt' : (O.has('safety') ? 'safety' : null))) : null;
+      else tactic = chooseTactic(bat, slotIndex, outs, bases, inning, lead);
       /* 投げた球。見せるためのもので、結果そのものには効かせていない */
       const ball = tactic === 'ibb' ? null : pickPitch(pit, fatigue);
       const res = tactic
-        ? resolveTactic(tactic, bat, pit, defRating)
+        ? resolveTactic(tactic, bat, pit, defRating, bases)
         : resolvePA(bat, pit, defTeam, defRating, fatigue, defenders,
-                    off.form + (bat.gameForm || 0), -def.form + (pit.gameForm || 0) * 0.5);
+                    off.form + (bat.gameForm || 0), -def.form + (pit.gameForm || 0) * 0.5,
+                    (O || D) ? buildMods(O, D, pit) : null);
       res.slotIndex = slotIndex;
+      /* 走者の動き（ゴロゴー・インパクトゴー・スイングゴー・ヒットエンドラン）と、
+         フライ・転がす の狙い。走者の進塁・併殺・タッチアップに効く（advance） */
+      res.go = goOf(O);
+      res.flyOrder = !!(O && O.has('fly'));
+      res.rollOrder = !!(O && O.has('roll'));
+      /* 画面に出す、今回の采配 */
+      const ordLabels = ORDER_LABEL_LIST(O, D, tactic);
+      /* 指示は、この打席で使い切り */
+      if (ctl) ctl.orders = null;
 
       def.bf++;
       pit.game.bf++;
@@ -860,7 +1123,8 @@ const Sim = (() => {
       if (out.bases.indexOf(bat) >= 0) { bat._resp = pit.id; bat._uer = res.code === 'E' || res.code === 'BE'; }
       /* 球数。1球ずつは投げていないので、打席の結果から見積もる */
       pit.game.np = (pit.game.np || 0) + (res.code === 'K' ? 4 + RNG.int(3)
-        : (res.code === 'BB' ? 5 + RNG.int(3) : (res.code === 'HBP' ? 3 : 2 + RNG.int(4))));
+        : (res.code === 'BB' ? 5 + RNG.int(3) : (res.code === 'HBP' ? 3 : 2 + RNG.int(4)))) +
+        (O && O.has('stick') ? 3 : 0) + (D && D.has('edge') ? 1 : 0) - (D && D.has('strike') ? 1 : 0);
       if ((res.code === 'E' || res.code === 'BE') && res.by) {
         const fl = Team.find(defTeam, res.by);
         if (fl) { fl.game.e = (fl.game.e || 0) + 1; }
@@ -876,6 +1140,7 @@ const Sim = (() => {
         pitch: ball ? ball.name : null,
         pitchSpeed: ball ? ball.speed : null,
         desc: out.desc || '',
+        ord: ordLabels,
         /* 還った走者それぞれの責任投手（入った順）。負け投手を決めるのに使う */
         resp: respIds,
       }, off, def, inning, half, outs, bases, A, H, bat, pit, before, slotIndex));
@@ -890,6 +1155,7 @@ const Sim = (() => {
     }
 
     off.lob += bases.filter(Boolean).length;
+    if (ctl) ctl.orders = null;
     return got;
   }
 
@@ -934,9 +1200,34 @@ const Sim = (() => {
        進塁・本塁突入・タッチアップなど、走塁の確率はすべてこれで上下させる */
     const z = (r) => (r ? C((r.speed - 50) / 50, -1, 1) : 0);
 
+    /* 采配による走者の動き（res.go）。
+       he=ヒットエンドラン / sg=スイングゴー（スイングと同時にスタート） /
+       ig=インパクトゴー（打った瞬間にスタート） / gg=ゴロゴー（ゴロなら走る）。
+       打球が内野を抜ければ次の塁を狙いやすいが、空振りや直接捕られると
+       走者が刺される。ゴロゴーは、ゴロのときだけ効く */
+    const go = res.go || null;
+    const goBonus = go === 'he' || go === 'sg' ? 0.25 : (go === 'ig' ? 0.20 : (go === 'gg' && res.bbType === 'GB' ? 0.18 : 0));
+
     switch (res.code) {
       case 'K':
-        outs++; break;
+        outs++;
+        /* スタートを切っていた走者は、空振り三振だと盗塁と同じ形になる */
+        if ((go === 'sg' || go === 'he') && outs < 3) {
+          const elig = [];
+          if (bases[1] && !bases[2]) elig.push(1);
+          if (bases[0] && (!bases[1] || elig.indexOf(1) >= 0)) elig.push(0);
+          if (elig.length) {
+            const lead = bases[elig[0]];
+            const caught = RNG.chance(C(0.40 - z(lead) * 0.14, 0.18, 0.62))
+              ? (elig.length > 1 && RNG.chance(0.4) ? elig[1] : elig[0]) : -1;
+            if (caught >= 0) { outs++; bases[caught] = null; res.text += '（走者盗塁死）'; }
+            if (outs < 3) {
+              if (elig.indexOf(1) >= 0 && bases[1] && !bases[2]) { bases[2] = bases[1]; bases[1] = null; if (bases[2].game) bases[2].game.sb++; }
+              if (elig.indexOf(0) >= 0 && bases[0] && !bases[1]) { bases[1] = bases[0]; bases[0] = null; if (bases[1].game) bases[1].game.sb++; }
+            }
+          }
+        }
+        break;
 
       case 'BB': case 'HBP': {
         /* 押し出しになる形だけ進める */
@@ -964,17 +1255,17 @@ const Sim = (() => {
            内野安打なら三塁で止まるのがふつう */
         if (bases[1]) {
           /* 二死は打った瞬間に全力で走るので、還りやすい */
-          const q = inf ? 0.03 + sp(bases[1]) * 0.07 : C(0.62 + z(bases[1]) * 0.30 + (outs === 2 ? 0.20 : 0), 0.15, 0.97);
+          const q = inf ? 0.03 + sp(bases[1]) * 0.07 + goBonus * 0.4 : C(0.62 + z(bases[1]) * 0.30 + (outs === 2 ? 0.20 : 0) + goBonus, 0.15, 0.98);
           if (RNG.chance(q)) {
             /* 外野の返球で、本塁でタッチアウトになることもある（二死では走者が先に走るので除く） */
-            if (!inf && outs < 2 && RNG.chance(C(0.06 - z(bases[1]) * 0.04, 0.015, 0.10))) { outs++; bases[1] = null; res.text += '（本塁憤死）'; }
+            if (!inf && outs < 2 && RNG.chance(C(0.06 - z(bases[1]) * 0.04 + goBonus * 0.12, 0.015, 0.16))) { outs++; bases[1] = null; res.text += '（本塁憤死）'; }
             else { if (score(bases[1])) rbi++; bases[1] = null; }
           }
           else if (!bases[2]) { bases[2] = bases[1]; bases[1] = null; }
         }
         /* 一塁走者。内野安打から三塁まで行けることはまずない */
         if (bases[0]) {
-          const q3 = inf ? 0.02 : C(0.26 + z(bases[0]) * 0.22 + (outs === 2 ? 0.10 : 0), 0.04, 0.70);
+          const q3 = inf ? 0.02 + goBonus * 0.3 : C(0.26 + z(bases[0]) * 0.22 + (outs === 2 ? 0.10 : 0) + goBonus, 0.04, 0.88);
           if (!bases[2] && RNG.chance(q3)) { bases[2] = bases[0]; bases[0] = null; }
           else if (!bases[1]) { bases[1] = bases[0]; bases[0] = null; }
         }
@@ -986,7 +1277,7 @@ const Sim = (() => {
         if (bases[2]) { if (score(bases[2])) rbi++; bases[2] = null; }
         if (bases[1]) { if (score(bases[1])) rbi++; bases[1] = null; }
         if (bases[0]) {
-          if (RNG.chance(C(0.40 + z(bases[0]) * 0.28 + (outs === 2 ? 0.20 : 0), 0.10, 0.92))) { if (score(bases[0])) rbi++; }
+          if (RNG.chance(C(0.40 + z(bases[0]) * 0.28 + (outs === 2 ? 0.20 : 0) + goBonus, 0.10, 0.97))) { if (score(bases[0])) rbi++; }
           else bases[2] = bases[0];
           bases[0] = null;
         }
@@ -1063,7 +1354,8 @@ const Sim = (() => {
           /* 併殺の目 */
           if (bases[0] && outs < 2) {
             const DP_BY_SPOT = { SS: 1.12, '2B': 1.05, '3B': 1.0, '1B': 0.62, P: 0.75, C: 0.35 };   // 一塁線のゴロや投手・捕手のゴロは併殺になりにくい
-            const pDP = C((0.40 - (bat.speed - 50) * 0.004) * (DP_BY_SPOT[res.spot] || 0.9), 0.05, 0.66);
+            const goDP = go ? { he: 0.30, sg: 0.35, ig: 0.60, gg: 0.60 }[go] : 1;     // 走者が動いていれば併殺になりにくい
+            const pDP = C((0.40 - (bat.speed - 50) * 0.004) * (DP_BY_SPOT[res.spot] || 0.9) * goDP, 0.02, 0.66);
             if (RNG.chance(pDP)) {
               outs += 2;
               bases[0] = null;
@@ -1087,7 +1379,9 @@ const Sim = (() => {
              三遊間のゴロは打球が三塁側へ向かうので、まず進めない。
              一死では無理をしないぶん、少し下がる */
           const R2_ADV = { '1B': 0.55, '2B': 0.62, SS: 0.10, '3B': 0.05, P: 0.12, C: 0.04 };
-          const r2Adv = (R2_ADV[res.spot] != null ? R2_ADV[res.spot] : 0.15) * (outs >= 1 ? 0.8 : 1);
+          let r2Adv = (R2_ADV[res.spot] != null ? R2_ADV[res.spot] : 0.15) * (outs >= 1 ? 0.8 : 1);
+          if (go) r2Adv = Math.max(r2Adv, 0.80);                 // 走者は打球と同時に走っている
+          else if (res.rollOrder) r2Adv = Math.min(0.92, r2Adv + 0.10);
           const r2Spd = (r) => 1 + z(r) * 0.35;      // 二塁走者の足で、ゴロの進塁が上下する
           const fc = forced1 && outs < 2 && RNG.chance(0.40);
           outs++;
@@ -1108,7 +1402,17 @@ const Sim = (() => {
                  還ることがある（足があるほど還りやすい） */
               if (bases[2]) {
                 const force3 = bases[0] && bases[1];
-                if (force3 || RNG.chance(C(0.46 + (bases[2].speed - 50) * 0.006, 0.22, 0.72))) {
+                if (force3) {
+                  if (score(bases[2])) rbi++;
+                  bases[2] = null;
+                } else if (go) {
+                  /* 三塁走者がゴロでスタート。還れることが増えるが、本塁で刺されることもある */
+                  const pHome = { gg: 0.80, ig: 0.72, sg: 0.78, he: 0.78 }[go] + (bases[2].speed - 50) * 0.002;
+                  const pOut = { gg: 0.12, ig: 0.08, sg: 0.10, he: 0.10 }[go] - (bases[2].speed - 50) * 0.001;
+                  const u = RNG.rand();
+                  if (u < pHome) { if (score(bases[2])) rbi++; bases[2] = null; }
+                  else if (u < pHome + pOut) { outs++; bases[2] = null; res.text += '（本塁憤死）'; }
+                } else if (RNG.chance(C(0.46 + (bases[2].speed - 50) * 0.006 + (res.rollOrder ? 0.08 : 0), 0.22, 0.80))) {
                   if (score(bases[2])) rbi++;
                   bases[2] = null;
                 }
@@ -1128,6 +1432,18 @@ const Sim = (() => {
              それ以外（左飛・中飛での二塁走者、一塁走者、内野フライ）は稀 */
           const spot = res.spot;
           const fly = res.bbType !== 'LD';          // ライナーは飛び出していて戻れない
+          /* 走者がスタートを切っていると、直接捕られたときに戻れず併殺になる */
+          if (go && go !== 'gg' && outs < 2 && (bases[0] || bases[1])) {
+            const t = go;
+            const pDO = res.bbType === 'LD' ? { ig: 0.40, sg: 0.50, he: 0.50 }[t]
+              : (res.isOF ? { ig: 0.10, sg: 0.18, he: 0.14 }[t] : { ig: 0.12, sg: 0.20, he: 0.16 }[t]);
+            if (RNG.chance(pDO)) {
+              const idx = bases[1] && (!bases[0] || RNG.chance(0.6)) ? 1 : 0;
+              outs += 2; bases[idx] = null;
+              res.text = posShort(res.spot) + (res.bbType === 'LD' ? '直併' : '飛併') + '（走者戻れず）';
+              break;
+            }
+          }
           /* 内野へのライナーで、飛び出した一塁走者が戻れず併殺になることがある */
           if (!fly && !res.isOF && outs < 2 && bases[0] && RNG.chance(0.07)) {
             outs += 2; bases[0] = null;
@@ -1136,7 +1452,7 @@ const Sim = (() => {
           }
           if (outs < 2) {
             /* 内野フライで三塁走者がタッチアップして還ることは、まず無い */
-            const pHome = res.isOF ? (fly ? 0.65 : 0.18) : 0;
+            const pHome = (res.isOF ? (fly ? 0.65 : 0.18) : 0) * (res.flyOrder && res.isOF ? 1.25 : 1);   // フライを上げる指示なら、犠飛を狙っている
             const pSecond = res.isOF
               ? (spot === 'RF' ? (fly ? 0.40 : 0.10) : (fly ? 0.06 : 0.02))
               : 0.01;
@@ -1353,6 +1669,7 @@ const Sim = (() => {
 
   return {
     play, live, resolvePA, resolveVs, stuffOf, veloScore, defenseOf, capacityOf,
+    ORDER_LABELS, ORDER_GROUPS, ORDER_CONFLICTS, orderAvailable,
     peerProfile, peerBatter, careerBat, careerPit,
   };
 })();

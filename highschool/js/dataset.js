@@ -55,7 +55,10 @@ const Dataset = (() => {
       /* 守る場所がばらけるように配る。DHは持ち場にしない（役割は毎回選ぶ） */
       const pool = RNG.shuffle(FIELD_POSITIONS.slice());
       for (let i = 0; i < n; i++) {
-        players.push(Player.newBatter({ grade: 1, pos: pool[i % pool.length], prestigeBonus }));
+        /* 1000人に1人、熊が入ってくる */
+        players.push(RNG.chance(1 / 1000)
+          ? Player.newBear({ prestigeBonus })
+          : Player.newBatter({ grade: 1, pos: pool[i % pool.length], prestigeBonus }));
       }
     } else {
       for (let i = 0; i < n; i++) players.push(Player.newPitcher({ grade: 1, prestigeBonus }));

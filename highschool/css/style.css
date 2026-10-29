@@ -639,6 +639,16 @@ td.hl { font-weight: 800; }
   font-weight: 900;
 }
 
+/* SS（101以上。天才だけ）は虹色。数字も同じ */
+.rank-SS, .stat__rank.rank-SS, .is-ss {
+  background: linear-gradient(90deg, #ff3b3b, #ff9d00, #f2d600, #2fc24a, #1ea7ff, #7a4dff, #e23bd1);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  font-weight: 900;
+}
+.pdetail__head { position: relative; }
+.pdetail__genius { position: absolute; right: 38px; top: 2px; font-size: 10.5px; font-weight: 700; color: var(--ink-mute); border: 1px solid var(--line, #c9c2b0); border-radius: 999px; padding: 0 7px; background: rgba(255,255,255,.6); }
+
 /* 守備適性の文字は色を付けない（能力の評価と見分けるため） */
 .apt-letter {
   display: inline-block; min-width: 1.15em; text-align: center;
@@ -2193,3 +2203,12 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 .protable tbody th { text-align: left; font-weight: 600; }
 .protable .pro__total th, .protable .pro__total td { border-top: 2px dotted var(--ink-faint, #999); font-weight: 700; }
 .protable .pro__title { font-weight: 900; color: var(--accent, #1d5c8a); }
+
+/* 采配 */
+.ordgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0 10px; }
+.ordbtn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 7px 9px; border: 1px solid var(--line, #c9c2b0); border-radius: 10px; background: #fff; color: var(--ink); font: inherit; cursor: pointer; }
+.ordbtn b { font-size: 13.5px; }
+.ordbtn span { font-size: 10.5px; color: var(--ink-mute); line-height: 1.3; }
+.ordbtn.is-on { background: var(--ink, #1c2b4a); border-color: var(--ink, #1c2b4a); }
+.ordbtn.is-on b, .ordbtn.is-on span { color: #fff; }
+.stage__ord { display: inline-block; margin-left: 6px; font-size: 10.5px; font-weight: 700; color: #fff; background: #7a4dff; border-radius: 999px; padding: 0 7px; }

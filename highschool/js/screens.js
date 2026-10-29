@@ -352,9 +352,9 @@ const Screens = (() => {
       const out = [
         plain('最速', p.velo, vUp == null ? null : Math.min(168, p.velo + vUp), 'km/h'),
         chip('制球', 'control', p.control,
-          amt('control') == null ? null : RNG.stat(p.control + amt('control'))),
+          amt('control') == null ? null : Body.stat(p, 'control', p.control + amt('control'))),
         chip('スタミナ', 'stamina', p.stamina,
-          amt('stamina') == null ? null : RNG.stat(p.stamina + amt('stamina'))),
+          amt('stamina') == null ? null : Body.stat(p, 'stamina', p.stamina + amt('stamina'))),
       ];
       Player.pitchesInOrder(p).forEach((q) => {
         const t = list.find((x) => x.key === 'pitch' && x.pitch === q.name);
@@ -366,7 +366,7 @@ const Screens = (() => {
     }
 
     const stat = (label, key) =>
-      chip(label, key, p[key], amt(key) == null ? null : RNG.stat(p[key] + amt(key)));
+      chip(label, key, p[key], amt(key) == null ? null : Body.stat(p, key, p[key] + amt(key)));
     const trUp = amt('traj');
     return [
       stat('ミート', 'meet'), stat('パワー', 'power'), stat('走力', 'speed'),
@@ -396,7 +396,7 @@ const Screens = (() => {
       return q ? q.level + ' → ' + Math.min(7, q.level + t.amount) : '';
     }
     if (t.key === 'newpitch') return '新しく習得';
-    return rankOf(p[t.key]) + ' ' + p[t.key] + ' → ' + rankOf(Math.min(100, p[t.key] + t.amount)) + ' ' + Math.min(100, p[t.key] + t.amount);
+    return rankOf(p[t.key]) + ' ' + p[t.key] + ' → ' + rankOf(Body.stat(p, t.key, p[t.key] + t.amount)) + ' ' + Body.stat(p, t.key, p[t.key] + t.amount);
   }
 
   function trainingResult(state, nextLabel) {
