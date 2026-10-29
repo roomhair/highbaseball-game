@@ -40,7 +40,7 @@ const Screens = (() => {
             '　<span class="dataset__best">注目： ' + esc(s.best.name) + '（' + s.best.grade + '年）</span></p>' +
           '<button type="button" class="btn btn--primary dataset__pick" data-i="' + i + '">' + esc(pickLabel) + '</button>' +
         '</header>' +
-        UI.rosterTable(players) +
+        UI.rosterTable(players, { showBody: true }) +
       '</article>';
     }).join('');
     UI.html('pick-list', html);

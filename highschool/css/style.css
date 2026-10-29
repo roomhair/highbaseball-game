@@ -2229,3 +2229,6 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 
 /* 先発を選ぶ列の選手名は、押すと個人画面が開く */
 #pregame-my .spick__nm { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+
+/* 選手名の下の、小さな身長・体重 */
+.roster .nm__body { display: block; font-size: 9.5px; font-weight: 500; color: var(--ink-mute); line-height: 1.2; margin-top: 1px; font-variant-numeric: tabular-nums; }

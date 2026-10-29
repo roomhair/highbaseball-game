@@ -255,7 +255,9 @@ const UI = (() => {
       : esc(p.name);
     return '<tr data-pid="' + p.id + '" class="prow' + (opts.mark ? ' is-' + opts.mark : '') + '">' +
       '<td class="c g' + p.grade + '">' + p.grade + '</td>' +
-      '<td class="nm">' + nm + (p.awakened ? '<em class="awake-dot" title="覚醒">◆</em>' : '') + '</td>' +
+      '<td class="nm">' + nm + (p.awakened ? '<em class="awake-dot" title="覚醒">◆</em>' : '') +
+        /* チーム作り・新入生選びでは、名前の下に身長・体重を小さく添える */
+        (opts.showBody && p.ht != null ? '<small class="nm__body">' + Math.round(p.ht) + 'cm・' + Math.round(p.wt) + 'kg</small>' : '') + '</td>' +
       role +
       /* 投手の一覧に「位置」の列はいらない（全員 投） */
       (isPit ? '' : '<td class="c">' + posShort(p.pos) + '</td>') +
