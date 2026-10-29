@@ -406,8 +406,9 @@ const UI = (() => {
         (p.awakened ? '　<b class="awake">覚醒</b>' : '') + '</div>' +
         (p.ht != null
           ? '<div class="pdetail__body">' + esc(Body.label(p)) +
-            (p.initial && p.initial.ht != null && (Math.round(p.initial.ht) !== Math.round(p.ht) || Math.round(p.initial.wt) !== Math.round(p.wt))
+            (p.initial && p.initial.ht != null
               ? '<span class="pdetail__bodyinit">（獲得時 ' + Math.round(p.initial.ht) + 'cm・' + Math.round(p.initial.wt) + 'kg）</span>' : '') +
+            '<button type="button" class="linkbtn bodylogbtn" id="pd-bodylog">体格の成長履歴</button>' +
             '</div>' : '') +
         (p.from ? '<div class="pdetail__from">' + p.from.year + '年目に ' + esc(p.from.school) + ' から加入</div>' : '') +
       '</div>' +
@@ -446,9 +447,57 @@ const UI = (() => {
     });
   }
 
+  /* 体格の成長履歴（月ごと）。選手の詳細の上に重ねて出し、戻るボタンで詳細に戻る */
+  const BODY_STAT_NAME = { meet: 'ミート', power: 'パワー', speed: '走力', arm: '肩力', field: '守備', catch: '捕球', control: '制球', stamina: 'スタミナ', velo: '最速' };
+  function signed(v, unit) { return (v > 0 ? '+' : (v < 0 ? '−' : '±')) + Math.abs(v) + (unit || ''); }
+  function bodyLogHtml(p) {
+    const log = (p.bodyLog || []).slice().reverse();
+    if (!log.length) return '<p class="note">まだ体格の記録はありません。月が進むと、ここに1か月ごとの変化が残ります。</p>';
+    let lastYear = null;
+    const rows = log.map((e) => {
+      const y = Body.yearOf(e.t), m = Body.monthOf(e.t);
+      const head = y !== lastYear ? '<li class="bodylog__year">' + y + '年</li>' : '';
+      lastYear = y;
+      const stats = Object.keys(e.s || {}).filter((k) => e.s[k]).map((k) =>
+        '<span class="bodylog__st">' + BODY_STAT_NAME[k] + signed(e.s[k], k === 'velo' ? 'km/h' : '') + '</span>').join('');
+      return head + '<li class="bodylog__row"><span class="bodylog__m">' + m + '月</span>' +
+        '<span class="bodylog__b">身長' + signed(Math.round(e.dh * 10) / 10, 'cm') + '</span>' +
+        '<span class="bodylog__b">体重' + signed(Math.round(e.dw * 10) / 10, 'kg') + '</span>' + stats + '</li>';
+    }).join('');
+    return '<ul class="bodylog">' + rows + '</ul>';
+  }
+
+  function wireBodyLog(body, p) {
+    const btn = body.querySelector('#pd-bodylog');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const detail = body.querySelector('.pdetail');
+      if (!detail) return;
+      const prevBack = closeModal.back;
+      const box = document.createElement('div');
+      box.className = 'bodylogbox';
+      box.innerHTML = '<h3 class="modal__title">' + esc(p.name) + '　体格の成長履歴</h3>' +
+        '<p class="tiny">身長' + Math.round(p.ht * 10) / 10 + 'cm・体重' + Math.round(p.wt * 10) / 10 + 'kg（いま）</p>' +
+        '<div class="bodylogscroll">' + bodyLogHtml(p) + '</div>' +
+        '<div class="actions actions--modal"><button type="button" class="btn" id="bl-back">選手に戻る</button></div>';
+      const back = () => {
+        box.remove(); detail.hidden = false; closeModal.back = prevBack;
+        const panel = document.querySelector('.modal__body');
+        if (panel) panel.scrollTop = 0;
+      };
+      detail.hidden = true;
+      detail.parentNode.insertBefore(box, detail.nextSibling);
+      box.querySelector('#bl-back').addEventListener('click', back);
+      closeModal.back = back;
+      const panel = document.querySelector('.modal__body');
+      if (panel) panel.scrollTop = 0;
+    });
+  }
+
   /** 名前の書き換えを受け付ける（詳細をどこに描いても使える） */
   function wireRename(body, p, onRename) {
     wireHand(body, p, onRename);
+    wireBodyLog(body, p);
     const btn = body.querySelector('#pd-rename');
     if (!btn) return;
     btn.addEventListener('click', () => {
@@ -922,6 +971,37 @@ const UI = (() => {
     modal(render(), { kind: 'lineup', onOpen(body) { wire(body); } });
   }
 
+  /** プロでの成績の表。新しい年が上、点線を挟んで最後に通算。タイトル級の数字は太字 */
+  function proSection(x) {
+    const pro = x.pro;
+    if (!pro) return '';
+    const isPit = x.player.kind === 'pitcher';
+    const first = Body.START_YEAR + x.year;
+    const head = '<h4 class="sub">プロでの成績<span class="sub__note">' + first + '年が1年目</span></h4>';
+    const shown = pro.seasons.slice(0, x.shown || 0);
+    if (!shown.length) {
+      return head + '<p class="note">' + (x.year + 1) + '年目の秋の大会が終わると、プロ1年目（' + first + '年）の成績が見られます。</p>';
+    }
+    const cols = isPit
+      ? [['試合', 'g'], ['投球回', 'ip'], ['勝', 'w'], ['敗', 'l'], ['防御率', 'era'], ['奪三振', 'so'], ['WAR', 'war']]
+      : [['試合', 'g'], ['打席', 'pa'], ['打率', 'avg'], ['本塁打', 'hr'], ['打点', 'rbi'], ['OPS', 'ops'], ['盗塁', 'sb'], ['WAR', 'war']];
+    const cell = (v, k, bold) => {
+      const t = k === 'ip' ? ipText(v) : v;
+      return '<td>' + (bold && bold[k] ? '<b class="pro__title">' + t + '</b>' : t) + '</td>';
+    };
+    const rows = shown.slice().reverse().map((s) => {
+      const v = Pro.rowView(s, isPit);
+      return '<tr><th scope="row">' + s.y + '</th>' + cols.map((c) => cell(v[c[1]], c[1], v.bold)).join('') + '</tr>';
+    }).join('');
+    const tv = Pro.totalView(shown, isPit);
+    const total = '<tr class="pro__total"><th scope="row">通算</th>' + cols.map((c) => cell(tv[c[1]], c[1])).join('') + '</tr>';
+    const done = shown.length >= pro.seasons.length
+      ? '<p class="tiny">' + shown[shown.length - 1].y + '年限りで現役を引退しました。</p>'
+      : '<p class="tiny">毎年、秋の大会が終わると1年ぶん増えます。太字はタイトル級の数字です。</p>';
+    return head + '<div class="protable-wrap"><table class="protable"><thead><tr><th>年</th>' +
+      cols.map((c) => '<th>' + c[0] + '</th>').join('') + '</tr></thead><tbody>' + rows + total + '</tbody></table></div>' + done;
+  }
+
   /** プロ入りした選手の一覧（info から）。名前を押すと、能力・通算成績・活躍シーンが見られる */
   function prosList(list) {
     const sorted = list.slice().sort((a, b) => (a.year - b.year) || (a.round - b.round));
@@ -943,8 +1023,9 @@ const UI = (() => {
         const x = sorted[+b.dataset.i];
         html('modal-body',
           '<p class="proslist__tag"><em class="retire__draft">' + esc(x.text) + '</em>　' + esc(x.school || '') + '　' + x.year + '年目</p>' +
-          playerDetail(x.player, { rename: false }) +
+          playerDetail(x.player, { rename: false }) + proSection(x) +
           '<div class="actions actions--modal"><button type="button" class="btn" id="pl-back">一覧に戻る</button></div>');
+        wireBodyLog(el('modal-body'), x.player);
         el('modal-body').querySelector('#pl-back').addEventListener('click', show);
         closeModal.back = show;
       }));

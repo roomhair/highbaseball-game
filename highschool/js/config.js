@@ -204,8 +204,8 @@ const CONFIG = {
        大きくなる（player.js の baseOf で底上げに使う）。 */
   SCHOOL_RANK: {
     /* これ以上でその段階（最初の弱小は下限なし） */
-    THRESHOLDS: [15, 40, 80],
-    NEWCOMER_BONUS: [3, 8, 14, 21],   // 弱小・中堅・強豪・名門の順。弱小でもチーム作りの1年生より少し強い
+    THRESHOLDS: [15, 40, 80, 120],
+    NEWCOMER_BONUS: [3, 8, 14, 21, 26],   // スカウトレベルE〜Aの順（弱小〜名門）。Eでもチーム作りの1年生より少し強い
     WIN: 1.2,
     LOSE: -0.8,
     NATIONAL_BONUS: 8,     // 夏の全国大会に出場
@@ -239,6 +239,11 @@ function schoolRankTier(score) {
   return 0;
 }
 
+/** 新入生を迎える画面に出すスカウトレベル（E〜A、Aが最も良い） */
+function scoutLevel(score) {
+  return ['E', 'D', 'C', 'B', 'A'][schoolRankTier(score)] || 'E';
+}
+
 /** 新入生の素質に乗る下駄。段階が上がるほど大きくなる */
 function schoolRankNewcomerBonus(score) {
   return CONFIG.SCHOOL_RANK.NEWCOMER_BONUS[schoolRankTier(score)] || 0;
@@ -250,7 +255,7 @@ function poachSuccessChance(oppLevel, prestigeScore) {
   const T = CONFIG.POACH.OPP_TIERS;
   let oppTier = T.length;
   for (let i = 0; i < T.length; i++) { if (oppLevel < T[i]) { oppTier = i; break; } }
-  const prestigeTier = schoolRankTier(prestigeScore);
+  const prestigeTier = Math.min(3, schoolRankTier(prestigeScore));   // 確率表は4段階
   return CONFIG.POACH.SUCCESS_TABLE[oppTier][prestigeTier];
 }
 

@@ -23,6 +23,10 @@ const Screens = (() => {
   function pick(opt) {
     UI.el('pick-title').textContent = opt.title;
     UI.el('pick-lead').textContent = opt.lead || '';
+    const sc = UI.el('pick-scout');
+    sc.hidden = !opt.scout;
+    sc.className = 'scoutlv' + (opt.scout ? ' scoutlv--' + opt.scout : '');
+    sc.innerHTML = opt.scout ? 'スカウトレベル　<b>' + opt.scout + '</b>　<span class="tiny">（E〜A。高いほど良い選手が来ます）</span>' : '';
     /* 呼び方は画面ごとに変わる（チーム作りなら「チーム1」、新入生なら「候補1」） */
     const setLabel = opt.setLabel || 'チーム';
     const pickLabel = opt.pickLabel || 'このチームにする';

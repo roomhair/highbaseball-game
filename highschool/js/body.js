@@ -45,11 +45,11 @@ const Body = (() => {
 
   /* 同じ学年・同じ区分の平均身長（cm）。投手はやや高い */
   const HT_REF = {
-    batter:  { 1: 169.8, 2: 172.4, 3: 173.7 },
-    pitcher: { 1: 171.8, 2: 174.4, 3: 175.7 },
+    batter:  { 1: 169.8, 2: 172.4, 3: 173.7, 4: 174.1 },
+    pitcher: { 1: 171.8, 2: 174.4, 3: 175.7, 4: 176.1 },
   };
   /* 標準的な体格（BMI）。学年が上がると少し増える */
-  const BMI_REF = { 1: 21.2, 2: 21.8, 3: 22.3 };
+  const BMI_REF = { 1: 21.2, 2: 21.8, 3: 22.3, 4: 22.5 };
   const BMI_SD = 2.1;
   /* 守る場所による体格の違い（BMI）。生成のときだけ使う */
   const POS_BMI = { C: 1.0, '1B': 1.2, DH: 0.8, '3B': 0.4, SS: -0.5, '2B': -0.4, CF: -0.6, LF: 0.1, RF: 0.3, P: 0.2 };
@@ -71,7 +71,7 @@ const Body = (() => {
   };
 
   /* 身長の伸び（cm）。1→2年、2→3年。早熟は小さく、晩成は大きい */
-  const HT_GROW = { 1: 2.6, 2: 1.3 };
+  const HT_GROW = { 1: 2.6, 2: 1.3, 3: 0.4 };
   const HT_TYPE_FACTOR = { '-1': 0.5, '0': 1.0, '1': 1.6 };
 
   const STAT_KEYS = ['meet', 'power', 'speed', 'arm', 'field', 'catch', 'control', 'stamina', 'velo'];
@@ -79,7 +79,34 @@ const Body = (() => {
   /* ---------- 基本 ---------- */
 
   function kindOf(p) { return p.kind === 'pitcher' ? 'pitcher' : 'batter'; }
-  function refHt(p) { return HT_REF[kindOf(p)][Math.min(3, Math.max(1, p.grade || 1))]; }
+
+  /* ---------- 時計（月） ----------
+     ゲームの中の「いま」を、年×12+(月−1) の通し番号で持つ。
+     4月に学年が替わる。ゲームは1年目の4月（2026年）から始まる。
+     main.js が大会や新年度のたびに進め、選手は自分の bodyT（最後に
+     身体を更新した月）から、その月まで1か月ずつ追いつく。 */
+  const START_YEAR = 2026;               // ゲーム1年目の年（プロ1年目はその翌年の2027年）
+  const APRIL = 3;                       // 4月の (月−1)
+  let NOW = START_YEAR * 12 + APRIL;
+  function monthIdx(year, month) { return year * 12 + (month - 1); }
+  function setNow(m) { if (typeof m === 'number' && isFinite(m)) NOW = m; }
+  function now() { return NOW; }
+  function monthOf(idx) { return idx % 12 + 1; }
+  function yearOf(idx) { return Math.floor(idx / 12); }
+  /** 4月を0とした、その年度の何か月目か（0〜11） */
+  function monthsFromApril(idx) { return ((idx % 12) - APRIL + 12) % 12; }
+  /** 学年と月から、基準表の上での位置（0＝1年の4月、3＝3年の翌4月） */
+  function posOf(grade, idx) {
+    return Math.min(3, Math.max(0, (Math.min(3, Math.max(1, grade || 1)) - 1) + monthsFromApril(idx) / 12));
+  }
+  function interp(table, pos) {
+    const lo = Math.min(3, Math.floor(pos)), f = pos - lo;
+    return table[lo + 1] + (table[Math.min(4, lo + 2)] - table[lo + 1]) * f;
+  }
+  function refHtAt(kind, grade, idx) { return interp(HT_REF[kind === 'pitcher' ? 'pitcher' : 'batter'], posOf(grade, idx)); }
+  function bmiRefAt(grade, idx) { return interp(BMI_REF, posOf(grade, idx)); }
+  function tOf(p) { return p.bodyT == null ? NOW : p.bodyT; }
+  function refHt(p) { return refHtAt(kindOf(p), p.grade, tOf(p)); }
   function hz(p) { return (p.ht - refHt(p)) / HT_SD; }
   function pz(p) { return (p.phys || 0) / PHYS_SD; }
 
@@ -94,7 +121,7 @@ const Body = (() => {
   /* ---------- 体重 ---------- */
 
   function bmiOf(p) { const h = p.ht / 100; return p.wt / (h * h); }
-  function zW(p) { return (bmiOf(p) - BMI_REF[Math.min(3, Math.max(1, p.grade || 1))]) / BMI_SD; }
+  function zW(p) { return (bmiOf(p) - bmiRefAt(p.grade, tOf(p))) / BMI_SD; }
 
   /* 体重の効き方（標準からの差 z について）。入部時の z0 を基準に、
      「そこからの変化」だけが能力に出る */
@@ -131,7 +158,7 @@ const Body = (() => {
   /** 能力 key に足す補正の合計。上限を超えないようにしてある */
   function offset(p, key) {
     const cap = key === 'velo' ? VELO_CAP : OFF_CAP;
-    return clampAbs(heightPhysOffset(p, key) + weightOffset(p, key), cap);
+    return clampAbs(heightPhysOffset(p, key) + weightOffset(p, key), cap) + ((p.tilt && p.tilt[key]) || 0);
   }
 
   /** 伸びやすさ（倍率）。身長と身体能力が同じ係数で効く */
@@ -149,13 +176,53 @@ const Body = (() => {
 
   /* ---------- 生成 ---------- */
 
+  /* 背の高い野手の、パワーとミートの偏り（入部時に一度だけ決まる確率表）。
+     背が高い（hz が正）ほど、パワーが高め・ミートが低めに寄る。背が低いと逆。
+     どちらか一方しか補正が掛からない選手や、ほとんど掛からない選手も出る。
+       型            高い選手のとき              低い選手のとき
+       偏る         パワー＋・ミート−           ミート＋・パワー−
+       片側(強)     パワー＋のみ                ミート＋のみ
+       片側(弱)     ミート−のみ                 パワー−のみ
+       ほぼ無し     どちらもほぼ掛からない      同左
+     確率は |hz| が大きいほど「偏る」が増え、「ほぼ無し」が減る。 */
+  const TILT_TABLE = [
+    /* |hz| の下限, [偏る, パワー側のみ, ミート側のみ, ほぼ無し] */
+    { min: 0.4, p: [0.30, 0.17, 0.13, 0.40] },
+    { min: 1.0, p: [0.42, 0.20, 0.14, 0.24] },
+    { min: 1.8, p: [0.55, 0.20, 0.13, 0.12] },
+  ];
+  const TILT_PW = [0.6, 1.5];     // パワー側の大きさ（|hz| 1あたり）
+  const TILT_MT = [1.2, 2.8];     // ミート側の大きさ（|hz| 1あたり）
+  const TILT_CAP = 7;
+
+  function rollTilt(kind, z) {
+    if (kind === 'pitcher') return null;
+    const a = Math.abs(z);
+    let row = null;
+    TILT_TABLE.forEach((r) => { if (a >= r.min) row = r; });
+    if (!row) return null;
+    const r = RNG.rand();
+    let type = 3, acc = 0;
+    for (let i = 0; i < 4; i++) { acc += row.p[i]; if (r < acc) { type = i; break; } }
+    const pw = RNG.rand() * (TILT_PW[1] - TILT_PW[0]) + TILT_PW[0];
+    const mt = RNG.rand() * (TILT_MT[1] - TILT_MT[0]) + TILT_MT[0];
+    const sgn = z > 0 ? 1 : -1;       // 高い: パワー＋・ミート−、低い: パワー−・ミート＋
+    const cap = (v) => Math.max(-TILT_CAP, Math.min(TILT_CAP, v));
+    const out = { power: 0, meet: 0 };
+    if (type === 0) { out.power = cap(sgn * a * pw); out.meet = cap(-sgn * a * mt); }
+    else if (type === 1) out.power = cap(sgn * a * pw);
+    else if (type === 2) out.meet = cap(-sgn * a * mt);
+    return out;
+  }
+
   /** 新しい選手の身体（身長・体重・身体能力・個人差）を引く */
   function roll(kind, pos, grade) {
     const g = Math.min(3, Math.max(1, grade || 1));
     const kk = kind === 'pitcher' ? 'pitcher' : 'batter';
     const posKey = kk === 'pitcher' ? 'P' : (pos || 'LF');
-    const ht = HT_REF[kk][g] + (POS_HT[posKey] || 0) + RNG.norm(0, 5.2);
-    const bmi = BMI_REF[g] + (POS_BMI[posKey] || 0) + RNG.norm(0, 2.0);
+    const refH = refHtAt(kk, g, NOW), refB = bmiRefAt(g, NOW);
+    const ht = refH + (POS_HT[posKey] || 0) + RNG.norm(0, 5.2);
+    const bmi = refB + (POS_BMI[posKey] || 0) + RNG.norm(0, 2.0);
     const wt = bmi * Math.pow(ht / 100, 2);
     const r = RNG.rand();
     return {
@@ -165,23 +232,32 @@ const Body = (() => {
       htType: r < 0.25 ? -1 : (r < 0.75 ? 0 : 1),
       wtTrend: RNG.clamp(0.3 + RNG.gauss() * 0.8, -1.5, 1.8),
       wtResp: RNG.clamp(0.8 + RNG.gauss() * 0.5, -0.2, 1.4),
+      tilt: rollTilt(kk, (ht - refH) / HT_SD),
     };
+  }
+
+  function setParts(p, parts) {
+    p.ht = parts.ht; p.wt = parts.wt; p.phys = parts.phys;
+    p.htType = parts.htType; p.wtTrend = parts.wtTrend; p.wtResp = parts.wtResp;
+    p.tilt = parts.tilt || null;
+    p.bodyT = NOW; p.bodyLog = [];
+    p.zW0 = zW(p);
   }
 
   /** 選手に身体をつけて、入部時の補正を能力に足す */
   function attach(p, parts) {
-    p.ht = parts.ht; p.wt = parts.wt; p.phys = parts.phys;
-    p.htType = parts.htType; p.wtTrend = parts.wtTrend; p.wtResp = parts.wtResp;
-    p.zW0 = zW(p);
+    setParts(p, parts);
     p.bodyOff = {}; p.bodyAcc = {};
     applyChange(p);
     return p;
   }
 
   /** 身体の効きを、能力にそろえる。「新しい補正 − すでに足した補正」だけを足す
-      （年度が替わっても同じ補正を二重に足さない）。端数は選手ごとに溜めておく */
+      （同じ補正を二重に足さない）。端数は選手ごとに溜めておく。
+      戻り値は、このとき実際に変わった能力 { key: 増減 } */
   function applyChange(p) {
     if (!p.bodyOff) { p.bodyOff = {}; p.bodyAcc = {}; }
+    const changed = {};
     STAT_KEYS.forEach((key) => {
       if (p[key] == null) return;
       const target = offset(p, key);
@@ -192,41 +268,77 @@ const Body = (() => {
       const whole = Math.round(p.bodyAcc[key]);
       if (whole === 0) return;
       p.bodyAcc[key] -= whole;
+      const before = p[key];
       if (key === 'velo') p[key] = RNG.clamp(Math.round(p[key] + whole), 100, 168);
       else p[key] = RNG.stat(p[key] + whole);
+      if (p[key] !== before) changed[key] = p[key] - before;
     });
+    return changed;
   }
 
   /** 古い保存データの選手に、身体を補う。能力は変えない
       （いまの能力にはすでに補正が入っていることにする）。 */
   function ensure(p) {
-    if (!p || p.ht != null) return p;
-    const parts = roll(p.kind, p.pos, p.grade);
-    p.ht = parts.ht; p.wt = parts.wt; p.phys = parts.phys;
-    p.htType = parts.htType; p.wtTrend = parts.wtTrend; p.wtResp = parts.wtResp;
-    p.zW0 = zW(p);
-    p.bodyOff = {}; p.bodyAcc = {};
-    STAT_KEYS.forEach((key) => { if (p[key] != null) p.bodyOff[key] = offset(p, key); });
+    if (!p) return p;
+    if (p.ht == null) {
+      setParts(p, roll(p.kind, p.pos, p.grade));
+      p.bodyOff = {}; p.bodyAcc = {};
+      STAT_KEYS.forEach((key) => { if (p[key] != null) p.bodyOff[key] = offset(p, key); });
+    }
+    if (p.bodyT == null) p.bodyT = NOW;
+    if (!p.bodyLog) p.bodyLog = [];
     return p;
   }
 
-  /* ---------- 年が替わる ---------- */
+  /* ---------- 月が進む ---------- */
 
-  /** 学年が1つ上がったあとに呼ぶ。身長・体重を更新し、変わったぶんの補正だけを足す */
-  function yearUp(p) {
+  /* 体重の季節の動き（その月に入るときの増減の平均 kg）。
+     冬（12〜3月）は体づくりの時期で増えやすく、個人差も大きい。夏（7・8月）は落ちやすい */
+  const WT_SEASON = { 12: 0.30, 1: 0.30, 2: 0.30, 3: 0.25, 7: -0.35, 8: -0.35 };
+  const WINTER = { 12: 1, 1: 1, 2: 1, 3: 1 };
+
+  const r1 = (v) => Math.round(v * 10) / 10;
+
+  /** 1か月進める（その月に入るときの変化）。4月に入るときは、学年が上がった
+      あとで呼ぶ（その前の学年ぶんの伸びを数える）。履歴に1件残す */
+  function stepMonth(p) {
     ensure(p);
-    const g0 = Math.max(1, (p.grade || 2) - 1);          // 上がる前の学年
-    const factor = HT_TYPE_FACTOR[String(p.htType || 0)];
-    const grow = Math.max(0, (HT_GROW[g0] != null ? HT_GROW[g0] : 0.3) * factor + RNG.norm(0, 0.45));
-    const g1 = Math.min(3, p.grade || 2), gOld = Math.min(3, g0);
-    const oldExp = BMI_REF[gOld] * Math.pow(p.ht / 100, 2);
-    p.ht = Math.round((p.ht + grow) * 10) / 10;
-    const newExp = BMI_REF[g1] * Math.pow(p.ht / 100, 2);
-    /* 体重: 標準の体格の変化に、個人の増えやすさ（wtTrend）とばらつきを足す */
-    const dw = (newExp - oldExp) * 0.9 + 1.2 * (p.wtTrend || 0) + RNG.norm(0, 1.3);
-    p.wt = Math.round(RNG.clamp(p.wt + dw, 48, 125) * 10) / 10;
-    applyChange(p);
+    const to = p.bodyT + 1, mo = monthOf(to);
+    const g = Math.min(3, Math.max(1, p.grade || 1));
+    const gEff = mo === 4 ? Math.max(1, g - 1) : g;
+    const grow = Math.max(0, (HT_GROW[gEff] != null ? HT_GROW[gEff] : 0.3) * HT_TYPE_FACTOR[String(p.htType || 0)] / 12 + RNG.norm(0, 0.05));
+    const htOld = p.ht, wtOld = p.wt;
+    const h0 = htOld / 100;
+    p.ht = htOld + grow;
+    const h1 = p.ht / 100;
+    /* 標準の体格の変化（学年が上がるぶん＋身長が伸びたぶん） */
+    const posNew = posOf(g, to);
+    const oldExp = interp(BMI_REF, Math.max(0, posNew - 1 / 12)) * h0 * h0;
+    const expNow = interp(BMI_REF, posNew) * h1 * h1;
+    const winter = WINTER[mo] ? 1 : 0;
+    const dw = (expNow - oldExp) * 0.9 + 0.10 * (p.wtTrend || 0) * (1 + winter * 1.5) +
+      (WT_SEASON[mo] || 0) + RNG.norm(0, winter ? 0.75 : 0.35) * (1 + winter * 0.25 * Math.abs(p.wtTrend || 0));
+    p.wt = RNG.clamp(wtOld + dw, 48, 125);
+    p.bodyT = to;
+    const changed = applyChange(p);
+    p.bodyLog.push({
+      t: to,
+      dh: r1(r1(p.ht) - r1(htOld)),
+      dw: r1(r1(p.wt) - r1(wtOld)),
+      s: changed,
+    });
     return p;
+  }
+
+  /** 選手たちを、target の月まで1か月ずつ進める（すでに過ぎていれば何もしない） */
+  function advanceTo(players, target) {
+    players.forEach((p) => {
+      if (!p) return;
+      ensure(p);
+      let guard = 0;
+      while (p.bodyT < target && guard++ < 60) stepMonth(p);
+    });
+    if (target > NOW) NOW = target;
   }
 
   /** 体重を直接変える（テスト・将来の「増量」練習用） */
@@ -245,7 +357,8 @@ const Body = (() => {
 
   return {
     STAT_KEYS, DIR_H, HT_SD, OFF_K, VELO_K, GM_K,
-    roll, attach, applyChange, ensure, yearUp, setWeight, label,
+    roll, attach, applyChange, ensure, stepMonth, advanceTo, setWeight, label,
+    setNow, now, monthIdx, monthOf, yearOf, START_YEAR, rollTilt,
     idxOf, idxHeight, idxPhys, offset, heightPhysOffset, weightOffset, gm, ceil,
     hz, pz, zW, bmiOf, refHt,
   };

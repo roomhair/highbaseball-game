@@ -30,6 +30,10 @@ const Game = (() => {
   function fresh() {
     return {
       year: 1,
+      /* このセーブの識別（プロ入りした選手の成績を、どのセーブのものか分けるため） */
+      gid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      /* ゲームの中の「いま」（月の通し番号。body.js）。1年目の4月から */
+      clockT: Body.monthIdx(Body.START_YEAR, 4),
       phase: 'pick-bat',
       settings: Storage.loadSettings(),
       team: null,
@@ -82,10 +86,48 @@ const Game = (() => {
     }
   }
 
+  /* ---------- 時計 ----------
+     大会や新年度のたびに、ゲームの中の月を進める。実際の大阪の日程にそろえてある。
+       4月 新入生が入部　7月 夏の県予選　8月 夏の全国　9月 秋の県予選
+       10月 秋の近畿大会　11月 神宮大会　3月 センバツ
+     選手の身長・体重は、月が進むたびに1か月ずつ変わる（body.js）。 */
+  const CLOCK_MONTH = { local: 7, national: 8, fallPref: 9, fallDistrict: 10, fallJingu: 11, spring: 3 };
+
+  function clockPlayers() {
+    if (state.mode === 'soccer' && state.soccer) return state.soccer.players || [];
+    return state.team ? Team.all(state.team) : [];
+  }
+
+  /** 次にその月が来る通し番号（いまの月と同じ月ならいま） */
+  function nextMonth(month) {
+    const now = Body.now();
+    let t = Body.monthIdx(Body.yearOf(now), month);
+    while (t < now) t += 12;
+    return t;
+  }
+
+  /** 大会の月まで進める */
+  function clockTo(kind) {
+    const m = CLOCK_MONTH[kind];
+    if (!m) return;
+    Body.advanceTo(clockPlayers(), nextMonth(m));
+    state.clockT = Body.now();
+  }
+
+  /** 新年度。3月まで進め、学年を上げてから4月に入る（4月の分は新しい学年で数える） */
+  function clockNewYear(promote) {
+    Body.advanceTo(clockPlayers(), nextMonth(3));
+    const r = promote();
+    Body.advanceTo(clockPlayers(), nextMonth(4));
+    state.clockT = Body.now();
+    return r;
+  }
+
   /* ---------- チーム作り ---------- */
 
   function start() {
     state = fresh();
+    Body.setNow(state.clockT);
     Player.setSeq(1);
     pickBatters();
   }
@@ -223,6 +265,7 @@ const Game = (() => {
   /** 秋の大会（県大会・地区大会・神宮大会相当）がすべて終わったあとの特訓。
       今までの特訓と同じ仕様（選択5回・見送り3回）のまま */
   function toPostFallTraining() {
+    revealPros();
     toTrainingPhase('springOrNextSummer', TRAIN_LIMITS.normal);
   }
 
@@ -249,6 +292,7 @@ const Game = (() => {
        積み増していく）。保存データを読み直したときは resume() が
        state.phase を見て該当の画面を出し直すだけで、ここは通らない
        （同じ大会の途中で二重に抜けることはない） */
+    clockTo(kind);
     Team.healPitchers(state.team);
     /* 高校名の重複を避けるのはこの大会の中だけ。
        年をまたげば同じ常連校がまた出てくる */
@@ -737,6 +781,7 @@ const Game = (() => {
   /** 大会を新しく始める（野球の startTournament と同じ入口） */
   function soccerStartTournament(kind) {
     const S = state.soccer;
+    clockTo(kind);
     if (kind === 'fallPref') S.springQualified = false;
     S.tour = Soccer.createTour(S, kind);
     state.phase = 'soccer-opening';
@@ -818,6 +863,7 @@ const Game = (() => {
     const R = state.soccerReturn;
     state.mode = 'baseball';
     state.team = R.team;
+    Body.advanceTo(Team.all(R.team), Body.now());    // サッカー部のあいだに過ぎた月ぶん、体格も進める
     state.soccer = null;
     state.soccerReturn = null;
     state.tour = null;
@@ -907,6 +953,7 @@ const Game = (() => {
   }
 
   function soccerToPostFallTraining() {
+    revealPros();
     soccerToTraining('springOrNextSummer', TRAIN_LIMITS.normal);
   }
 
@@ -960,7 +1007,7 @@ const Game = (() => {
   /** 春の大会まで終わったあと。学年を上げて新入生を迎える */
   function soccerToNewSeason() {
     const S = state.soccer;
-    S.need = Soccer.promote(S);
+    S.need = clockNewYear(() => Soccer.promote(S));
     state.year++;
     S.sets = null;
     soccerNewcomers();
@@ -991,6 +1038,8 @@ const Game = (() => {
     state.mode = 'baseball';
     state.soccer = null;
     state.year++;
+    state.clockT = nextMonth(4);       // 野球部の復活は次の4月から
+    Body.setNow(state.clockT);
     state.team = null;
     state.sets = null;
     /* サッカー部に変わる直前は、夏と秋の間などの「短い」特訓だったことが
@@ -1018,16 +1067,23 @@ const Game = (() => {
     Screens.offseason(state, retired);
   }
 
+  /** 秋の大会がすべて終わった。プロ入りした卒業生の成績を、1年ぶん公開する */
+  function revealPros() {
+    const list = Storage.loadPros();
+    if (Pro.revealAutumn(list, state.gid, state.year)) Storage.savePros(list);
+  }
+
   /** プロ入りした選手を、一覧（info）に残す。同じ選手を二度は入れない */
   function recordPros(retired) {
     const list = Storage.loadPros();
     retired.forEach((f) => {
       if (!f.draft) return;
       if (list.some((x) => x.player && x.player.id === f.player.id && x.school === state.team.name)) return;
-      list.push({
+      list.push(Pro.attach({
         year: state.year, school: state.team.name, round: f.draft.round, text: f.draft.text,
+        gid: state.gid,
         player: JSON.parse(JSON.stringify(f.player)),
-      });
+      }));
     });
     Storage.savePros(list);
   }
@@ -1043,7 +1099,7 @@ const Game = (() => {
   /** 秋・センバツ相当がすべて終わった（あるいはセンバツに出られないと
       決まった）あと。新しい年度として学年を1つ上げ、新入生を迎える */
   function toNewSeason() {
-    state.need = Offseason.promote(state.team);
+    state.need = clockNewYear(() => Offseason.promote(state.team));
     state.year++;
     state.phase = 'new-bat';
     state.sets = null;
@@ -1069,6 +1125,7 @@ const Game = (() => {
     save();
     Screens.pick({
       title: '新入生（野手）',
+      scout: scoutLevel(state.prestigeScore),
       lead: state.need.bat + '人ひと組の候補が' + CONFIG.NEWCOMER_SETS + 'つ。入部させる組を選んでください。',
       setLabel: '候補', pickLabel: 'この新入生たちを迎える',
       sets: state.sets.list,
@@ -1090,6 +1147,7 @@ const Game = (() => {
     save();
     Screens.pick({
       title: '新入生（投手）',
+      scout: scoutLevel(state.prestigeScore),
       lead: state.need.pit + '人ひと組の候補が' + CONFIG.NEWCOMER_SETS + 'つ。入部させる組を選んでください。',
       setLabel: '候補', pickLabel: 'この新入生たちを迎える',
       sets: state.sets.list,
@@ -1137,6 +1195,9 @@ const Game = (() => {
     });
     /* 身長・体重・身体能力（body.js）を持たない古い保存データの選手には、
        ここで補う（能力そのものは変えない） */
+    if (state.clockT == null) state.clockT = Body.monthIdx(Body.START_YEAR + (state.year || 1) - 1, 4);
+    if (!state.gid) state.gid = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    Body.setNow(state.clockT);
     ensureBodies(state);
     if (!state.settings) state.settings = Storage.loadSettings();
     /* 古い保存データの移行。秋・春の大会を追加する前のデータには

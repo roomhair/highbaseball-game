@@ -667,7 +667,7 @@ const Soccer = (() => {
 
   /** 学年を1つ上げる。戻り値は必要な新入生の人数（部員は20人を保つ） */
   function promote(S) {
-    S.players.forEach((p) => { p.grade++; Body.yearUp(p); });
+    S.players.forEach((p) => { p.grade++; });
     return Math.max(0, 20 - S.players.length);
   }
 
