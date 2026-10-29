@@ -87,7 +87,7 @@ const Body = (() => {
      高い側をやや広くして（190cm以上が100人に1人ほど出る）、
      低い側は狭くして（下限155cmに貼りつく選手が増えすぎないようにする）。
      平均は変えないよう、山の位置を HT_SHIFT だけ下げてある */
-  const HT_UP_SD = 7.0, HT_DOWN_SD = 6.0;
+  const HT_UP_SD = 7.2, HT_DOWN_SD = 4.8;
   const HT_SHIFT = 0.3989 * (HT_UP_SD - HT_DOWN_SD);     // 高い側と低い側を半々で引くときの、平均のずれ
   const PHYS_SD = 1.0;          // 身体能力の標準偏差
   const OFF_K = 3.2;            // idx 1 あたりに足す能力値（1〜100の能力）
