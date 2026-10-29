@@ -2290,3 +2290,16 @@ a.appbar__title { text-decoration: none; }
   position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
   margin: 0; padding: 0; font-size: 11px; white-space: nowrap; z-index: 1;
 }
+
+/* 敗戦は、墨色の極太ゴシックに銀灰色の縁取り（斜体にしない） */
+.verdict__box.is-lose .verdict__word {
+  font-style: normal; letter-spacing: .08em;
+  color: #1c2a44; background: none;
+  -webkit-background-clip: border-box; background-clip: border-box;
+  -webkit-text-fill-color: #1c2a44;
+  text-shadow: none;
+  filter:
+    drop-shadow(2px 0 0 #aebbd0) drop-shadow(-2px 0 0 #aebbd0)
+    drop-shadow(0 2px 0 #aebbd0) drop-shadow(0 -2px 0 #aebbd0)
+    drop-shadow(0 2px 3px rgba(28,42,68,.35));
+}
