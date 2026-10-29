@@ -367,9 +367,24 @@ const Game = (() => {
     const r = RNG.rand();
     const f = r < 0.55 ? 0.85 + RNG.rand() * 0.3 : (r < 0.78 ? 0.5 + RNG.rand() * 0.35 : 1.15 + RNG.rand() * 0.35);
     const starter = Team.find(opp, (opp.rotation || [])[0]);
-    if (starter) starter.staminaCarry = ref * f;
     /* 先発以外の投手は、登板が少ないぶん軽く */
-    (opp.pitchers || []).forEach((q) => { if (q !== starter) q.staminaCarry = ref * f * 0.4 * RNG.rand(); });
+    (opp.pitchers || []).forEach((q) => { q.staminaCarry = ref * f * 0.4 * RNG.rand(); });
+    if (starter) starter.staminaCarry = ref * f;
+    /* ときどき、1番手が疲れていない万全の状態で投げてくる */
+    const order = (opp.pitcherOrder && opp.pitcherOrder.length ? opp.pitcherOrder : opp.rotation) || [];
+    const ace = Team.find(opp, order[0]);
+    if (ace && RNG.chance(0.2)) {
+      ace.staminaCarry = 0;
+      opp.rotation = [ace.id].concat((opp.rotation || []).filter((id) => id !== ace.id));
+    }
+    /* 先発のスタミナは50%を切らせない。切るなら、50%以上残っている別の投手に替える（いなければ、50%まで回復したことにする） */
+    const left = (q) => 1 - (q.staminaCarry || 0) / (Sim.capacityOf(q) + 18);
+    const cur = Team.find(opp, (opp.rotation || [])[0]);
+    if (cur && left(cur) < 0.5) {
+      const alt = (opp.rotation || []).map((id) => Team.find(opp, id)).find((q) => q && left(q) >= 0.5);
+      if (alt) opp.rotation = [alt.id].concat(opp.rotation.filter((id) => id !== alt.id));
+      else cur.staminaCarry = (Sim.capacityOf(cur) + 18) * 0.5;
+    }
   }
 
   function toPregame() {
