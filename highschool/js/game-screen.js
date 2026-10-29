@@ -836,7 +836,8 @@ const GameScreen = (() => {
         (fielding ? '<button type="button" class="btn btn--wide" id="tm-pit">投手を交代する</button>' : '') +
         (fielding ?
           '<button type="button" class="btn btn--wide" id="tm-sub">守備を交代する</button>' : '') +
-        '<button type="button" class="btn btn--wide" id="tm-pos">守備位置を変える</button>' +
+        /* 守備位置の変更は守備中だけ。攻撃中は出さない */
+        (fielding ? '<button type="button" class="btn btn--wide" id="tm-pos">守備位置を変える</button>' : '') +
       '</div>' +
       '<div class="actions actions--modal">' +
         '<button type="button" class="btn btn--primary btn--wide" id="tm-close">試合に戻る</button>' +
