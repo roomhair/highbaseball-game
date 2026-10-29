@@ -1176,7 +1176,7 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .ll__list { list-style: none; margin: 0; padding: 0; }
 .ll__item {
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 4px;
-  padding: 1px 3px; font-size: 11.5px; line-height: 1.25;
+  padding: 1px 3px; font-size: 12.5px; line-height: 1.25;
   border-radius: 4px; cursor: pointer; min-width: 0;
 }
 @media (min-width: 720px) { .ll__item { font-size: 12.5px; gap: 0 6px; padding: 2px 4px; } }
@@ -1190,7 +1190,7 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 /* まだ打席が回っていない選手は、結果の行ぶんの余白も出さない */
 .ll__res:empty { display: none; }
 .ll__r {
-  font-style: normal; font-size: 9px; line-height: 1.2; color: var(--ink-mute);
+  font-style: normal; font-size: 10px; line-height: 1.2; color: var(--ink-mute);
   border: 1px solid var(--line); border-radius: 3px; padding: 0 2px; white-space: nowrap;
 }
 .ll__item.is-now .ll__r { color: inherit; border-color: currentColor; opacity: .85; }
@@ -1200,11 +1200,11 @@ td.role { font-size: 11px; color: var(--ink-mute); }
   background: linear-gradient(180deg, var(--yel-hi), var(--yel-lo)); color: var(--yel-ink); font-weight: 800;
   box-shadow: inset 0 0 0 1.5px var(--yel-edge);
 }
-.ll__no, .ll__pos { color: var(--ink-faint); font-size: 10.5px; flex: none; }
+.ll__no, .ll__pos { color: var(--ink-faint); font-size: 11px; flex: none; }
 .ll__no { font-family: var(--font-num); font-weight: 800; }
 /* 名前のすぐ下に、打つほうの能力だけ小さく。行を丸ごと折り返して下に置く */
 .ll__ab {
-  flex: 1 0 100%; font-size: 9px; line-height: 1.25; letter-spacing: 0;
+  flex: 1 0 100%; font-size: 10px; line-height: 1.25; letter-spacing: 0;
   color: var(--ink-faint); white-space: nowrap;
 }
 .ll__ab b { font-weight: 800; font-style: normal; }
@@ -1219,10 +1219,10 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 /* いちばん細い画面だけ、もう一段詰める。
    投手の能力と変化球を足したぶん、終盤に画面からはみ出すため */
 @media (max-width: 379px) {
-  .ll__ab { font-size: 8.5px; line-height: 1.15; }
+  .ll__ab { font-size: 9.5px; line-height: 1.15; }
   .ll__ball { line-height: 1.1; }
   .ll__stanum { font-size: 8.5px; line-height: 1.2; }
-  .ll__r { font-size: 8.5px; }
+  .ll__r { font-size: 9.5px; }
   .ll__ball { font-size: 8.5px; }
   .ll__p { padding-bottom: 2px; }
   .ll__item { line-height: 1.2; }
@@ -1262,7 +1262,7 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 }
 .ll__ball b { font-weight: 800; color: var(--ink); margin-left: 1px; }
 /* 学年は名前のすぐ右に小さく */
-.ll__gr { flex: none; font-size: 9px; color: var(--ink-faint); margin-left: 2px; }
+.ll__gr { flex: none; font-size: 10px; color: var(--ink-faint); margin-left: 2px; }
 .ll__item.is-now .ll__gr { color: inherit; opacity: .85; }
 .ll__hand { margin-left: 4px; letter-spacing: .02em; }
 .ll__title { font-size: 12px; }
