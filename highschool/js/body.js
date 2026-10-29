@@ -35,7 +35,22 @@ const Body = (() => {
 
   /* ---------- 基準値・係数 ---------- */
 
-  const HT_SD = 5.5;            // 身長の標準偏差（cm）
+  /* このゲームの平均の身長・体重は、日本の高校男子の平均のおよそ1.1倍。
+     日本の平均（学年ごと。文部科学省の学校保健統計のおよその値）に SCALE をかけた
+     ものを、学年ごとの基準にしている。基準のほかの値（ばらつき・伸び・体重の増減）も
+     同じ倍率にそろえてあるので、能力への効き方（標準化した値）は倍率に左右されない */
+  const SCALE = 1.1;
+  const JP_HT = { 1: 168.0, 2: 169.8, 3: 170.6, 4: 170.9 };    // 日本の高校男子の平均身長（cm）
+  const JP_WT = { 1: 60.0, 2: 62.5, 3: 63.5, 4: 64.0 };         // 同・平均体重（kg）
+  /* 1.1倍にする前の基準（保存データの選手を移すときだけ使う） */
+  const OLD_HT_REF = {
+    batter:  { 1: 169.8, 2: 172.4, 3: 173.7, 4: 174.1 },
+    pitcher: { 1: 171.8, 2: 174.4, 3: 175.7, 4: 176.1 },
+  };
+  const OLD_BMI_REF = { 1: 21.2, 2: 21.8, 3: 22.3, 4: 22.5 };
+  const OLD_HT_SD = 5.5, OLD_BMI_SD = 2.1;
+  const BODY_VER = 2;           // 体格の基準を1.1倍にした版。これより前の選手は ensure で直す
+  const HT_SD = 5.5 * SCALE;    // 身長の標準偏差（cm）
   const PHYS_SD = 1.0;          // 身体能力の標準偏差
   const OFF_K = 3.2;            // idx 1 あたりに足す能力値（1〜100の能力）
   const VELO_K = 2.0;           // idx 1 あたりに足す球速（km/h）
@@ -44,16 +59,20 @@ const Body = (() => {
   const OFF_CAP = 12, VELO_CAP = 7;    // 補正の合計の上限
 
   /* 同じ学年・同じ区分の平均身長（cm）。投手はやや高い */
+  const refOf = (extra) => { const o = {}; [1, 2, 3, 4].forEach((g) => { o[g] = JP_HT[g] * SCALE + extra; }); return o; };
   const HT_REF = {
-    batter:  { 1: 169.8, 2: 172.4, 3: 173.7, 4: 174.1 },
-    pitcher: { 1: 171.8, 2: 174.4, 3: 175.7, 4: 176.1 },
+    batter:  refOf(0),
+    pitcher: refOf(2.0 * SCALE),
   };
   /* 標準的な体格（BMI）。学年が上がると少し増える */
-  const BMI_REF = { 1: 21.2, 2: 21.8, 3: 22.3, 4: 22.5 };
-  const BMI_SD = 2.1;
+  const BMI_REF = {};
+  [1, 2, 3, 4].forEach((g) => { BMI_REF[g] = JP_WT[g] * SCALE / Math.pow(JP_HT[g] * SCALE / 100, 2); });
+  const BMI_SD = 2.1 / SCALE;
   /* 守る場所による体格の違い（BMI）。生成のときだけ使う */
   const POS_BMI = { C: 1.0, '1B': 1.2, DH: 0.8, '3B': 0.4, SS: -0.5, '2B': -0.4, CF: -0.6, LF: 0.1, RF: 0.3, P: 0.2 };
   const POS_HT = { C: 0.5, '1B': 2.0, DH: 1.0, '3B': 0.8, SS: -1.5, '2B': -1.5, CF: -0.5, LF: 0.4, RF: 0.8, P: 0 };
+  const posHt = (k) => (POS_HT[k] || 0) * SCALE;
+  const posBmi = (k) => (POS_BMI[k] || 0) / SCALE;
 
   /* 身長の向き（身長が高いほど +、低いほど −）。能力ごとに決めてある。
      球速・パワー … 体の大きさがそのまま出る（+1）
@@ -71,7 +90,7 @@ const Body = (() => {
   };
 
   /* 身長の伸び（cm）。1→2年、2→3年。早熟は小さく、晩成は大きい */
-  const HT_GROW = { 1: 2.6, 2: 1.3, 3: 0.4 };
+  const HT_GROW = { 1: 2.6 * SCALE, 2: 1.3 * SCALE, 3: 0.4 * SCALE };
   const HT_TYPE_FACTOR = { '-1': 0.5, '0': 1.0, '1': 1.6 };
 
   const STAT_KEYS = ['meet', 'power', 'speed', 'arm', 'field', 'catch', 'control', 'stamina', 'velo'];
@@ -249,8 +268,8 @@ const Body = (() => {
     const kk = kind === 'pitcher' ? 'pitcher' : 'batter';
     const posKey = kk === 'pitcher' ? 'P' : (pos || 'LF');
     const refH = refHtAt(kk, g, NOW), refB = bmiRefAt(g, NOW);
-    const ht = refH + (POS_HT[posKey] || 0) + RNG.norm(0, 5.2);
-    const bmi = refB + (POS_BMI[posKey] || 0) + RNG.norm(0, 2.0);
+    const ht = refH + posHt(posKey) + RNG.norm(0, 5.2 * SCALE);
+    const bmi = refB + posBmi(posKey) + RNG.norm(0, 2.0 / SCALE);
     const wt = bmi * Math.pow(ht / 100, 2);
     const r = RNG.rand();
     return {
@@ -268,7 +287,7 @@ const Body = (() => {
     p.ht = parts.ht; p.wt = parts.wt; p.phys = parts.phys;
     p.htType = parts.htType; p.wtTrend = parts.wtTrend; p.wtResp = parts.wtResp;
     p.tilt = parts.tilt || null;
-    p.bodyT = NOW; p.bodyLog = [];
+    p.bodyT = NOW; p.bodyLog = []; p.bodyV = BODY_VER;
     p.zW0 = zW(p);
   }
 
@@ -308,6 +327,27 @@ const Body = (() => {
       （いまの能力にはすでに補正が入っていることにする）。 */
   function ensure(p) {
     if (!p) return p;
+    /* 体格の基準を1.1倍にする前の選手は、基準との差（標準化した値）をそのまま
+       新しい基準に移して、身長・体重を直す。能力は動かさない */
+    if (p.ht != null && p.bodyV !== BODY_VER) {
+      if (!p.fixedBody) {
+        const pos = posOf(p.grade, tOf(p));
+        const kind = kindOf(p);
+        const z = (p.ht - interp(OLD_HT_REF[kind], pos)) / OLD_HT_SD;
+        const bmiOld = p.wt / Math.pow(p.ht / 100, 2);
+        const zb = (bmiOld - interp(OLD_BMI_REF, pos)) / OLD_BMI_SD;
+        const ht0 = p.ht, wt0 = p.wt;
+        p.ht = Math.round((interp(HT_REF[kind], pos) + z * HT_SD) * 10) / 10;
+        p.wt = Math.round((interp(BMI_REF, pos) + zb * BMI_SD) * Math.pow(p.ht / 100, 2) * 10) / 10;
+        if (p.initial && p.initial.ht != null) {
+          p.initial.ht = Math.round((p.ht - (ht0 - p.initial.ht) * SCALE) * 10) / 10;
+          p.initial.wt = Math.round((p.wt - (wt0 - p.initial.wt) * SCALE) * 10) / 10;
+        }
+        (p.bodyLog || []).forEach((e) => { e.dh = Math.round(e.dh * SCALE * 10) / 10; e.dw = Math.round(e.dw * SCALE * 10) / 10; });
+        p.zW0 = zW(p);
+      }
+      p.bodyV = BODY_VER;
+    }
     if (p.fixedBody && p.bodyT == null) p.bodyT = NOW;
     if (p.ht == null) {
       setParts(p, roll(p.kind, p.pos, p.grade));
@@ -346,9 +386,9 @@ const Body = (() => {
     const oldExp = interp(BMI_REF, Math.max(0, posNew - 1 / 12)) * h0 * h0;
     const expNow = interp(BMI_REF, posNew) * h1 * h1;
     const winter = WINTER[mo] ? 1 : 0;
-    const dw = (expNow - oldExp) * 0.9 + 0.10 * (p.wtTrend || 0) * (1 + winter * 1.5) +
-      (WT_SEASON[mo] || 0) + RNG.norm(0, winter ? 0.75 : 0.35) * (1 + winter * 0.25 * Math.abs(p.wtTrend || 0));
-    p.wt = RNG.clamp(wtOld + dw, 48, 125);
+    const dw = (expNow - oldExp) * 0.9 + SCALE * (0.10 * (p.wtTrend || 0) * (1 + winter * 1.5) +
+      (WT_SEASON[mo] || 0) + RNG.norm(0, winter ? 0.75 : 0.35) * (1 + winter * 0.25 * Math.abs(p.wtTrend || 0)));
+    p.wt = RNG.clamp(wtOld + dw, 48 * SCALE, 125 * SCALE);
     p.bodyT = to;
     const changed = applyChange(p);
     p.bodyLog.push({

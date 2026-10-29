@@ -1059,6 +1059,7 @@ const UI = (() => {
           : '<p class="note">まだプロ入りした選手はいません。引退する3年生が、ドラフトで指名されると、ここに残ります。</p>'));
       el('modal-body').querySelectorAll('.pname').forEach((b) => b.addEventListener('click', () => {
         const x = sorted[+b.dataset.i];
+        Body.ensure(x.player);
         html('modal-body',
           '<p class="proslist__tag"><em class="retire__draft">' + esc(x.text) + '</em>　' + esc(x.school || '') + '　' + x.year + '年目</p>' +
           playerDetail(x.player, { rename: false }) + proSection(x) +
