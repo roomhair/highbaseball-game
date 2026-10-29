@@ -155,9 +155,23 @@ const Body = (() => {
   }
   function geniusLabel(p) { return p && p.genius ? (GENIUS_LABEL[p.genius] || '') : ''; }
 
+  /** 体格から決まる、球速の目安の上限（km/h）。小柄・細身の投手は、速い球を投げにくい。
+      身長165cmで140、1cmにつき0.9ずつ上がる。BMIが20.5を下回ると、1につき1.2ずつ下がる */
+  function veloCap(p) {
+    const bmi = p.wt / Math.pow(p.ht / 100, 2);
+    return 140 + 0.9 * (p.ht - 165) - 1.2 * Math.max(0, 20.5 - bmi);
+  }
+  /** 球速を体格に合わせる。目安の上限を超えたぶんは、3割だけ残す（上限の数字に団子にならないように）。
+      天才の球速・体格が変わらない選手（熊）・投手以外はそのまま */
+  function veloLimit(p, v) {
+    if (!p || p.kind !== 'pitcher' || p.fixedBody || p.animal || p.ht == null || isGenius(p, 'velo')) return v;
+    const cap = veloCap(p);
+    return v <= cap ? v : Math.round(cap + (v - cap) * 0.3);
+  }
+
   /** 能力 key の値を、その選手の上限に収めて整数にする（天才の能力は100を超えられる） */
   function stat(p, key, v) {
-    if (key === 'velo') return RNG.clamp(Math.round(v), 100, isGenius(p, 'velo') ? VELO_GENIUS_MAX : 168);
+    if (key === 'velo') return RNG.clamp(Math.round(veloLimit(p, v)), 100, isGenius(p, 'velo') ? VELO_GENIUS_MAX : 168);
     return Math.max(1, Math.min(isGenius(p, key) ? HARD_MAX : 100, Math.round(v)));
   }
 
@@ -340,6 +354,7 @@ const Body = (() => {
     setParts(p, parts);
     p.bodyOff = {}; p.bodyAcc = {};
     applyChange(p);
+    if (p.kind === 'pitcher' && p.velo != null) p.velo = stat(p, 'velo', p.velo);   // 体格に合わない球速は、ここで抑える
     return p;
   }
 
@@ -477,6 +492,6 @@ const Body = (() => {
     setNow, now, monthIdx, monthOf, yearOf, START_YEAR, rollTilt,
     idxOf, idxHeight, idxPhys, offset, heightPhysOffset, weightOffset, gm, ceil,
     hz, pz, zW, bmiOf, refHt,
-    isGenius, geniusLabel, stat, GENIUS_LABEL,
+    isGenius, geniusLabel, stat, GENIUS_LABEL, veloCap, veloLimit,
   };
 })();

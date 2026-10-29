@@ -83,7 +83,7 @@ const Growth = (() => {
     if (whole <= 0) return;
     p._veloAcc -= whole;
     const before = p.velo;
-    p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : 166, before + whole);
+    p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : 166, Math.max(before, Body.veloLimit(p, before + whole)));
     if (p.velo > before) {
       ups.push({ key: 'velo', label: '球速', amount: p.velo - before, before, after: p.velo, unit: 'km/h' });
     }
@@ -219,7 +219,7 @@ const Growth = (() => {
       });
       if (isPit) {
         const vb = p.velo;
-        p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : 168, vb + RNG.range(3, 7));
+        p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : 168, Math.max(vb, Body.veloLimit(p, vb + RNG.range(3, 7))));
         ups.push({ key: 'velo', label: '球速', amount: p.velo - vb, before: vb, after: p.velo, unit: 'km/h', awake: true });
         /* 決め球が一段階よくなる */
         if (p.pitches.length) {

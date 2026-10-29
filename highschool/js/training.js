@@ -245,7 +245,7 @@ const Training = (() => {
         const vTop = 108 + 52 * Body.ceil(p, 'velo') / 100;
         let vAdd = Math.max(1, Math.round(t.amount * Body.gm(p, 'velo')));
         vAdd = p.velo >= vTop ? 0 : Math.min(vAdd, Math.ceil(vTop - p.velo));
-        p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : 168, p.velo + vAdd); after = p.velo;
+        p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : 168, Math.max(p.velo, Body.veloLimit(p, p.velo + vAdd))); after = p.velo;
       } else if (t.key === 'pitch') {
         const q = p.pitches.find((x) => x.name === t.pitch);
         if (!q) return;
