@@ -361,15 +361,15 @@ const UI = (() => {
     const body = (p) => '<td class="bl__body">' + (p.ht != null ? Math.round(p.ht) + 'cm<br>' + Math.round(p.wt) + 'kg' : '-') + '</td>';
     const head = (p) => '<td class="bl__g">' + p.grade + '</td><td class="bl__nm">' + esc(p.name) +
       (p.genius ? '<em class="bl__gen">天才</em>' : '') + '</td><td class="bl__h">' + esc(handMark(p)) + '</td>';
-    const batRow = (p) => '<tr>' + head(p) + apt(p) +
-      [p.meet, p.power, p.speed, p.arm, p.field, p.catch].map((v) => '<td class="c">' + rankNum(v) + '</td>').join('') + body(p) + '</tr>';
-    const pitRow = (p) => '<tr>' + head(p) + apt(p) +
+    const batRow = (p) => '<tr>' + head(p) + body(p) + apt(p) +
+      [p.meet, p.power, p.speed, p.arm, p.field, p.catch].map((v) => '<td class="c">' + rankNum(v) + '</td>').join('') + '</tr>';
+    const pitRow = (p) => '<tr>' + head(p) + body(p) + apt(p) +
       '<td class="c"><b class="rankval">' + p.velo + '</b></td><td class="c">' + rankNum(p.control) + '</td><td class="c">' + rankNum(p.stamina) + '</td>' +
-      '<td class="bl__pit">' + esc(Player.pitchesInOrder(p).map((q) => q.name + q.level).join('・')) + '</td>' + body(p) + '</tr>';
+      '<td class="bl__pit">' + esc(Player.pitchesInOrder(p).map((q) => q.name + q.level).join('・')) + '</td></tr>';
     const aptTh = '<th class="bl__apth">' + FIELD_POSITIONS.map((k) => '<span>' + posShort(k) + '</span>').join('') + '</th>';
     const table = (title, rows, ths) => rows.length
       ? '<h4 class="sub">' + title + '（' + rows.length + '人）</h4><div class="bl__wrap"><table class="bl">' +
-        '<thead><tr><th>年</th><th>選手</th><th>投打</th>' + aptTh + ths + '<th>体格</th></tr></thead><tbody>' +
+        '<thead><tr><th>年</th><th>選手</th><th>投打</th><th>体格</th>' + aptTh + ths + '</tr></thead><tbody>' +
         rows.join('') + '</tbody></table></div>' : '';
     modal(
       '<h3 class="modal__title">体格・能力の一覧</h3>' +

@@ -2143,15 +2143,15 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
   padding: 0 .1em;
 }
 .verdict__box.is-win .verdict__word {
-  color: #ffd43b;
-  background: linear-gradient(180deg, #fff3a8 0%, #ffd43b 45%, #f0a500 100%);
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent;
+  /* 勝利は、濃い紺の極太ゴシック（斜体にしない）に、金の細い縁取り */
+  font-style: normal; letter-spacing: .08em;
+  color: #0b2c73; background: none;
+  -webkit-background-clip: border-box; background-clip: border-box;
+  -webkit-text-fill-color: #0b2c73;
   text-shadow: none;
   filter:
-    drop-shadow(2px 0 0 var(--blue-deep)) drop-shadow(-2px 0 0 var(--blue-deep))
-    drop-shadow(0 2px 0 var(--blue-deep)) drop-shadow(0 -2px 0 var(--blue-deep))
-    drop-shadow(0 5px 0 var(--blue-deep));
+    drop-shadow(1.5px 0 0 #f5b400) drop-shadow(-1.5px 0 0 #f5b400)
+    drop-shadow(0 1.5px 0 #f5b400) drop-shadow(0 -1.5px 0 #f5b400);
 }
 
 /* オーダー変更の能力は1行にまとめる */
