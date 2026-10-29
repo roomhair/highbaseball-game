@@ -274,7 +274,8 @@ const Screens = (() => {
         return '<li class="tcard">' +
           '<div class="tcard__head"><button type="button" class="linkbtn tcard__name" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
             '<span>' + p.grade + '年・' + UI.roleText(state.team, p) + '・' +
-              (p.kind === 'pitcher' ? (p.throws === 'L' ? '左投' : '右投') : UI.handMark(p)) + '</span>' +
+              (p.kind === 'pitcher' ? (p.throws === 'L' ? '左投' : '右投') : UI.handMark(p)) +
+              (p.ht != null ? '・' + Math.round(p.ht) + 'cm・' + Math.round(p.wt) + 'kg' : '') + '</span>' +
             '<em class="tcard__up">' + ups + '</em>' +
           '</div>' +
           '<div class="tcard__stats">' + statChips(p, g.ups) + '</div>' +
