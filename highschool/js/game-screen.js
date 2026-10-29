@@ -863,19 +863,6 @@ const GameScreen = (() => {
      出した指示は次の打席だけに効く（sim.js）。ボタンは押すたびに入り切り。
      同時にできない指示を押したときは、先に押していたほうが外れる。 */
 
-  const ORDER_HINT = {
-    steal: '一二塁なら2人ともスタート', bunt: '送りバントで走者を進める',
-    squeeze: '三塁走者を還す（失敗は憤死）', buster: 'バントの構えから強く打つ',
-    safety: '自分も生きようと転がす', he: '走者スタート。当てにいく',
-    busterHE: 'バントの構えからのエンドラン', meet: '三振が減る・長打が減る',
-    power: '長打が増える・三振も増える', stick: '粘って四球を狙う・球数が増える',
-    roll: 'ゴロを打つ。走者を進めやすい', fly: 'フライを打つ。犠飛・長打狙い',
-    gg: 'ゴロならスタート', ig: '打った瞬間にスタート', sg: 'スイングと同時にスタート',
-    ibb: '勝負を避けて歩かせる', strike: '四球が減る・打たれやすい',
-    edge: '三振が増える・四球も増える', fast: '直球中心。速い投手ほど有利',
-    brk: '変化球中心。切れ味しだい',
-  };
-
   /** いま出してある采配の文字（タイムの画面に出す） */
   function ordersText() {
     const o = ctx.live.state().orders;
@@ -914,7 +901,7 @@ const GameScreen = (() => {
         const body = keys.length
           ? '<div class="ordgrid">' + keys.map((k) =>
               '<button type="button" class="ordbtn' + (isOn(k) ? ' is-on' : '') + '" data-k="' + k + '" data-g="' + g + '">' +
-              '<b>' + esc(Sim.ORDER_LABELS[k]) + '</b><span>' + esc(ORDER_HINT[k] || '') + '</span></button>').join('') + '</div>'
+              '<b>' + esc(Sim.ORDER_LABELS[k]) + '</b></button>').join('') + '</div>'
           : '<p class="time__empty">' + (g === 'run' ? '走者がいないので、指示は出せません。' : 'いまの場面で出せる指示はありません。') + '</p>';
         return '<h4 class="sub">' + title[g] + '</h4>' + body;
       }).join('');
