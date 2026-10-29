@@ -365,7 +365,7 @@ const Game = (() => {
     const ref = mine ? (mine.staminaCarry || 0) : 0;
     if (ref <= 0) return;
     const r = RNG.rand();
-    const f = r < 0.55 ? 0.85 + RNG.rand() * 0.3 : (r < 0.78 ? 0.2 + RNG.rand() * 0.6 : 1.15 + RNG.rand() * 0.6);
+    const f = r < 0.55 ? 0.85 + RNG.rand() * 0.3 : (r < 0.78 ? 0.5 + RNG.rand() * 0.35 : 1.15 + RNG.rand() * 0.35);
     const starter = Team.find(opp, (opp.rotation || [])[0]);
     if (starter) starter.staminaCarry = ref * f;
     /* 先発以外の投手は、登板が少ないぶん軽く */
