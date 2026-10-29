@@ -333,7 +333,7 @@ const Share = (() => {
     lines('投手成績', pit);
 
     ctx.textAlign = 'center'; ctx.font = '16px ' + FONT; ctx.fillStyle = faint;
-    ctx.fillText('引き抜き高校野球', W / 2, H - 22);
+    ctx.fillText('強奪高校野球', W / 2, H - 22);
     return cv;
   }
 
@@ -345,7 +345,7 @@ const Share = (() => {
     return new File([blob], filename, { type: 'image/png' });
   }
 
-  const FILE_NAME = '引き抜き高校野球.png';
+  const FILE_NAME = '強奪高校野球.png';
   const SITE_URL = 'https://roomhaird.com/highschool/';
   let pending = null;     // 開いているプレビューの画像（dataURL と File）
 
@@ -355,7 +355,7 @@ const Share = (() => {
     const my = (state.team && state.team.name) || '';
     const champ = r.win && r.last;
     const lines = [
-      '引き抜き高校野球で ' + (r.tourName || '') + ' ' + (r.round || '') + ' を戦った結果……',
+      '強奪高校野球で ' + (r.tourName || '') + ' ' + (r.round || '') + ' を戦った結果……',
       '',
       my + ' ' + r.myRuns + ' - ' + r.opRuns + ' ' + (r.oppName || ''),
       champ ? (r.tourName || '') + 'を制して優勝しました！🏆' : (r.win ? '勝利！' : '敗戦…'),
