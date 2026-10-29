@@ -492,7 +492,7 @@ const UI = (() => {
           ? '<div class="pdetail__body">' + esc(Body.label(p)) +
             (p.initial && p.initial.ht != null && !p.animal
               ? '<span class="pdetail__bodyinit">（獲得時 ' + Math.round(p.initial.ht) + 'cm・' + Math.round(p.initial.wt) + 'kg）</span>' : '') +
-            '<button type="button" class="linkbtn bodylogbtn" id="pd-bodylog">体格の成長履歴</button>' +
+            '<button type="button" class="linkbtn bodylogbtn" id="pd-bodylog">成長履歴</button>' +
             '</div>' : '') +
         (p.from ? '<div class="pdetail__from">' + fromText(p.from) + '</div>' : '') +
       '</div>' +
@@ -565,7 +565,7 @@ const UI = (() => {
       const prevBack = closeModal.back;
       const box = document.createElement('div');
       box.className = 'bodylogbox';
-      box.innerHTML = '<h3 class="modal__title">' + esc(p.name) + '　体格の成長履歴</h3>' +
+      box.innerHTML = '<h3 class="modal__title">' + esc(p.name) + '　成長履歴</h3>' +
         '<p class="tiny">身長' + Math.round(p.ht * 10) / 10 + 'cm・体重' + Math.round(p.wt * 10) / 10 + 'kg（いま）</p>' +
         '<div class="bodylogscroll">' + bodyLogHtml(p) + '</div>' +
         '<div class="actions actions--modal"><button type="button" class="btn" id="bl-back">選手に戻る</button></div>';
