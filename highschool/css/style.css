@@ -2232,3 +2232,16 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 
 /* 選手名の下の、小さな身長・体重 */
 .roster .nm__body { display: block; font-size: 9.5px; font-weight: 500; color: var(--ink-mute); line-height: 1.2; margin-top: 1px; font-variant-numeric: tabular-nums; }
+
+/* ===== 遊び方・ルール解説のページ（ゲーム画面と同じ見た目にそろえる） ===== */
+a.appbar__title { text-decoration: none; }
+.guide .section-title { font-size: 19px; line-height: 1.45; }
+.guide .guide__sec { margin: 16px 0; padding: 16px 16px 10px; }
+.guide .guide__sec p, .guide .guide__sec li { font-size: 14px; line-height: 1.95; color: var(--ink); }
+.guide .guide__sec p { margin: 0 0 12px; }
+.guide .about__title { font-size: 16.5px; padding-left: 10px; border-left: 5px solid var(--yel-lo); }
+.guide ul, .guide ol { margin: 0 0 12px; padding-left: 1.4em; }
+.guide li { margin: 0 0 6px; }
+.guide .sub { margin: 14px 0 6px; padding: 5px 10px; font-size: 14px; font-family: var(--font-display); }
+.guide a { color: var(--brand); font-weight: 800; text-underline-offset: 3px; }
+.guide__intro { margin-top: 8px; }
