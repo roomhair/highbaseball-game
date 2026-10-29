@@ -701,6 +701,11 @@ const UI = (() => {
      守備位置は選手について回るので、1人の守備位置を変えても
      他の選手は動かない。そのかわり重複したら決定を止める。 */
 
+  /** オーダー変更の選手名の下に添える、身長・体重 */
+  function bodyTiny(p) {
+    return p.ht != null ? ' ' + Math.round(p.ht) + 'cm・' + Math.round(p.wt) + 'kg' : '';
+  }
+
   function lineupEditor(team, onDone) {
 
     /* 選手ID → 守備位置。'BENCH' なら控え。
@@ -790,7 +795,7 @@ const UI = (() => {
         '</span>' +
         '<span class="lumain">' +
           '<button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
-          '<span class="tiny">' + p.grade + '年 ' + handMark(p) + (p.regularLock ? ' <b class="lulock">確約</b>' : '') + '</span>' +
+          '<span class="tiny">' + p.grade + '年 ' + handMark(p) + bodyTiny(p) + (p.regularLock ? ' <b class="lulock">確約</b>' : '') + '</span>' +
         '</span>' +
         '<span class="lustats lustats--row">' + trajIcon(p.traj) +
           [['ミ', p.meet], ['パ', p.power], ['走', p.speed], ['肩', p.arm], ['守', p.field], ['捕', p.catch]].map((x) =>
@@ -811,7 +816,7 @@ const UI = (() => {
         '<span class="luno luno--wide">' + (i + 1) + '番手' + (team.rotation[0] === p.id ? '<br><small>先発</small>' : '') + '</span>' +
         '<span class="lumain">' +
           '<button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
-          '<span class="tiny">' + p.grade + '年 ' + handMark(p) + '</span>' +
+          '<span class="tiny">' + p.grade + '年 ' + handMark(p) + bodyTiny(p) + '</span>' +
         '</span>' +
         '<span class="lustats">最速<b class="rankval">' + p.velo + '</b>　制' + rankNum(p.control) +
           '　ス' + rankNum(p.stamina) +
