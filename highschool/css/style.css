@@ -1997,9 +1997,9 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 .fv-base.is-turn-on { animation: fvBaseOn .01s linear forwards; }
 .fv-base.is-turn-off { animation: fvBaseOff .01s linear forwards; }
 
-.ll__today { display: flex; flex-wrap: wrap; gap: 0 3px; margin-top: 2px; font-size: 9px; line-height: 1.2; letter-spacing: -.05em; color: var(--ink-faint); }
+.ll__today { display: flex; flex-wrap: wrap; gap: 0 8px; margin-top: 3px; font-size: 11px; line-height: 1.25; color: var(--ink-faint); }
 .ll__today i { font-style: normal; white-space: nowrap; }
-.ll__today b { margin-left: 1px; color: var(--ink); font-weight: 800; font-family: var(--font-num); }
+.ll__today b { margin-left: 3px; color: var(--ink); font-weight: 800; font-family: var(--font-num); }
 
 .fv-so { font: 900 13px/1 system-ui, -apple-system, 'Hiragino Sans', sans-serif; letter-spacing: .08em; fill: #d63a2f; stroke: #fff; stroke-width: 3px; paint-order: stroke; opacity: 0; }
 
