@@ -440,6 +440,22 @@ const Body = (() => {
 
   const r1 = (v) => Math.round(v * 10) / 10;
 
+  /** 体格はそのままで、身のこなしがよくなって能力が上がる（体格のわりに能力が低い選手だけ）。
+      身長・体重・身体能力のどれかが平均より良いのに、能力が低めの選手に、ときどき起こる。
+      戻り値は { key, d }（起きなかったときは null） */
+  function bodyKnack(p) {
+    if (p.fixedBody || p.kind == null) return null;
+    const good = pz(p) + 0.5 * Math.max(0, hz(p)) + 0.3 * Math.max(0, zW(p));
+    if (good < 0.6 || !RNG.chance(Math.min(0.12, 0.03 + 0.04 * (good - 0.6)))) return null;
+    const keys = p.kind === 'pitcher' ? ['velo', 'control', 'stamina'] : ['meet', 'power', 'speed', 'arm', 'field', 'catch'];
+    const low = keys.filter((k) => p[k] != null && (k === 'velo' ? p[k] < 130 : p[k] < 45));
+    if (!low.length) return null;
+    const key = RNG.pick(low);
+    const before = p[key];
+    p[key] = stat(p, key, before + (key === 'velo' ? RNG.range(2, 4) : RNG.range(1, 3)));
+    return p[key] === before ? null : { key, d: p[key] - before };
+  }
+
   /** 1か月進める（その月に入るときの変化）。4月に入るときは、学年が上がった
       あとで呼ぶ（その前の学年ぶんの伸びを数える）。履歴に1件残す */
   function stepMonth(p) {
@@ -464,6 +480,8 @@ const Body = (() => {
     p.wt = RNG.clamp(wtOld + dw, 48 * SCALE, 125 * SCALE);
     p.bodyT = to;
     const changed = applyChange(p);
+    const knack = bodyKnack(p);
+    if (knack) changed[knack.key] = (changed[knack.key] || 0) + knack.d;
     p.bodyLog.push({
       t: to,
       dh: r1(r1(p.ht) - r1(htOld)),
