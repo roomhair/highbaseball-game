@@ -1224,7 +1224,7 @@ td.role { font-size: 11px; color: var(--ink-mute); }
   .ll__stanum { font-size: 8.5px; line-height: 1.2; }
   .ll__r { font-size: 8.5px; }
   .ll__ball { font-size: 8.5px; }
-  .ll__p { padding-top: 2px; }
+  .ll__p { padding-bottom: 2px; }
   .ll__item { line-height: 1.2; }
   .ll { padding: 3px 4px; }
   .scoreboard th, .scoreboard td { font-size: 11.5px; }
@@ -1234,8 +1234,8 @@ td.role { font-size: 11px; color: var(--ink-mute); }
 .ll__item.is-now .ll__no, .ll__item.is-now .ll__pos { color: inherit; opacity: .8; }
 /* 投手の欄。名前・能力・変化球を、打者の行と同じ3段にそろえる */
 .ll__p {
-  margin: 3px 0 0; padding-top: 3px; font-size: 11px; color: var(--ink-mute);
-  border-top: 2px dashed var(--line-soft);
+  margin: 0 0 3px; padding-bottom: 3px; font-size: 11px; color: var(--ink-mute);
+  border-bottom: 2px dashed var(--line-soft);
 }
 .ll__pname { display: block; line-height: 1.25; }
 /* 投手の名前は押せる。打者の行と同じで、押すと選手の詳細が開く */

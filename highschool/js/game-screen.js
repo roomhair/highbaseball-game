@@ -369,8 +369,8 @@ const GameScreen = (() => {
       const pit = Team.find(t, cur[key + 'Pitcher']);
       return '<div class="ll' + (cur.side === key ? ' is-batting' : '') + '">' +
         '<h4 class="ll__title">' + esc(t.name) + '<i>' + (cur.side === key ? '攻撃' : '守備') + '</i></h4>' +
-        '<ol class="ll__list">' + rows + '</ol>' +
-        pitBlock(pit, cur[key + 'Bf']) + '</div>';
+        pitBlock(pit, cur[key + 'Bf']) +
+        '<ol class="ll__list">' + rows + '</ol></div>';
     };
     /* 先攻（away）を右、後攻（home）を左に出す */
     return side(home, 'home') + side(away, 'away');
