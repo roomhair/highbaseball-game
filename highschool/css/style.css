@@ -2309,5 +2309,6 @@ a.appbar__title { text-decoration: none; }
 
 /* 試合中の画面：上の余白を詰める（スコアボードと打席の枠を上に寄せる） */
 #screen-game .container { padding-top: 8px; }
-#screen-game .stage { align-items: start; padding-top: 6px; padding-bottom: 6px; margin: 8px 0; }
-#screen-game .stage .fieldview { align-self: center; }
+#screen-game .stage { align-items: center; padding-top: 6px; padding-bottom: 6px; margin: 8px 0; }
+/* 文字は、下の「タップで次の打席へ」を除いた高さの真ん中に置く */
+#screen-game .stage > :first-child { padding-bottom: 14px; }
