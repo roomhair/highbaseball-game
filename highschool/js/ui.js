@@ -188,7 +188,7 @@ const UI = (() => {
       横に数字を添える */
   function trajIcon(n, withNum) {
     const ang = { 1: 8, 2: 28, 3: 48, 4: 68 }[n] || 28;
-    return '<span class="traj traj--' + n + '" title="弾道' + n + '（' + (TRAJ_LABEL[n] || '') + '）">' +
+    return '<span class="traj traj--' + n + '" title="弾道' + n + '">' +
       '<svg viewBox="0 0 18 14" aria-hidden="true"><g transform="rotate(' + (-ang) + ' 2 12)">' +
       '<line x1="2" y1="12" x2="14" y2="12"/><path d="M16.5 12 L12 9.6 V14.4Z"/></g></svg>' +
       (withNum === false ? '' : '<b>' + n + '</b>') + '</span>';
@@ -422,7 +422,7 @@ const UI = (() => {
         stat('走力', p.speed, null, init.speed) + stat('肩力', p.arm, null, init.arm) +
         stat('守備', p.field, null, init.field) + stat('捕球', p.catch, null, init.catch);
       abilities += '</div>';
-      abilities += '<div class="minor"><span>弾道 ' + trajIcon(p.traj) + '（' + TRAJ_LABEL[p.traj] + '）</span>' +
+      abilities += '<div class="minor"><span>弾道 ' + trajIcon(p.traj) + '</span>' +
         '<span>打球傾向 <b>' + pullText(p.pull) + '</b>（' + (p.pull > 0 ? '+' : '') + p.pull + '）</span></div>';
       abilities += '<h4 class="sub">守備適性</h4><div class="aptrow">' +
         FIELD_POSITIONS.map((k) => '<span class="apt"><i>' + posShort(k) + '</i>' + aptSpan(p.apt[k]) + '</span>').join('') +
