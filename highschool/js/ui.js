@@ -333,7 +333,7 @@ const UI = (() => {
           .filter((s2) => s2.key !== 'pos' || players[0].kind !== 'pitcher')
           .map((s2) => '<button type="button" class="sortbtn' + (s2.key === key ? ' is-on' : '') +
             '" data-sort="' + s2.key + '">' + s2.label + '</button>').join('') +
-        '<button type="button" class="sortbtn sortbtn--body" data-bodylist="1">体格</button>' +
+        '<button type="button" class="sortbtn sortbtn--body" data-bodylist="1">詳細</button>' +
         '</div>' + rosterTable(sortPlayers(players, key, opts.team), opts);
       root.querySelectorAll('.sortbtn[data-sort]').forEach((b) => b.addEventListener('click', () => {
         key = b.dataset.sort; draw();
