@@ -438,6 +438,16 @@ const Body = (() => {
       （いまの能力にはすでに補正が入っていることにする）。 */
   function ensure(p) {
     if (!p) return p;
+    /* 以前は体格が変わらなかった熊も、ほかの選手と同じように体格が変わるようにした。
+       古い保存データの熊は、いまの体格からの変化だけが能力に効くよう、ここで直す */
+    if (p.fixedBody) {
+      delete p.fixedBody;
+      p.bodyV = BODY_VER;
+      if (p.bodyT == null) p.bodyT = NOW;
+      p.zW0 = zW(p);
+      p.bodyOff = {}; p.bodyAcc = {};
+      STAT_KEYS.forEach((key) => { if (p[key] != null) p.bodyOff[key] = offset(p, key); });
+    }
     /* 古い基準の選手は、基準との差（標準化した値）をそのまま新しい基準に移して、
        身長・体重を直す。能力は動かさない */
     if (p.ht != null && p.bodyV !== BODY_VER) {
@@ -519,7 +529,7 @@ const Body = (() => {
     const winter = WINTER[mo] ? 1 : 0;
     const dw = (expNow - oldExp) * 0.9 + SCALE * bw * (0.10 * (p.wtTrend || 0) * (1 + winter * 1.5) +
       (WT_SEASON[mo] || 0) + RNG.norm(0, winter ? 0.75 : 0.35) * (1 + winter * 0.25 * Math.abs(p.wtTrend || 0)));
-    p.wt = RNG.clamp(wtOld + dw, 48 * SCALE, 125 * SCALE);
+    p.wt = RNG.clamp(wtOld + dw, 48 * SCALE, Math.max(125 * SCALE, wtOld));      // 熊のように125kgを超える選手は、そこから下限だけ守る
     p.bodyT = to;
     const changed = applyChange(p);
     const knack = bodyKnack(p);

@@ -91,7 +91,7 @@ const Dataset = (() => {
     const seen = new Set(exclude || []);
     sets.forEach((set) => set.forEach((p) => {
       /* 熊は「熊」という名前で固定（同じ名前でも変えない） */
-      if (p.fixedBody) return;
+      if (p.fixedBody || p.animal) return;
       for (let i = 0; i < 50 && seen.has(p.name); i++) {
         const nm = NAMES.personName();
         p.last = nm.last; p.first = nm.first; p.name = nm.last + nm.first;

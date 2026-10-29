@@ -362,9 +362,13 @@ const Player = (() => {
     p.apt = { C: 'G', '1B': 'A', '2B': 'F', '3B': 'C', SS: 'F', LF: 'F', CF: 'F', RF: 'F' };
     p.traj = 4; p.meet = 30; p.power = 90; p.speed = 70; p.arm = 80; p.field = 30; p.catch = 10;
     p.ht = 190; p.wt = 150;
-    p.fixedBody = true;
-    p.bodyOff = {}; p.bodyAcc = {}; p.bodyLog = [];
+    /* 熊も、ほかの選手と同じように月ごとに体格が変わり、能力も動く。
+       ここまでの体格による補正は「すでに足した分」として数える（あとから変わった分だけが効く） */
+    p.bodyLog = [];
     p.zW0 = Body.zW(p);
+    p.bodyOff = {};
+    Body.STAT_KEYS.forEach((k) => { if (p[k] != null) p.bodyOff[k] = Body.offset(p, k); });
+    p.bodyAcc = {};
     p.genius = 'power';
     p.animal = true;           // 画面には「天才：パワー」ではなく「動物」と出す
     p.career = emptyBat();
