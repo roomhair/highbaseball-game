@@ -1499,6 +1499,7 @@ const Game = (() => {
     });
     on('btn-teaminfo', () => Screens.teamInfo(state));
     on('btn-teaminfo-back', () => Screens.info());
+    on('btn-teaminfo-arrow', () => Screens.info());
     on('btn-settings-save', saveSettings);
     on('btn-settings-reset', resetAll);
     on('btn-pros', () => UI.prosList(Storage.loadPros()));

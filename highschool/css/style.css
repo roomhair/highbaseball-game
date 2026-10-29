@@ -2271,12 +2271,10 @@ a.appbar__title { text-decoration: none; }
 .appmenu button + button { border-top: 1px solid var(--line, #d8d2c2); border-radius: 0; }
 .appmenu button:hover, .appmenu button:focus-visible { background: var(--brand-soft, #e6efff); }
 
-/* 設定・info の左上の戻る矢印 */
+/* 設定・info・チーム情報の見出しの上の、戻る矢印（小さく、目立たせない） */
 .backarrow {
-  display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 36px; margin: 0 0 6px;
-  border: var(--bw-frame, 3px) solid var(--frame); border-radius: var(--radius-sm); background: var(--panel);
-  color: var(--brand); font: inherit; font-size: 22px; font-weight: 800; line-height: 1; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 22px; margin: 0 0 2px;
+  border: 1px solid rgba(255, 255, 255, .55); border-radius: 6px; background: rgba(255, 255, 255, .3);
+  color: var(--ink-mute); font: inherit; font-size: 15px; font-weight: 700; line-height: 1; cursor: pointer;
 }
 .backarrow:active { transform: translateY(1px); }
-
-.appbar__home[hidden] { display: none; }
