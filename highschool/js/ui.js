@@ -529,15 +529,20 @@ const UI = (() => {
     const log = (p.bodyLog || []).slice().reverse();
     if (!log.length) return '<p class="note">まだ体格の記録はありません。月が進むと、ここに1か月ごとの変化が残ります。</p>';
     let lastYear = null;
+    /* その月の終わりの身長・体重。いまの値から、新しい月から順に増減を引いて戻していく */
+    const r1 = (v) => Math.round(v * 10) / 10;
+    let hNow = r1(p.ht), wNow = r1(p.wt);
     const rows = log.map((e) => {
+      const hAt = hNow, wAt = wNow;
+      hNow = r1(hNow - e.dh); wNow = r1(wNow - e.dw);
       const y = Body.yearOf(e.t), m = Body.monthOf(e.t);
       const head = y !== lastYear ? '<li class="bodylog__year">' + y + '年</li>' : '';
       lastYear = y;
       const stats = Object.keys(e.s || {}).filter((k) => e.s[k]).map((k) =>
         '<span class="bodylog__st">' + BODY_STAT_NAME[k] + signed(e.s[k], k === 'velo' ? 'km/h' : '') + '</span>').join('');
       return head + '<li class="bodylog__row"><span class="bodylog__m">' + m + '月</span>' +
-        '<span class="bodylog__b">身長' + signed(Math.round(e.dh * 10) / 10, 'cm') + '</span>' +
-        '<span class="bodylog__b">体重' + signed(Math.round(e.dw * 10) / 10, 'kg') + '</span>' + stats + '</li>';
+        '<span class="bodylog__b">身長' + hAt.toFixed(1) + 'cm</span>' +
+        '<span class="bodylog__b">体重' + wAt.toFixed(1) + 'kg</span>' + stats + '</li>';
     }).join('');
     return '<ul class="bodylog">' + rows + '</ul>';
   }
