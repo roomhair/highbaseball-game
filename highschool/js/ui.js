@@ -374,6 +374,7 @@ const UI = (() => {
     const head = (p) => '<td class="bl__g">' + p.grade + '</td><td class="bl__nm"><button type="button" class="linkbtn bl__name" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
       (p.animal ? '<em class="bl__gen">動物</em>' : (p.genius ? '<em class="bl__gen">天才</em>' : '')) + '</td><td class="bl__h">' + esc(handMark(p)) + '</td>';
     const batRow = (p) => '<tr>' + head(p) + body(p) +
+      '<td class="c">' + trajIcon(p.traj) + '</td>' +
       [p.meet, p.power, p.speed, p.arm, p.field, p.catch].map((v) => '<td class="c">' + rankNum(v) + '</td>').join('') + apt(p) + '</tr>';
     const pitRow = (p) => '<tr>' + head(p) + body(p) +
       '<td class="c"><b class="rankval">' + p.velo + '</b></td><td class="c">' + rankNum(p.control) + '</td><td class="c">' + rankNum(p.stamina) + '</td>' +
@@ -386,7 +387,7 @@ const UI = (() => {
         rows.join('') + '</tbody></table></div>' : '';
     const listHtml =
       '<h3 class="modal__title">体格・能力の一覧</h3>' +
-      table('野手', bats.map(batRow), '<th>ミ</th><th>パ</th><th>走</th><th>肩</th><th>守</th><th>捕</th>', true) +
+      table('野手', bats.map(batRow), '<th>弾道</th><th>ミ</th><th>パ</th><th>走</th><th>肩</th><th>守</th><th>捕</th>', true) +
       table('投手', pits.map(pitRow), '<th>球速</th><th>制球</th><th>スタ</th><th>変化球</th>') +
       '<div class="actions actions--modal"><button type="button" class="btn btn--wide" data-close>閉じる</button></div>';
 
