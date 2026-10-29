@@ -124,7 +124,7 @@ const Body = (() => {
      弾道         … 長いリーチで打球が上がりやすい（+0.4）
      ミート・スタミナ・変化球 … 身長とは結びつけない（0） */
   const DIR_H = {
-    velo: 1, power: 1, arm: 1,
+    velo: 1, power: 1.7, arm: 1,
     field: -0.2, catch: -0.2, control: -0.1,
     speed: -0.15, traj: 0.4,
     meet: 0, stamina: 0, pitch: 0,
@@ -302,9 +302,9 @@ const Body = (() => {
     { min: 1.0, p: [0.42, 0.20, 0.14, 0.24] },
     { min: 1.8, p: [0.55, 0.20, 0.13, 0.12] },
   ];
-  const TILT_PW = [0.6, 1.5];     // パワー側の大きさ（|hz| 1あたり）
+  const TILT_PW = [1.0, 2.2];     // パワー側の大きさ（|hz| 1あたり）
   const TILT_MT = [1.2, 2.8];     // ミート側の大きさ（|hz| 1あたり）
-  const TILT_CAP = 7;
+  const TILT_CAP = 9;
 
   function rollTilt(kind, z) {
     if (kind === 'pitcher') return null;
