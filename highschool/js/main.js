@@ -1110,9 +1110,11 @@ const Game = (() => {
   /** 新入生の組を決める前の確認（決めたあとは選び直せない） */
   function confirmNewcomers(list, onYes) {
     const names = list.map((p) => p.name).join('・');
+    const locked = list.filter((p) => p.regularLock);
     UI.confirmBox({
       title: 'この新入生たちを迎えますか？',
-      body: list.length + '人（' + names + '）を迎えます。決めたあとは選び直せません。',
+      body: list.length + '人（' + names + '）を迎えます。決めたあとは選び直せません。' +
+        (locked.length ? '　※' + locked.map((p) => p.name).join('・') + 'は、1年生からレギュラー確約が条件です。3年生が引退するまで、スタメンから外せません（試合中の交代はできます）。' : ''),
       yes: '迎える', no: '選び直す', yesClass: 'btn--primary',
     }, onYes);
   }
@@ -1356,9 +1358,59 @@ const Game = (() => {
     GameScreen.init();
     SoccerGameScreen.init();
     state = fresh();
+    /* テストプレイのリンク（?test=bear / heya / lock）。保存はしない */
+    const testKind = new URLSearchParams(location.search).get('test');
+    if (['bear', 'heya', 'lock'].indexOf(testKind) >= 0) {
+      Storage.testMode = true;
+      applySettings();
+      showTopButtons();
+      bindEvents();
+      startTest(testKind);
+      return;
+    }
     applySettings();
     showTopButtons();
     restoreFromCloud();
+    bindEvents();
+  }
+
+  /**
+   * テストプレイ。リンクの ?test=〜 で入る。保存はしない（Storage.testMode）。
+   *   bear … 新入生を選ぶ画面から。どの組にも熊がいる
+   *   lock … 新入生を選ぶ画面から。レギュラー確約つきの強めの選手がいる組が1つある
+   *   heya … 夏の県大会の開幕から。相手の4番ショートに、いつも部屋がいる
+   */
+  function startTest(kind) {
+    state = fresh();
+    state.testMode = true;
+    Body.setNow(state.clockT);
+    Player.setSeq(1);
+    const name = NAMES.schoolName(new Set());
+    state.usedSchools = [name];
+    state.team = Team.create(name);
+    state.team.batters = Dataset.make('batter', 1)[0];
+    state.team.pitchers = Dataset.make('pitcher', 1, null, 0, [])[0];
+    Team.autoLineup(state.team);
+    const best = Team.bestPlayer(state.team);
+    if (best) state.team.captainId = best.id;
+    state.settings.schoolName = state.settings.schoolName || name;
+    const bar = document.createElement('div');
+    bar.className = 'testbanner';
+    bar.textContent = 'テストプレイ（記録は保存されません）';
+    document.body.appendChild(bar);
+    if (kind === 'heya') {
+      Tournament.test.heya = true;
+      startTournament('local');
+      return;
+    }
+    if (kind === 'bear') Dataset.test.bear = true;
+    if (kind === 'lock') Dataset.test.strong = true;
+    Offseason.retire(state.team);
+    toNewSeason();
+  }
+
+  /** ボタンの結び付け（boot から呼ぶ） */
+  function bindEvents() {
 
     const on = (id, fn) => { const n = UI.el(id); if (n) n.addEventListener('click', fn); };
 

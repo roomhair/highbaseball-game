@@ -41,6 +41,7 @@ const Screens = (() => {
           '<button type="button" class="btn btn--primary dataset__pick" data-i="' + i + '">' + esc(pickLabel) + '</button>' +
         '</header>' +
         UI.rosterTable(players, { showBody: true }) +
+        (players.some((p) => p.regularLock) ? '<p class="dataset__note">※1年生からレギュラー確約が条件</p>' : '') +
       '</article>';
     }).join('');
     UI.html('pick-list', html);

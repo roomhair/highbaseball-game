@@ -10,7 +10,12 @@
 
 const Storage = {
 
+  /* テストプレイ（?test=bear など）のあいだは、何も保存せず、保存済みの記録も見せない。
+     ふだんの記録を壊さないため */
+  testMode: false,
+
   save(state) {
+    if (this.testMode) return true;
     try {
       const raw = JSON.stringify({
         v: CONFIG.SAVE_VERSION,
@@ -30,6 +35,7 @@ const Storage = {
   },
 
   load() {
+    if (this.testMode) return null;
     try {
       const raw = localStorage.getItem(CONFIG.SAVE_KEY);
       if (!raw) return null;
@@ -44,6 +50,7 @@ const Storage = {
   },
 
   clear() {
+    if (this.testMode) return;
     try { localStorage.removeItem(CONFIG.SAVE_KEY); } catch (e) { /* 何もしない */ }
     if (typeof Cloud !== 'undefined') Cloud.wipe();
   },
@@ -61,6 +68,7 @@ const Storage = {
   /** プロ入りした選手の記録。ゲームを最初からやり直しても残す（別の鍵）。
       選手は能力・通算成績・活躍シーンまで丸ごと保存する */
   loadPros() {
+    if (this.testMode) return [];
     try {
       const raw = localStorage.getItem('highschool-pros');
       const list = raw ? JSON.parse(raw) : [];
@@ -69,6 +77,7 @@ const Storage = {
   },
 
   savePros(list) {
+    if (this.testMode) return;
     try { localStorage.setItem('highschool-pros', JSON.stringify(list)); } catch (e) { /* 保存できなくても続けられる */ }
   },
 

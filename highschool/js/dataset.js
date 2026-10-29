@@ -48,15 +48,33 @@ const Dataset = (() => {
     return players;
   }
 
-  /** 新入生（1年生だけ）のセット。prestigeBonus は学校の格による下駄 */
-  function freshmanSet(kind, n, prestigeBonus) {
+  /* テストプレイ用（?test=bear など）。ふだんは使わない */
+  const test = { bear: false, strong: false };
+
+  /** 強めの新入生。何人か作って、いちばん強い1人を選ぶ。
+      この選手が入ったセットを選ぶと、1年生からレギュラー確約が条件になる（regularLock） */
+  function strongFreshman(pos, prestigeBonus) {
+    let best = null;
+    for (let i = 0; i < 6; i++) {
+      const p = Player.newBatter({ grade: 1, pos, prestigeBonus: (prestigeBonus || 0) + 26, genius: false });
+      if (!best || Player.rating(p) > Player.rating(best)) best = p;
+    }
+    best.regularLock = true;
+    return best;
+  }
+
+  /** 新入生（1年生だけ）のセット。prestigeBonus は学校の格による下駄。
+      strong が true なら、強めの選手を1人入れる（野手のみ） */
+  function freshmanSet(kind, n, prestigeBonus, strong) {
     const players = [];
     if (kind === 'batter') {
       /* 守る場所がばらけるように配る。DHは持ち場にしない（役割は毎回選ぶ） */
       const pool = RNG.shuffle(FIELD_POSITIONS.slice());
       for (let i = 0; i < n; i++) {
         /* 1000人に1人、熊が入ってくる */
-        players.push(RNG.chance(1 / 1000)
+        if (strong && i === 0) players.push(strongFreshman(pool[0], prestigeBonus));
+        else if (test.bear && i === (strong ? 1 : 0)) players.push(Player.newBear({ prestigeBonus }));
+        else players.push(RNG.chance(1 / 1000)
           ? Player.newBear({ prestigeBonus })
           : Player.newBatter({ grade: 1, pos: pool[i % pool.length], prestigeBonus }));
       }
@@ -72,6 +90,8 @@ const Dataset = (() => {
   function uniqueNames(sets, exclude) {
     const seen = new Set(exclude || []);
     sets.forEach((set) => set.forEach((p) => {
+      /* 熊は「熊」という名前で固定（同じ名前でも変えない） */
+      if (p.fixedBody) return;
       for (let i = 0; i < 50 && seen.has(p.name); i++) {
         const nm = NAMES.personName();
         p.last = nm.last; p.first = nm.first; p.name = nm.last + nm.first;
@@ -84,11 +104,20 @@ const Dataset = (() => {
   /** 指定された数だけ用意する */
   function make(kind, count, n, prestigeBonus, exclude) {
     const sets = [];
+    /* 新入生の野手は、20セットに1セットほどの割合で、強めの選手が入ったセットが出る。
+       レギュラー確約つきのセットは、同時に2つ以上は出ない */
+    let special = -1;
+    if (n != null && kind === 'batter') {
+      if (test.strong) special = 0;
+      else for (let i = 0; i < (count || 5); i++) if (special < 0 && RNG.chance(1 / 20)) special = i;
+    }
     for (let i = 0; i < (count || 5); i++) {
       sets.push(n == null
         ? (kind === 'batter' ? batterSet() : pitcherSet())
-        : freshmanSet(kind, n, prestigeBonus));
+        : freshmanSet(kind, n, prestigeBonus, i === special));
     }
+    /* テストプレイ用の指定は、1回の新入生選びで使い切る */
+    if (n != null && kind === 'batter') { test.bear = false; test.strong = false; }
     return uniqueNames(sets, exclude);
   }
 
@@ -106,5 +135,5 @@ const Dataset = (() => {
     };
   }
 
-  return { make, uniqueNames, batterSet, pitcherSet, freshmanSet, summary, splitGrades };
+  return { make, uniqueNames, batterSet, pitcherSet, freshmanSet, summary, splitGrades, test };
 })();

@@ -255,7 +255,7 @@ const UI = (() => {
       : esc(p.name);
     return '<tr data-pid="' + p.id + '" class="prow' + (opts.mark ? ' is-' + opts.mark : '') + '">' +
       '<td class="c g' + p.grade + '">' + p.grade + '</td>' +
-      '<td class="nm">' + nm + (p.awakened ? '<em class="awake-dot" title="覚醒">◆</em>' : '') +
+      '<td class="nm">' + (opts.showBody && p.regularLock ? '<span class="nm__lock" title="1年生からレギュラー確約が条件">※</span>' : '') + nm + (p.awakened ? '<em class="awake-dot" title="覚醒">◆</em>' : '') +
         /* チーム作り・新入生選びでは、名前の下に身長・体重を小さく添える */
         (opts.showBody && p.ht != null ? '<small class="nm__body">' + Math.round(p.ht) + 'cm・' + Math.round(p.wt) + 'kg</small>' : '') + '</td>' +
       role +
@@ -710,7 +710,28 @@ const UI = (() => {
       .concat(team.batters.map((p) => p.id).filter((id) => !team.lineup.some((sl) => sl.pid === id)));
 
     let picked = null;      // 入れ替えようとして選んだ選手（番号をタップ）
+    let lockMsg = '';       // レギュラー確約の選手を外そうとしたときの知らせ
     let tab = 'bat';        // 'bat' か 'pit'
+
+    /* レギュラー確約（regularLock）の選手は、スタメンから外せない。
+       外れてしまう操作は、元に戻して知らせる */
+    const lockedPlayers = () => team.batters.filter((p) => p.regularLock);
+    const snapshot = () => ({ pos: Object.assign({}, posOf), order: order.slice() });
+    const restore = (s) => {
+      Object.keys(posOf).forEach((k) => { delete posOf[k]; });
+      Object.assign(posOf, s.pos);
+      order = s.order.slice();
+    };
+    /** fn で並びを動かし、確約の選手が控えになってしまったら元に戻す。戻したら false */
+    const guarded = (fn) => {
+      const snap = snapshot();
+      fn();
+      const bad = lockedPlayers().filter((p) => posOf[p.id] === BENCH);
+      if (!bad.length) { lockMsg = ''; return true; }
+      restore(snap);
+      lockMsg = bad.map((p) => p.name).join('・') + 'は、1年生からレギュラー確約が条件なので、スタメンから外せません（試合中の交代はできます。3年生が引退したあとは控えにできます）。';
+      return false;
+    };
     let showBad = false;    // 決定を押すまでは赤くしない
 
     function batterIds() {
@@ -750,7 +771,7 @@ const UI = (() => {
       const pos = posOf[pid];
       const bench = pos === BENCH;
       /* どの選手も同じ選び方。「控」を選べば外れ、守備位置を選べば入る */
-      const options = ['<option value="' + BENCH + '"' + (bench ? ' selected' : '') + '>控</option>']
+      const options = ['<option value="' + BENCH + '"' + (bench ? ' selected' : '') + (p.regularLock ? ' disabled' : '') + '>控</option>']
         .concat(LINEUP_POSITIONS.map((k) =>
           '<option value="' + k + '"' + (k === pos ? ' selected' : '') + '>' + posShort(k) + '</option>')).join('');
       const bad = showBad && !bench && prob.dup.indexOf(pos) >= 0;
@@ -763,7 +784,7 @@ const UI = (() => {
         '</span>' +
         '<span class="lumain">' +
           '<button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
-          '<span class="tiny">' + p.grade + '年 ' + handMark(p) + '</span>' +
+          '<span class="tiny">' + p.grade + '年 ' + handMark(p) + (p.regularLock ? ' <b class="lulock">確約</b>' : '') + '</span>' +
         '</span>' +
         '<span class="lustats lustats--row">' + trajIcon(p.traj) +
           [['ミ', p.meet], ['パ', p.power], ['走', p.speed], ['肩', p.arm], ['守', p.field], ['捕', p.catch]].map((x) =>
@@ -806,6 +827,7 @@ const UI = (() => {
       if (prob.missing.length) msgs.push('守る人がいません（' + prob.missing.map(posName).join('・') + '）');
       const warn = (showBad && msgs.length)
         ? '<p class="luwarn">' + msgs.join('。') + '。直してから決定してください。</p>' : '';
+      const lockNote = lockMsg ? '<p class="luwarn">' + esc(lockMsg) + '</p>' : '';
       const hint = tab === 'bat'
         ? (picked
           ? '<b>入れ替える相手の番号をタップ</b>してください（もう一度同じ番号をタップすると取り消し）。スタメンと控えを選べば、その打順にそのまま入ります。'
@@ -828,7 +850,7 @@ const UI = (() => {
           '<button type="button" class="lutab' + (tab === 'pit' ? ' is-on' : '') + '" data-tab="pit">投手</button>' +
         '</div>' +
         '<p class="note lineup-hint">' + hint + '</p>' +
-        warn + list +
+        warn + lockNote + list +
         '<div class="actions actions--modal">' +
         '<button type="button" class="btn" id="lu-auto">' +
           (tab === 'bat' ? '野手をおまかせ' : '投手をおまかせ') + '</button>' +
@@ -911,8 +933,10 @@ const UI = (() => {
         const j = i + d;
         if (j < 0 || j >= ids.length) return;
         const a = posOf[ids[i]], b2 = posOf[ids[j]];
-        if ((a === BENCH) !== (b2 === BENCH)) { posOf[ids[i]] = b2; posOf[ids[j]] = a; }
-        [ids[i], ids[j]] = [ids[j], ids[i]];
+        guarded(() => {
+          if ((a === BENCH) !== (b2 === BENCH)) { posOf[ids[i]] = b2; posOf[ids[j]] = a; }
+        });
+        if (!lockMsg) { [ids[i], ids[j]] = [ids[j], ids[i]]; } else { ids.splice(0, ids.length, ...batterIds()); }
         showBad = false;
         applyBatters(ids);
       };
@@ -931,7 +955,7 @@ const UI = (() => {
          「控」を選べば外れ、守備位置を選べばスタメンに入る。
          重なりや不足は、決定を押したときにまとめて知らせる */
       body.querySelectorAll('.possel').forEach((sel) => sel.addEventListener('change', () => {
-        posOf[sel.dataset.pid] = sel.value;
+        guarded(() => { posOf[sel.dataset.pid] = sel.value; });
         showBad = false;
         applyBatters();
       }));
@@ -946,8 +970,10 @@ const UI = (() => {
           const ids = batterIds().slice();
           const i = ids.indexOf(picked), j = ids.indexOf(pid);
           const a = posOf[picked], b = posOf[pid];
-          if ((a === BENCH) !== (b === BENCH)) { posOf[picked] = b; posOf[pid] = a; }
-          [ids[i], ids[j]] = [ids[j], ids[i]];
+          guarded(() => {
+            if ((a === BENCH) !== (b === BENCH)) { posOf[picked] = b; posOf[pid] = a; }
+          });
+          if (!lockMsg) { [ids[i], ids[j]] = [ids[j], ids[i]]; } else { ids.splice(0, ids.length, ...batterIds()); }
           picked = null;
           showBad = false;
           applyBatters(ids);
@@ -971,6 +997,7 @@ const UI = (() => {
           /* autoLineup は投げる順番まで組み直すので、そこは戻しておく */
           const keep = (team.rotation || []).slice();
           const keepOrder = team.pitcherOrder ? team.pitcherOrder.slice() : null;
+          lockMsg = '';
           Team.autoLineup(team);
           if (keep.length) team.rotation = keep;
           team.pitcherOrder = keepOrder;
@@ -1035,10 +1062,20 @@ const UI = (() => {
     }).join('');
     const tv = Pro.totalView(shown, isPit);
     const total = '<tr class="pro__total"><th scope="row">通算</th>' + cols.map((c) => cell(tv[c[1]], c[1])).join('') + '</tr>';
+    /* プロで取った個人タイトルと、その年（太字になった数字と同じ基準） */
+    const TITLE_NAME = isPit
+      ? [['w', '最多勝'], ['era', '最優秀防御率'], ['so', '最多奪三振']]
+      : [['avg', '首位打者'], ['hr', '本塁打王'], ['rbi', '打点王'], ['sb', '盗塁王']];
+    const titles = TITLE_NAME.map((t) => {
+      const years = shown.filter((sn) => Pro.rowView(sn, isPit).bold[t[0]]).map((sn) => sn.y + '年');
+      return years.length ? t[1] + '（' + years.join('・') + '）' : null;
+    }).filter(Boolean);
+    const titleLine = '<p class="pro__titles"><b>個人タイトル</b>　' +
+      (titles.length ? titles.map(esc).join('　') : 'なし') + '</p>';
     const done = shown.length >= pro.seasons.length
       ? '<p class="tiny">' + shown[shown.length - 1].y + '年限りで現役を引退しました。</p>'
       : '<p class="tiny">毎年、秋の大会が終わると1年ぶん増えます。太字はタイトル級の数字です。</p>';
-    return head + '<div class="protable-wrap"><table class="protable"><thead><tr><th>年</th>' +
+    return head + titleLine + '<div class="protable-wrap"><table class="protable"><thead><tr><th>年</th>' +
       cols.map((c) => '<th>' + c[0] + '</th>').join('') + '</tr></thead><tbody>' + rows + total + '</tbody></table></div>' + done;
   }
 

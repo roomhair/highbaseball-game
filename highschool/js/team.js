@@ -117,10 +117,31 @@ const Team = (() => {
       chosen.push({ p, pos: posKey });
     });
 
+    /* レギュラー確約の選手（regularLock）は、必ずスタメンに入れる。
+       守れる場所があれば、そこを守っている控えめの選手と入れ替え、
+       どこも守れそうになければ指名打者にする */
+    let forceDH = null;
+    pool.filter((p) => p.regularLock && !used.has(p.id)).forEach((lp) => {
+      let bi = -1, bs = -1e9;
+      chosen.forEach((c, i) => {
+        if (c.p.regularLock) return;
+        const sc = defScore(lp, c.pos);
+        if (sc > bs) { bs = sc; bi = i; }
+      });
+      if (bi >= 0 && bs >= 38) {
+        used.delete(chosen[bi].p.id);
+        chosen[bi] = { p: lp, pos: chosen[bi].pos };
+        used.add(lp.id);
+      } else if (!forceDH) {
+        forceDH = lp;
+      }
+    });
+
     /* 指名打者は、残っている中でいちばん打てる選手 */
     let dh = null, dhScore = -1e9;
+    if (forceDH) { dh = forceDH; dhScore = 1e9; }
     pool.forEach((p) => {
-      if (used.has(p.id)) return;
+      if (used.has(p.id) || p === forceDH) return;
       const sc = p.meet * 0.4 + p.power * 0.45 + p.speed * 0.15;
       if (sc > dhScore) { dhScore = sc; dh = p; }
     });

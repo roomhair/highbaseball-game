@@ -2245,3 +2245,13 @@ a.appbar__title { text-decoration: none; }
 .guide .sub { margin: 14px 0 6px; padding: 5px 10px; font-size: 14px; font-family: var(--font-display); }
 .guide a { color: var(--brand); font-weight: 800; text-underline-offset: 3px; }
 .guide__intro { margin-top: 8px; }
+
+/* レギュラー確約つきの新入生セット */
+.nm__lock { margin-right: 3px; font-weight: 900; color: #c9302c; }
+.dataset__note { margin: 0; padding: 8px 14px 10px; font-size: 12px; font-weight: 700; color: #c9302c; }
+.lulock { font-size: 10px; padding: 0 5px; border-radius: 3px; background: #c9302c; color: #fff; font-weight: 800; }
+.pro__titles { margin: 4px 0 8px; font-size: 13px; line-height: 1.8; }
+.pro__titles b { color: var(--accent, #1d5c8a); }
+
+/* テストプレイの印 */
+.testbanner { position: fixed; left: 50%; bottom: 8px; transform: translateX(-50%); z-index: 50; padding: 3px 12px; border-radius: 999px; background: rgba(201, 48, 44, .92); color: #fff; font-size: 11px; font-weight: 800; pointer-events: none; }

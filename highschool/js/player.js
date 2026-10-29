@@ -337,6 +337,9 @@ const Player = (() => {
     opt = opt || {};
     const p = newBatter({ grade: 1, pos: '1B', practice: false, genius: false, prestigeBonus: opt.prestigeBonus });
     p.last = '熊'; p.first = ''; p.name = '熊';
+    /* 右投右打。守備適性は、一塁A・三塁C・捕手G・それ以外F */
+    p.throws = 'R'; p.bats = 'R';
+    p.apt = { C: 'G', '1B': 'A', '2B': 'F', '3B': 'C', SS: 'F', LF: 'F', CF: 'F', RF: 'F' };
     p.traj = 4; p.meet = 30; p.power = 90; p.speed = 70; p.arm = 80; p.field = 30; p.catch = 10;
     p.ht = 190; p.wt = 150;
     p.fixedBody = true;

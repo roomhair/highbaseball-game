@@ -46,6 +46,8 @@ const Offseason = (() => {
   /** 3年生を外す。学年はまだ上げない（秋の大会・センバツ相当は、
       3年生が抜けた今の学年のままで戦うため） */
   function retire(team) {
+    /* 3年生が引退したら、1年生からのレギュラー確約は終わり（控えにもできる） */
+    Team.all(team).forEach((p) => { p.regularLock = false; });
     team.batters = team.batters.filter((p) => p.grade < 3);
     team.pitchers = team.pitchers.filter((p) => p.grade < 3);
     /* キャプテンが引退したら印を外す。次の特訓の前に選び直してもらう */

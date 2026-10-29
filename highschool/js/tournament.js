@@ -63,9 +63,12 @@ const Tournament = (() => {
     }
     Team.autoLineup(t);
     /* 1000チームに1チーム、4番ショートに部屋がいる（大会や回戦は関係ない） */
-    if (RNG.chance(1 / 1000)) addHeya(t, batLevel);
+    if (test.heya || RNG.chance(1 / 1000)) addHeya(t, batLevel);
     return t;
   }
+
+  /* テストプレイ用（?test=heya）。ふだんは使わない */
+  const test = { heya: false };
 
   /** 相手チームのショートを部屋に入れ替えて、4番に置く */
   function addHeya(t, level) {
@@ -224,5 +227,5 @@ const Tournament = (() => {
     };
   }
 
-  return { create, makeTeam, addHeya, currentRound, buildOpponent, perGame, strengthLadder, stepMean, rollDrift };
+  return { create, makeTeam, addHeya, test, currentRound, buildOpponent, perGame, strengthLadder, stepMean, rollDrift };
 })();
