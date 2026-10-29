@@ -640,7 +640,7 @@ const Screens = (() => {
     ok.hidden = false;
     ok.disabled = true;
     skip.hidden = false;
-    skip.textContent = more ? '強奪せず次の試合へ' : '強奪せず次へ';
+    skip.textContent = more ? '強奪せず次の試合へ' : (nextTourName(state) ? '強奪せず' + nextTourName(state) + 'へ' : '強奪せず次へ');
 
     const body = UI.el('poach-body');
     const choose = (pid) => {
@@ -733,6 +733,13 @@ const Screens = (() => {
     UI.show('screen-poach');
   }
 
+  /** 決勝のあとに、そのまま次の大会へ進むときの、次の大会の名前。進まないときは空 */
+  function nextTourName(state) {
+    if (state.tour.kind === 'fallPref') return '秋季地区大会';
+    if (state.tour.kind === 'fallDistrict') return state.settings.jinguName || '';
+    return '';
+  }
+
   /** 強奪の結果を出す前の演出。交渉中の画面から、成功なら紙吹雪、失敗なら暗転。
       タップすれば飛ばせる */
   function poachCinema(incoming, success, done) {
@@ -797,7 +804,7 @@ const Screens = (() => {
     const more = state.tour.index < state.tour.rounds.length - 1;
     const ok = UI.el('btn-poach-ok');
     const skip = UI.el('btn-poach-skip');
-    ok.textContent = more ? '次の試合へ' : '次へ';
+    ok.textContent = more ? '次の試合へ' : (nextTourName(state) ? nextTourName(state) + 'へ' : '次へ');
     ok.hidden = false;
     ok.disabled = false;
     skip.hidden = true;
@@ -818,7 +825,7 @@ const Screens = (() => {
     const more = state.tour.index < state.tour.rounds.length - 1;
     const ok = UI.el('btn-poach-ok');
     const skip = UI.el('btn-poach-skip');
-    ok.textContent = more ? '次の試合へ' : '次へ';
+    ok.textContent = more ? '次の試合へ' : (nextTourName(state) ? nextTourName(state) + 'へ' : '次へ');
     ok.hidden = false;
     ok.disabled = false;
     skip.hidden = true;
