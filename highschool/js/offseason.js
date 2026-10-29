@@ -56,7 +56,7 @@ const Offseason = (() => {
   /** 残った部員の学年を1つ上げる。戻り値は必要な新入生の人数。
       秋の大会・センバツ相当がすべて終わってから呼ぶ */
   function promote(team) {
-    Team.all(team).forEach((p) => { p.grade++; });
+    Team.all(team).forEach((p) => { p.grade++; Body.yearUp(p); });   // 学年が上がると、身長・体重も変わる
     return {
       bat: Math.max(0, 18 - team.batters.length),
       pit: Math.max(0, 8 - team.pitchers.length),

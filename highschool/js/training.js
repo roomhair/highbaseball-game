@@ -223,9 +223,9 @@ const Training = (() => {
       投手は制球・スタミナの2つしか持ち場が無いぶん、
       特訓を何度も引くだけで100に張り付いてしまっていた。
       試合の成長と同じ頭打ちを、特訓にもかけておく。 */
-  function headroom(value) {
+  function headroom(value, top) {
     const G = CONFIG.GROWTH;
-    const left = RNG.clamp(Math.max(0, 100 - value) / G.HEAD_SPAN, 0, 1);
+    const left = RNG.clamp(Math.max(0, (top == null ? 100 : top) - value) / G.HEAD_SPAN, 0, 1);
     return RNG.clamp(Math.pow(left, G.HEAD_CURVE), 0.04, 1);
   }
 
@@ -239,7 +239,13 @@ const Training = (() => {
       if (t.key === 'traj') {
         before = p.traj; p.traj = Math.min(4, p.traj + t.amount); after = p.traj;
       } else if (t.key === 'velo') {
-        before = p.velo; p.velo = Math.min(168, p.velo + t.amount); after = p.velo;
+        before = p.velo;
+        /* 球速も、身長・身体能力による伸びやすさと上限を受ける */
+        Body.ensure(p);
+        const vTop = 108 + 52 * Body.ceil(p, 'velo') / 100;
+        let vAdd = Math.max(1, Math.round(t.amount * Body.gm(p, 'velo')));
+        vAdd = p.velo >= vTop ? 0 : Math.min(vAdd, Math.ceil(vTop - p.velo));
+        p.velo = Math.min(168, p.velo + vAdd); after = p.velo;
       } else if (t.key === 'pitch') {
         const q = p.pitches.find((x) => x.name === t.pitch);
         if (!q) return;
@@ -253,8 +259,9 @@ const Training = (() => {
       } else {
         /* meet/power/speed/arm/field/catch と、投手の制球・スタミナがここ。
            カードの額面（t.amount）に、いまの能力に応じた頭打ちをかける */
+        Body.ensure(p);
         before = p[t.key];
-        const add = Math.max(0, Math.round(t.amount * headroom(before)));
+        const add = Math.max(0, Math.round(t.amount * headroom(before, Body.ceil(p, t.key)) * Body.gm(p, t.key)));
         p[t.key] = RNG.stat(before + add);
         after = p[t.key];
       }

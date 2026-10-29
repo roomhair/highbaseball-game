@@ -147,7 +147,7 @@ const Player = (() => {
 
   /* ---------- 変化球 ---------- */
 
-  function rollPitches(talent, grade, levelShift) {
+  function rollPitches(talent, grade, levelShift, bodyShift) {
     const boost = (levelShift || 0);
     /* 自軍の入部時（新入生・チーム作成）は levelShift を渡さないので boost が
        ちょうど0になる。相手校（大会の強さぶんの levelShift が乗る）には
@@ -156,7 +156,8 @@ const Player = (() => {
     /* 球種の数。才能と学年が上がるほど引き出しが増える。
        高校生なので、いくつも決め球を持っている投手はそう多くない */
     let n = 2;
-    const r = Math.random() + talent * 0.09 + (grade - 1) * 0.09 + boost * 0.09;
+    const bs = bodyShift || 0;      // 身体能力が高いほど、球種を増やしやすく、切れも良くなりやすい
+    const r = Math.random() + talent * 0.09 + (grade - 1) * 0.09 + boost * 0.09 + bs * 0.06;
     if (r > 1.70) n = 5; else if (r > 1.30) n = 4; else if (r > 0.82) n = 3;
     else if (r < 0.26) n = 1;
 
@@ -166,7 +167,7 @@ const Player = (() => {
       const picked = RNG.weighted(pool);
       pool.splice(pool.indexOf(picked), 1);
       /* 切れ味は1〜7。才能が高いほど良い球を持ちやすい */
-      let lv = Math.round(RNG.clamp(RNG.norm(1.20 + talent * 0.58 + (grade - 1) * 0.22 + boost * 0.70 - rookiePenalty, 0.85), 1, 7));
+      let lv = Math.round(RNG.clamp(RNG.norm(1.20 + talent * 0.58 + (grade - 1) * 0.22 + boost * 0.70 - rookiePenalty + bs * 0.22, 0.85), 1, 7));
       out.push({ name: picked.name, level: lv });
     }
     /* 一番いい球を先頭に置く（詳細画面で決め球が上に来る） */
@@ -248,6 +249,9 @@ const Player = (() => {
     const base = baseOf(grade, opt.level, opt.prestigeBonus);
     const ownTeam = opt.level == null;
     const hd = hands(false, RIGHT_ONLY.indexOf(pos) >= 0);
+    /* 身長・体重・身体能力（body.js）。能力に足すのは、選手ができあがってから */
+    const body = Body.roll('batter', pos, grade);
+    const bodyIdx = (k) => Body.idxOf({ kind: 'batter', grade, ht: body.ht, phys: body.phys }, k);
 
     /* 守る場所によって、伸びる方向が少し違う。
        捕手は肩と捕球、遊撃は守備と走力、一塁と指名打者は打撃に寄る */
@@ -269,7 +273,7 @@ const Player = (() => {
       grade, pos,
       throws: hd.throws, bats: hd.bats,
       talent,
-      traj: RNG.clamp(Math.round(RNG.norm(1.75 + talent * 0.20, 0.68)), 1, 4),
+      traj: RNG.clamp(Math.round(RNG.norm(1.75 + talent * 0.20 + 0.10 * bodyIdx('traj'), 0.68)), 1, 4),
       meet:  makeStat(base, talent, bias.meet, ownTeam, opt.wide),
       power: makeStat(base, talent, bias.power, ownTeam, opt.wide),
       speed: makeStat(base, talent, bias.speed, ownTeam, opt.wide),
@@ -285,6 +289,7 @@ const Player = (() => {
     p.apt = aptitudeFor(pos === 'DH' ? RNG.pick(FIELD_POSITIONS) : pos, p.throws);
     const nm = NAMES.personName();
     p.last = nm.last; p.first = nm.first; p.name = nm.last + nm.first;
+    Body.attach(p, body);          // 身長・体重・身体能力の補正（入部時に一度だけ）
 
     p.career = emptyBat();
     p.tour = emptyBat();
@@ -293,7 +298,7 @@ const Player = (() => {
       addStats(p.career, seedPracticeBat(p, practiceGames(grade), opt.level));
     }
     /* 選手詳細で「獲得時」の能力と見比べられるように、素の能力を残しておく */
-    p.initial = { meet: p.meet, power: p.power, speed: p.speed, arm: p.arm, field: p.field, catch: p.catch, traj: p.traj };
+    p.initial = { meet: p.meet, power: p.power, speed: p.speed, arm: p.arm, field: p.field, catch: p.catch, traj: p.traj, ht: p.ht, wt: p.wt };
     return p;
   }
 
@@ -317,6 +322,8 @@ const Player = (() => {
     /* 相手校は大会の強さに合わせて作る。球速と変化球にもそのぶんを効かせないと、
        強いはずの相手が「制球だけ良い遅い投手」になってしまう */
     const levelShift = opt.level == null ? 0 : (opt.level - 41);
+    const body = Body.roll('pitcher', 'P', grade);
+    const bodyPhys = Body.idxOf({ kind: 'pitcher', grade, ht: body.ht, phys: body.phys }, 'pitch');
 
     const p = {
       id: nextId(), kind: 'pitcher',
@@ -334,7 +341,7 @@ const Player = (() => {
         (opt.prestigeBonus || 0) * 0.3 + RNG.norm(0, 7.5))),
       control: makeStat(base, talent, 0, ownTeam, opt.wide),
       stamina: makeStat(base, talent, 0, ownTeam, opt.wide),
-      pitches: rollPitches(talent, grade, levelShift / 8),
+      pitches: rollPitches(talent, grade, levelShift / 8, bodyPhys),
       /* 投手も打席に立つ。打撃は弱めに作る */
       meet:  RNG.stat(makeStat(base, talent, -14, ownTeam)),
       power: RNG.stat(makeStat(base, talent, -12, ownTeam)),
@@ -354,6 +361,7 @@ const Player = (() => {
     };
     const nm = NAMES.personName();
     p.last = nm.last; p.first = nm.first; p.name = nm.last + nm.first;
+    Body.attach(p, body);          // 身長・体重・身体能力の補正（入部時に一度だけ）
 
     p.career = emptyPit();
     p.tour = emptyPit();
@@ -363,7 +371,7 @@ const Player = (() => {
     }
     /* 選手詳細で「獲得時」の能力と見比べられるように、素の能力を残しておく */
     p.initial = {
-      velo: p.velo, control: p.control, stamina: p.stamina,
+      velo: p.velo, control: p.control, stamina: p.stamina, ht: p.ht, wt: p.wt,
       pitches: p.pitches.map((q) => ({ name: q.name, level: q.level })),
     };
     return p;

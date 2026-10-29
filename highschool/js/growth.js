@@ -38,15 +38,16 @@ const Growth = (() => {
    * 上手に遊んでも勝率に出なくなる。
    * 65あたりまでは満額で伸ばし、そこから上だけを急に鈍らせている。
    */
-  function headroom(value) {
+  /* top はその選手のその能力の上限（body.js）。省くと100（従来どおり） */
+  function headroom(value, top) {
     const G = CONFIG.GROWTH;
-    const left = RNG.clamp(Math.max(0, 100 - value) / G.HEAD_SPAN, 0, 1);
+    const left = RNG.clamp(Math.max(0, (top == null ? 100 : top) - value) / G.HEAD_SPAN, 0, 1);
     return RNG.clamp(Math.pow(left, G.HEAD_CURVE), 0.04, 1);
   }
 
-  function gainFor(value, points) {
+  function gainFor(value, points, top) {
     return Math.max(0, Math.round(
-      points * headroom(value) * RNG.clamp(RNG.norm(1, 0.35), 0.2, 1.9)));
+      points * headroom(value, top) * RNG.clamp(RNG.norm(1, 0.35), 0.2, 1.9)));
   }
 
   /* 制球・スタミナだけが毎試合まとまった予算をもらい、球速・変化球は
@@ -73,7 +74,7 @@ const Growth = (() => {
      （そうしないと1試合ぶんの伸びが端数のまま消えてしまう）。 */
   function growVelo(p, points, ups) {
     const normBefore = RNG.clamp((p.velo - 108) / 52, 0, 1) * 100;
-    const gain = gainFor(normBefore, points);
+    const gain = gainFor(normBefore, points * Body.gm(p, 'velo'), Body.ceil(p, 'velo'));
     if (gain <= 0) return;
     /* 0〜100の伸びをkm/hに戻す換算。52/100だと1試合で数km/hも
        伸びてしまっていたので、半分の26/100に弱めてある */
@@ -92,7 +93,7 @@ const Growth = (() => {
     const room = (p.pitches || []).filter((q) => q.level < 7);
     if (!room.length) return;
     const best = Math.max(...p.pitches.map((q) => q.level));
-    const gain = gainFor(best / 7 * 100, points);
+    const gain = gainFor(best / 7 * 100, points * Body.gm(p, 'pitch'), Body.ceil(p, 'pitch'));
     if (gain <= 0) return;
     p._pitchAcc = (p._pitchAcc || 0) + gain * 7 / 100;
     let whole = Math.floor(p._pitchAcc);
@@ -110,7 +111,7 @@ const Growth = (() => {
 
   function growTraj(p, points, ups) {
     if (p.traj >= 4) return;
-    const gain = gainFor((p.traj - 1) / 3 * 100, points);
+    const gain = gainFor((p.traj - 1) / 3 * 100, points * Body.gm(p, 'traj'), Body.ceil(p, 'traj'));
     if (gain <= 0) return;
     p._trajAcc = (p._trajAcc || 0) + gain * 3 / 100;
     const whole = Math.floor(p._trajAcc);
@@ -134,6 +135,7 @@ const Growth = (() => {
        2人以上同時に当たったらあとで1人に絞る */
     const pendingAwaken = [];
     Team.all(team).forEach((p) => {
+      Body.ensure(p);      // 古い保存データの選手には、身体を補う
       const isPit = p.kind === 'pitcher';
       const s = p.game;
       const played = isPit ? s.outs > 0 : s.pa > 0;
@@ -162,7 +164,7 @@ const Growth = (() => {
         if (st.key === 'pitch') { growPitch(p, share, ups); return; }
         if (st.key === 'traj') { growTraj(p, share, ups); return; }
         const before = p[st.key];
-        const add = Math.min(G.MAX_STEP, gainFor(before, share));
+        const add = Math.min(G.MAX_STEP, gainFor(before, share * Body.gm(p, st.key), Body.ceil(p, st.key)));
         if (add > 0) {
           p[st.key] = RNG.stat(before + add);
           if (p[st.key] > before) {

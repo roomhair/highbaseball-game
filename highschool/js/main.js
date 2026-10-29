@@ -1113,6 +1113,19 @@ const Game = (() => {
 
   /* ---------- 再開 ---------- */
 
+  /** 保存データの中の選手すべてに、身体のデータを補う */
+  function ensureBodies(S) {
+    const list = [];
+    const addTeam = (t) => { if (t) Team.all(t).forEach((p) => list.push(p)); };
+    addTeam(S.team); addTeam(S.opponent);
+    if (S.liveGame) { addTeam(S.liveGame.team); addTeam(S.liveGame.opponent); }
+    if (S.sets && S.sets.list) S.sets.list.forEach((set) => set.forEach((p) => list.push(p)));
+    if (S.soccer && S.soccer.players) S.soccer.players.forEach((p) => list.push(p));
+    if (S.soccer && S.soccer.sets) S.soccer.sets.forEach((set) => set.forEach((p) => list.push(p)));
+    if (S.soccerReturn && S.soccerReturn.team) addTeam(S.soccerReturn.team);
+    list.forEach((p) => Body.ensure(p));
+  }
+
   function resume(loaded) {
     /* 前の試合の種が残っていることがあるので、いったん外す。
        試合を続けるときは runGame が掛け直す */
@@ -1122,6 +1135,9 @@ const Game = (() => {
     if (state.team) Team.all(state.team).forEach((p) => {
       (p.pitches || []).forEach((q) => { if (q.level > 7) q.level = 7; });
     });
+    /* 身長・体重・身体能力（body.js）を持たない古い保存データの選手には、
+       ここで補う（能力そのものは変えない） */
+    ensureBodies(state);
     if (!state.settings) state.settings = Storage.loadSettings();
     /* 古い保存データの移行。秋・春の大会を追加する前のデータには
        無いフィールドなので、ここで補っておく */

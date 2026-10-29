@@ -404,6 +404,11 @@ const UI = (() => {
         (opts.rename === false ? handMark(p) : '<button type="button" class="linkbtn handbtn" id="pd-hand">' + handMark(p) + '</button>') +
         (opts.team && opts.team.captainId === p.id ? '　<b class="capmark">主将</b>' : '') +
         (p.awakened ? '　<b class="awake">覚醒</b>' : '') + '</div>' +
+        (p.ht != null
+          ? '<div class="pdetail__body">' + esc(Body.label(p)) +
+            (p.initial && p.initial.ht != null && (Math.round(p.initial.ht) !== Math.round(p.ht) || Math.round(p.initial.wt) !== Math.round(p.wt))
+              ? '<span class="pdetail__bodyinit">（獲得時 ' + Math.round(p.initial.ht) + 'cm・' + Math.round(p.initial.wt) + 'kg）</span>' : '') +
+            '</div>' : '') +
         (p.from ? '<div class="pdetail__from">' + p.from.year + '年目に ' + esc(p.from.school) + ' から加入</div>' : '') +
       '</div>' +
       abilities +

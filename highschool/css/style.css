@@ -2169,3 +2169,7 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 .proslist__row .retire__draft { grid-column: 2; grid-row: 1; }
 .proslist__sub { grid-column: 1 / -1; font-size: 11px; color: var(--ink-faint); }
 .proslist__tag { margin: 0 0 8px; }
+
+/* 身長・体重 */
+.pdetail__body { font-size: 12.5px; margin-top: 3px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
+.pdetail__bodyinit { margin-left: 4px; font-size: 11px; color: var(--ink-faint); }
