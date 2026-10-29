@@ -2306,3 +2306,8 @@ a.appbar__title { text-decoration: none; }
 
 /* 打席の枠は、タップで進める場所。長押しで文字が選択されないようにする */
 .stage { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+/* 試合中の画面：上の余白を詰める（スコアボードと打席の枠を上に寄せる） */
+#screen-game .container { padding-top: 8px; }
+#screen-game .stage { align-items: start; padding-top: 6px; padding-bottom: 6px; margin: 8px 0; }
+#screen-game .stage .fieldview { align-self: center; }
