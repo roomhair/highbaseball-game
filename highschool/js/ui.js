@@ -335,7 +335,7 @@ const UI = (() => {
             '" data-sort="' + s2.key + '">' + s2.label + '</button>').join('') +
         '<button type="button" class="sortbtn sortbtn--body" data-bodylist="1">体格</button>' +
         '</div>' + rosterTable(sortPlayers(players, key, opts.team), opts);
-      root.querySelectorAll('.sortbtn').forEach((b) => b.addEventListener('click', () => {
+      root.querySelectorAll('.sortbtn[data-sort]').forEach((b) => b.addEventListener('click', () => {
         key = b.dataset.sort; draw();
       }));
       root.querySelector('[data-bodylist]').addEventListener('click', () => openBodyList(opts.team, players));
