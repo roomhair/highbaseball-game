@@ -266,7 +266,7 @@ const Body = (() => {
   /** 能力 key に足す補正の合計。上限を超えないようにしてある */
   function offset(p, key) {
     const cap = key === 'velo' ? VELO_CAP : OFF_CAP;
-    return clampAbs(heightPhysOffset(p, key) + weightOffset(p, key), cap) + ((p.tilt && p.tilt[key]) || 0);
+    return clampAbs(heightPhysOffset(p, key) + weightOffset(p, key), cap) + ((p.tilt && p.tilt[key]) || 0) + surgeOffset(p, key);
   }
 
   /** 伸びやすさ（倍率）。身長と身体能力が同じ係数で効く */
@@ -326,11 +326,45 @@ const Body = (() => {
     return out;
   }
 
-  /* 体づくりの型。冬に体が大きく変わる選手（2割弱）、ふつうの選手、あまり変わらない選手。
-     大きく変わる選手は、体重・身長の伸びが大きく、そのぶん能力も大きく動く */
-  function rollBuild() {
+  /* 体づくりの型。冬に体が大きく変わる選手（2割）、ふつうの選手（5割）、あまり変わらない選手（3割）。
+     大きく変わる選手には、身長がぐんと伸びる型・体重がぐんと増える型・どちらも大きく伸びる型がある。
+     大きく変わる選手のうち4分の1は、一度能力が落ちたあとで大きく伸びる（体が変わる途中でバランスを崩す）。
+       bh … 身長の伸びの倍率　bw … 体重の増減（体づくり）の倍率 */
+  function rollGrowth(kind) {
     const r = RNG.rand();
-    return r < 0.2 ? 2.8 : (r < 0.7 ? 1.2 : 0.4);
+    if (r >= 0.7) return { bh: 0.8, bw: 0.4 };
+    if (r >= 0.2) return { bh: 1.1, bw: 1.2 };
+    const t = RNG.rand();
+    if (t < 0.25) {
+      /* 一度落ちて、そのあと大きく伸びる。2つの能力に起こる */
+      const pool = kind === 'pitcher' ? ['velo', 'control', 'stamina'] : ['meet', 'power', 'speed', 'arm', 'field', 'catch'];
+      const keys = RNG.shuffle(pool.slice()).slice(0, 2);
+      return {
+        bh: 1.6, bw: 1.8,
+        surge: { keys, after: RNG.range(1, 9), dip: 3, dipAmt: RNG.range(2, 3), gain: RNG.range(4, 7) },
+      };
+    }
+    if (t < 0.5) return { bh: 2.4, bw: 1.0 };       // 身長がぐんと伸びる
+    if (t < 0.75) return { bh: 1.0, bw: 3.4 };      // 体重がぐんと増える
+    return { bh: 2.0, bw: 2.6 };                    // どちらも大きく伸びる
+  }
+
+  /** 一度落ちて、そのあと大きく伸びる選手の、いまの補正。落ちている間はマイナス、そのあと3か月かけてプラスへ */
+  function surgeOffset(p, key) {
+    const g = p.surge;
+    if (!g || g.keys.indexOf(key) < 0) return 0;
+    const t = tOf(p) - g.t0;
+    if (t < 0) return 0;
+    if (t < g.dip) return -g.dipAmt;
+    return g.gain * Math.min(1, (t - g.dip + 1) / 3);
+  }
+
+  /** 古い保存データを含め、体づくりの型を付ける（すでにあれば何もしない） */
+  function giveGrowth(p, parts) {
+    if (p.bw != null) return;
+    const g = parts || rollGrowth(p.kind);
+    p.bh = g.bh; p.bw = g.bw;
+    p.surge = g.surge ? Object.assign({}, g.surge, { t0: tOf(p) + g.surge.after }) : null;
   }
 
   /** 新しい選手の身体（身長・体重・身体能力・個人差）を引く */
@@ -353,16 +387,17 @@ const Body = (() => {
       htType: r < 0.25 ? -1 : (r < 0.75 ? 0 : 1),
       wtTrend: RNG.clamp(0.3 + RNG.gauss() * 0.8, -1.5, 1.8),
       wtResp: RNG.clamp(0.8 + RNG.gauss() * 0.5, -0.2, 1.4),
-      build: rollBuild(),
+      growth: rollGrowth(kk),
       tilt: rollTilt(kk, (ht - refH) / HT_SD),
     };
   }
 
   function setParts(p, parts) {
     p.ht = parts.ht; p.wt = parts.wt; p.phys = parts.phys;
-    p.htType = parts.htType; p.wtTrend = parts.wtTrend; p.wtResp = parts.wtResp; p.build = parts.build;
+    p.htType = parts.htType; p.wtTrend = parts.wtTrend; p.wtResp = parts.wtResp;
     p.tilt = parts.tilt || null;
     p.bodyT = NOW; p.bodyLog = []; p.bodyV = BODY_VER;
+    p.bw = null; giveGrowth(p, parts.growth);
     p.zW0 = zW(p);
   }
 
@@ -434,7 +469,7 @@ const Body = (() => {
     }
     if (p.bodyT == null) p.bodyT = NOW;
     if (!p.bodyLog) p.bodyLog = [];
-    if (p.build == null && !p.fixedBody) p.build = rollBuild();     // 古い保存データの選手にも体づくりの型を付ける
+    if (p.bw == null && !p.fixedBody) giveGrowth(p);     // 古い保存データの選手にも体づくりの型を付ける
     return p;
   }
 
@@ -471,8 +506,8 @@ const Body = (() => {
     const to = p.bodyT + 1, mo = monthOf(to);
     const g = Math.min(3, Math.max(1, p.grade || 1));
     const gEff = mo === 4 ? Math.max(1, g - 1) : g;
-    const bm = p.build != null ? p.build : 1;       // 体づくりの型（大きく変わる選手ほど大きい）
-    const grow = Math.max(0, (HT_GROW[gEff] != null ? HT_GROW[gEff] : 0.3) * HT_TYPE_FACTOR[String(p.htType || 0)] * (1 + (bm - 1) * 0.5) / 12 + RNG.norm(0, 0.05));
+    const bw = p.bw != null ? p.bw : 1, bh = p.bh != null ? p.bh : 1;     // 体づくりの型
+    const grow = Math.max(0, (HT_GROW[gEff] != null ? HT_GROW[gEff] : 0.3) * HT_TYPE_FACTOR[String(p.htType || 0)] * bh / 12 + RNG.norm(0, 0.05));
     const htOld = p.ht, wtOld = p.wt;
     const h0 = htOld / 100;
     p.ht = htOld + grow;
@@ -482,7 +517,7 @@ const Body = (() => {
     const oldExp = interp(BMI_REF, Math.max(0, posNew - 1 / 12)) * h0 * h0;
     const expNow = interp(BMI_REF, posNew) * h1 * h1;
     const winter = WINTER[mo] ? 1 : 0;
-    const dw = (expNow - oldExp) * 0.9 + SCALE * bm * (0.10 * (p.wtTrend || 0) * (1 + winter * 1.5) +
+    const dw = (expNow - oldExp) * 0.9 + SCALE * bw * (0.10 * (p.wtTrend || 0) * (1 + winter * 1.5) +
       (WT_SEASON[mo] || 0) + RNG.norm(0, winter ? 0.75 : 0.35) * (1 + winter * 0.25 * Math.abs(p.wtTrend || 0)));
     p.wt = RNG.clamp(wtOld + dw, 48 * SCALE, 125 * SCALE);
     p.bodyT = to;
