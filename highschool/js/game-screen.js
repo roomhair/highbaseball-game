@@ -923,7 +923,6 @@ const GameScreen = (() => {
         '<p class="time__where">' + ctx.state.inning + '回' + (ctx.state.half === 'top' ? '表' : '裏') + '　' +
           (fielding ? '守備中' : '攻撃中') + '　' + outs + 'アウト' +
           (!fielding ? '　' + (runnerNames.length ? esc(runnerNames.join('・')) : '走者なし') : '') + '</p>' +
-        '<p class="tiny">出した指示は、次の1打席だけに効きます。同時にできない指示を押すと、先に押していたほうが外れます。</p>' +
         sections +
         '<div class="actions actions--modal">' +
           '<button type="button" class="btn" id="od-clear">指示をすべて外す</button>' +
