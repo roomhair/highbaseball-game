@@ -358,7 +358,7 @@ const Player = (() => {
       学年はランダム。それ以外は他の選手と同じ（強奪も通常どおり） */
   function newHeya(opt) {
     opt = opt || {};
-    const grade = RNG.range(1, 3);
+    const grade = RNG.range(1, 3);      // 1〜3年が同じ確率
     const p = newBatter({ grade, pos: 'SS', level: opt.level, practice: false, genius: false });
     p.last = '部屋'; p.first = ''; p.name = '部屋';
     p.throws = 'R'; p.bats = 'L';
@@ -367,6 +367,8 @@ const Player = (() => {
     FIELD_POSITIONS.forEach((k) => { p.apt[k] = 'A'; });
     p.traj = 4; p.meet = 100; p.power = 100; p.speed = 100; p.arm = 100; p.field = 100; p.catch = 100;
     p.genius = 'all';
+    /* 身長173cm・体重65kg（そこからの月ごとの変化は、ほかの選手と同じ） */
+    p.ht = 173; p.wt = 65; p.zW0 = Body.zW(p);
     /* 体格による補正は、すでに足した分として数える（あとから変わった分だけが効く） */
     p.bodyOff = {};
     Body.STAT_KEYS.forEach((k) => { if (p[k] != null) p.bodyOff[k] = Body.offset(p, k); });
