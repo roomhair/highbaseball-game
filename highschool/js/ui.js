@@ -276,7 +276,7 @@ const UI = (() => {
     const head = isPit
       ? '<th>球速</th><th>制球</th><th>スタ</th><th class="t-break">変化球</th>'
       : '<th>弾道</th><th>ミート</th><th>パワー</th><th>走力</th><th>肩力</th><th>守備</th><th>捕球</th>';
-    const roleHead = opts.team ? '<th>いまの役割</th>' : '';
+    const roleHead = opts.team ? '<th>役割</th>' : '';
     return '<div class="tablewrap"><table class="roster">' +
       '<thead><tr><th>年</th><th class="nm">選手</th>' + roleHead +
       (isPit ? '' : '<th>位置</th>') + '<th class="hand">利き</th>' + head + '</tr></thead>' +

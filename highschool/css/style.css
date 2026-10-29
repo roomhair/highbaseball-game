@@ -616,8 +616,11 @@ td.hl { font-weight: 800; }
 .roster td, .roster th { vertical-align: middle; }
 /* 狭い画面では少しでも多く収まるように詰める */
 @media (max-width: 540px) {
-  .roster th, .roster td { padding: 6px 4px; }
-  .roster .hand { font-size: 10px; }
+  .roster th, .roster td { padding: 6px 2px; }
+  .roster td.nm, .roster th.nm { min-width: 4.8em; padding-left: 4px; }
+  .roster td.role { font-size: 10px; }
+  .roster td.c .rankval { font-size: 10px; }
+  .roster .hand { font-size: 9.5px; }
   .roster .luball { font-size: 10px; padding: 0 2px; }
 }
 .g1 { color: var(--ink-faint); }
