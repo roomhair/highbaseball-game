@@ -1997,9 +1997,9 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
 .fv-base.is-turn-on { animation: fvBaseOn .01s linear forwards; }
 .fv-base.is-turn-off { animation: fvBaseOff .01s linear forwards; }
 
-.ll__today { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 4px; font-size: 12px; color: var(--ink-faint); }
+.ll__today { display: flex; flex-wrap: wrap; gap: 0 3px; margin-top: 2px; font-size: 9px; line-height: 1.2; letter-spacing: -.05em; color: var(--ink-faint); }
 .ll__today i { font-style: normal; white-space: nowrap; }
-.ll__today b { margin-left: 3px; color: var(--ink); font-weight: 800; font-family: var(--font-num); }
+.ll__today b { margin-left: 1px; color: var(--ink); font-weight: 800; font-family: var(--font-num); }
 
 .fv-so { font: 900 13px/1 system-ui, -apple-system, 'Hiragino Sans', sans-serif; letter-spacing: .08em; fill: #d63a2f; stroke: #fff; stroke-width: 3px; paint-order: stroke; opacity: 0; }
 
@@ -2283,3 +2283,10 @@ a.appbar__title { text-decoration: none; }
 .backarrow:active { transform: translateY(1px); }
 
 .bl__name { font-weight: 700; font-size: 11px; text-align: left; white-space: nowrap; }
+
+/* 「タップで次の打席へ」は打席の枠の中（下の中ほど）に重ねる。枠の外に行を取らない */
+.stagewrap { position: relative; }
+.stagewrap .taphint {
+  position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+  margin: 0; padding: 0; font-size: 11px; white-space: nowrap; z-index: 1;
+}
