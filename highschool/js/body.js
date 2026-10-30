@@ -344,8 +344,8 @@ const Body = (() => {
   function capBody(p, key) {
     const h = hz(p), z = zW(p), under = underweight(p);
     switch (key) {
-      case 'power':   return 9 * h - 8 * under;
-      case 'arm':     return 7 * h - 6 * under;
+      case 'power':   return 9 * h + 4 * Math.max(0, Math.min(z, 1.5)) - 8 * under;
+      case 'arm':     return 7 * h + 2 * Math.max(0, Math.min(z, 1.5)) - 6 * under;
       case 'meet':    return -3 * h;
       case 'speed':   return -3 * h - 5 * Math.max(0, z - 0.6);
       case 'field':
