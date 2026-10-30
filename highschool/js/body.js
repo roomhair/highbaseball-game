@@ -41,7 +41,10 @@ const Body = (() => {
      同じ倍率にそろえてあるので、能力への効き方（標準化した値）は倍率に左右されない */
   const SCALE = 1.02;
   const JP_HT = { 1: 168.0, 2: 169.8, 3: 170.6, 4: 170.9 };    // 日本の高校男子の平均身長（cm）
-  const JP_WT = { 1: 60.0, 2: 62.5, 3: 63.5, 4: 64.0 };         // 同・平均体重（kg）
+  /* 同・平均体重（kg）。1年生はやや軽く（-1.8kg）、2年生はわずかに軽く（-0.7kg）してある。
+     3年生以降は日本の平均のまま。以前の値は JP_WT_PREV（保存データの選手を移すときに使う） */
+  const JP_WT = { 1: 58.2, 2: 61.8, 3: 63.5, 4: 64.0 };
+  const JP_WT_PREV = { 1: 60.0, 2: 62.5, 3: 63.5, 4: 64.0 };
   /* これまでの版の基準（保存データの選手を、いまの基準へ移すときだけ使う）。
        版1 … 日本の平均の倍率をかける前（身長169.8cmなどの固定の表）
        版2 … 日本の平均の1.1倍 */
@@ -77,7 +80,7 @@ const Body = (() => {
     [1, 2, 3, 4].forEach((g) => {
       OLD_REFS[v].ht.batter[g] = JP_HT[g] * sc;
       OLD_REFS[v].ht.pitcher[g] = JP_HT[g] * sc + 2.0 * sc;
-      OLD_REFS[v].bmi[g] = JP_WT[g] * sc / Math.pow(JP_HT[g] * sc / 100, 2);
+      OLD_REFS[v].bmi[g] = JP_WT_PREV[g] * sc / Math.pow(JP_HT[g] * sc / 100, 2);
     });
   });
   const HT_MIN = 155;           // 身長の下限（cm）。上限は設けない
@@ -110,6 +113,9 @@ const Body = (() => {
   /* 標準的な体格（BMI）。学年が上がると少し増える */
   const BMI_REF = {};
   [1, 2, 3, 4].forEach((g) => { BMI_REF[g] = JP_WT[g] * SCALE / Math.pow(JP_HT[g] * SCALE / 100, 2); });
+  /* 体重の基準を軽くする前の標準（BMI）。すでにいる選手の「入部時からの変化」を、基準の変更で動かさないために使う */
+  const BMI_REF_PREV = {};
+  [1, 2, 3, 4].forEach((g) => { BMI_REF_PREV[g] = JP_WT_PREV[g] * SCALE / Math.pow(JP_HT[g] * SCALE / 100, 2); });
   const BMI_SD = 2.1 / SCALE;
   /* 守る場所による体格の違い（BMI）。生成のときだけ使う */
   const POS_BMI = { C: 1.0, '1B': 1.2, DH: 0.8, '3B': 0.4, SS: -0.5, '2B': -0.4, CF: -0.6, LF: 0.1, RF: 0.3, P: 0.2 };
@@ -188,10 +194,10 @@ const Body = (() => {
   function bodyFit(p, key, v) {
     if (!p || p.ht == null || p.animal || isGenius(p, key)) return v;
     if (key === 'power' && p.kind !== 'pitcher') {
-      const floor = 18 + 7.5 * Math.max(0, hz(p)) + 5 * Math.max(0, zW(p) - 0.3);
+      const floor = 18 + 7.5 * Math.max(0, hz(p)) + 5 * Math.max(0, zS(p) - 0.3);
       if (v < floor) return floor - (floor - v) * 0.4;
     } else if (key === 'speed') {
-      const top = 95 - 14 * Math.max(0, zW(p) - 0.4) - 5 * Math.max(0, hz(p) - 1.0);
+      const top = 95 - 14 * Math.max(0, zS(p) - 0.4) - 5 * Math.max(0, hz(p) - 1.0);
       if (v > top) return top + (v - top) * 0.35;
     }
     return v;
@@ -250,6 +256,8 @@ const Body = (() => {
 
   function bmiOf(p) { const h = p.ht / 100; return p.wt / (h * h); }
   function zW(p) { return (bmiOf(p) - bmiRefAt(p.grade, tOf(p))) / BMI_SD; }
+  /** 体重の標準との差を、少しなだらかにした値（月ごとの体重のぶれで、能力が大きく上下しないように）。能力への効きにはこちらを使う */
+  function zS(p) { return p.zWs != null ? p.zWs : zW(p); }
 
   /* 体重の効き方（標準からの差 z について）。入部時の z0 を基準に、
      「そこからの変化」だけが能力に出る */
@@ -273,7 +281,7 @@ const Body = (() => {
 
   /** 体重による補正（入部時の体重からの変化ぶん）。上限つき */
   function weightOffset(p, key) {
-    const z = zW(p), z0 = p.zW0 == null ? z : p.zW0;
+    const z = zS(p), z0 = p.zW0 == null ? z : p.zW0;
     const resp = p.wtResp == null ? 0.8 : p.wtResp;
     /* 体重が標準より増えたときは能力に効くが、減ったときの下がり方はずっと小さい */
     const soft = (d) => (d < 0 ? d * 0.3 : d);
@@ -337,12 +345,12 @@ const Body = (() => {
   }
 
   /** 体重が身長に見合っていない度合い（0なら十分。軽すぎるほど大きい） */
-  function underweight(p) { return Math.max(0, -0.3 - zW(p)); }
+  function underweight(p) { return Math.max(0, -0.3 - zS(p)); }
 
   /** 体格が上限に効く分（その能力の単位）。身長が高いほどパワー・肩力・スタミナの上限が上がり、
       体重が足りないとその分だけ下がる。適切な体重のときに、身長に見合った上限になる */
   function capBody(p, key) {
-    const h = hz(p), z = zW(p), under = underweight(p);
+    const h = hz(p), z = zS(p), under = underweight(p);
     switch (key) {
       case 'power':   return 9 * h + 4 * Math.max(0, Math.min(z, 1.5)) - 8 * under;
       case 'arm':     return 7 * h + 2 * Math.max(0, Math.min(z, 1.5)) - 6 * under;
@@ -403,7 +411,7 @@ const Body = (() => {
   /** 伸びやすさ（倍率）。体格と個体差から決まる。特訓の選ばれやすさ・上がり幅、試合後の伸びに効く */
   function ease(p, key) {
     const z = (p && p.ind && p.ind[key]) || 0;
-    const h = hz(p), zw = zW(p), under = underweight(p);
+    const h = hz(p), zw = zS(p), under = underweight(p);
     let b = 1;
     switch (key) {
       case 'power':   b = 1 + 0.18 * h - 0.3 * under; break;
@@ -543,10 +551,10 @@ const Body = (() => {
     p.htType = parts.htType; p.wtTrend = parts.wtTrend; p.wtResp = parts.wtResp;
     p.tilt = parts.tilt || null;
     p.bodyT = NOW; p.bodyLog = []; p.bodyV = BODY_VER;
-    p.hz0 = hz(p);
+    p.hz0 = hz(p); p.wref = 2;
     p.bw = null; giveGrowth(p, parts.growth);
     p.ind = null; p.cap0 = null; p.capBT = null; p.capUp = {}; giveTraits(p);
-    p.zW0 = zW(p);
+    p.zW0 = zW(p); p.zWs = p.zW0;
   }
 
   /** 選手に身体をつけて、入部時の補正を能力に足す */
@@ -570,8 +578,13 @@ const Body = (() => {
       if (p[key] == null) return;
       const target = offset(p, key);
       const done = p.bodyOff[key] || 0;
-      const d = (target - done) * gain;
-      p.bodyOff[key] = target;
+      let d = (target - done) * gain;
+      if (gain > 1) {
+        /* 月ごとの体格の変化は、1か月に上がるのは多くて4、下がるのは多くて2まで。
+           残りは次の月以降に持ち越す（体重のぶれで能力が急に大きく動かないように） */
+        d = Math.max(-2, Math.min(4, d));
+        p.bodyOff[key] = done + d / gain;
+      } else p.bodyOff[key] = target;
       p.bodyAcc[key] = (p.bodyAcc[key] || 0) + d;
       const whole = Math.round(p.bodyAcc[key]);
       if (whole === 0) return;
@@ -595,13 +608,15 @@ const Body = (() => {
       delete p.fixedBody;
       p.bodyV = BODY_VER;
       if (p.bodyT == null) p.bodyT = NOW;
-      p.zW0 = zW(p);
+      p.zW0 = zW(p); p.zWs = p.zW0;
       p.bodyOff = {}; p.bodyAcc = {};
       STAT_KEYS.forEach((key) => { if (p[key] != null) p.bodyOff[key] = offset(p, key); });
     }
     /* 古い基準の選手は、基準との差（標準化した値）をそのまま新しい基準に移して、
        身長・体重を直す。能力は動かさない */
+    let migrated = false;
     if (p.ht != null && p.bodyV !== BODY_VER) {
+      migrated = true;
       if (!p.fixedBody) {
         const old = OLD_REFS[p.bodyV || 1] || OLD_REFS[1];
         const k = SCALE / old.scale;
@@ -618,9 +633,19 @@ const Body = (() => {
           p.initial.wt = Math.round((p.wt - (wt0 - p.initial.wt) * k) * 10) / 10;
         }
         (p.bodyLog || []).forEach((e) => { e.dh = Math.round(e.dh * k * 10) / 10; e.dw = Math.round(e.dw * k * 10) / 10; });
-        p.zW0 = zW(p);
+        p.zW0 = zW(p); p.zWs = p.zW0;
       }
       p.bodyV = BODY_VER;
+    }
+    /* 体重の基準を軽くした（wref 2）。それ以前に作られた選手は、基準が動いたぶんだけ
+       入部時の標準との差（zW0）をずらして、能力が勝手に動かないようにする */
+    if (p.ht != null && p.wref !== 2) {
+      if (!migrated && p.wref == null && p.zW0 != null) {
+        const posNow = posOf(p.grade, tOf(p));
+        const zOld = (bmiOf(p) - interp(BMI_REF_PREV, posNow)) / BMI_SD;
+        p.zW0 += zW(p) - zOld; p.zWs = zW(p);
+      }
+      p.wref = 2;
     }
     if (p.fixedBody && p.bodyT == null) p.bodyT = NOW;
     if (p.ht == null) {
@@ -683,6 +708,7 @@ const Body = (() => {
       (WT_SEASON[mo] || 0) + RNG.norm(0, winter ? 0.75 : 0.35) * (1 + winter * 0.25 * Math.abs(p.wtTrend || 0)));
     p.wt = RNG.clamp(wtOld + dw, 48 * SCALE, Math.max(125 * SCALE, wtOld));      // 熊のように125kgを超える選手は、そこから下限だけ守る
     p.bodyT = to;
+    p.zWs = p.zWs == null ? zW(p) : 0.75 * p.zWs + 0.25 * zW(p);
     const changed = applyChange(p, p.kind === 'pitcher' ? BODY_GAIN_PIT : BODY_GAIN);
     const knack = bodyKnack(p);
     if (knack) changed[knack.key] = (changed[knack.key] || 0) + knack.d;
