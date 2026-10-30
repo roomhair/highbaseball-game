@@ -95,6 +95,8 @@ const Body = (() => {
   const PHYS_SD = 1.0;          // 身体能力の標準偏差
   const OFF_K = 3.2;            // idx 1 あたりに足す能力値（1〜100の能力）
   const VELO_K = 2.0;           // idx 1 あたりに足す球速（km/h）
+  /* 月ごとの体格の変化が、能力とその上限に効く強さ（入部時の体格による補正には掛けない） */
+  const BODY_GAIN = 6.0, BODY_GAIN_PIT = 9.0;
   const GM_K = 0.10;            // idx 1 あたりの伸びやすさの変化
   const CEIL_BASE = 98, CEIL_K = 3.5, CEIL_MIN = 80;
   const OFF_CAP = 20, VELO_CAP = 14;    // 補正の合計の上限
@@ -124,10 +126,17 @@ const Body = (() => {
      弾道         … 長いリーチで打球が上がりやすい（+0.4）
      ミート・スタミナ・変化球 … 身長とは結びつけない（0） */
   const DIR_H = {
-    velo: 1, power: 1.7, arm: 1,
-    field: -0.2, catch: -0.2, control: -0.1,
-    speed: -0.15, traj: 0.4,
-    meet: 0, stamina: 0, pitch: 0,
+    velo: 1, power: 1.7, arm: 1.2,
+    field: -0.9, catch: -0.9, control: -0.8,
+    speed: -0.7, traj: 0.4,
+    meet: -0.8, stamina: 0.4, pitch: -0.8,
+  };
+
+  /* 入部後に身長が伸びたとき（標準より伸びたぶん）の、能力への効き方 */
+  const DIR_G = {
+    velo: 1, power: 1.7, arm: 1.2, stamina: 0.5,
+    field: -0.12, catch: -0.12, control: -0.08, speed: -0.1,
+    meet: 0, traj: 0.3, pitch: 0,
   };
 
   /* 身長の伸び（cm）。1→2年、2→3年。早熟は小さく、晩成は大きい */
@@ -173,8 +182,24 @@ const Body = (() => {
     return v <= cap ? v : Math.round(cap + (v - cap) * 0.3);
   }
 
+  /** 体格に合わない能力を、なだらかに寄せる。
+      体が大きく重い選手のパワーが低すぎない／体が重い選手の走力が高すぎない。
+      （はみ出したぶんを3〜4割だけ残す。極端な選手は、まれに残る） */
+  function bodyFit(p, key, v) {
+    if (!p || p.ht == null || p.animal || isGenius(p, key)) return v;
+    if (key === 'power' && p.kind !== 'pitcher') {
+      const floor = 18 + 7.5 * Math.max(0, hz(p)) + 5 * Math.max(0, zW(p) - 0.3);
+      if (v < floor) return floor - (floor - v) * 0.4;
+    } else if (key === 'speed') {
+      const top = 95 - 14 * Math.max(0, zW(p) - 0.4) - 5 * Math.max(0, hz(p) - 1.0);
+      if (v > top) return top + (v - top) * 0.35;
+    }
+    return v;
+  }
+
   /** 能力 key の値を、その選手の上限に収めて整数にする（天才の能力は100を超えられる） */
   function stat(p, key, v) {
+    v = bodyFit(p, key, v);
     if (key === 'velo') return RNG.clamp(Math.round(veloLimit(p, v)), 100, isGenius(p, 'velo') ? VELO_GENIUS_MAX : 168);
     return Math.max(1, Math.min(isGenius(p, key) ? HARD_MAX : 100, Math.round(v)));
   }
@@ -270,29 +295,140 @@ const Body = (() => {
   /** 身長と身体能力による補正（能力値の単位。球速は km/h） */
   function heightPhysOffset(p, key) {
     const k = key === 'velo' ? VELO_K : OFF_K;
-    return k * idxOf(p, key);
+    /* 入部時の身長の高さ（hz0）は DIR_H で、そのあとの身長の伸びは DIR_G で効く。
+       伸びたときは、力のいる能力（球速・パワー・肩力・スタミナ）が上がりやすく、
+       守備・捕球・走力などが下がる効き方はごく小さい */
+    const h = hz(p), h0 = p.hz0 == null ? h : p.hz0;
+    return k * (h0 * (DIR_H[key] || 0) + (h - h0) * (DIR_G[key] || 0) + pz(p));
   }
 
   /** 能力 key に足す補正の合計。上限を超えないようにしてある */
   function offset(p, key) {
     const cap = key === 'velo' ? VELO_CAP : OFF_CAP;
-    return clampAbs(heightPhysOffset(p, key) + weightOffset(p, key), cap) + ((p.tilt && p.tilt[key]) || 0) + surgeOffset(p, key);
+    /* 体格の変化が能力に効く強さは、その能力の個体差（ind）で選手ごとに変わる */
+    return clampAbs((heightPhysOffset(p, key) + weightOffset(p, key)) * indF(p, key), cap) + ((p.tilt && p.tilt[key]) || 0) + surgeOffset(p, key);
   }
 
-  /** 伸びやすさ（倍率）。身長と身体能力が同じ係数で効く */
-  function gm(p, key) {
-    let g = 1 + GM_K * idxOf(p, key);
-    /* 太りすぎた野手は、パワーの伸びしろが小さい */
-    if (key === 'power' && p.kind !== 'pitcher') g *= 1 - 0.2 * Math.max(0, zW(p) - 1.2);
+  /* ---------- 個体差・伸びやすさ・上限 ----------
+     各選手は、各能力ごとに「内部の個体差（ind）」を持つ。
+     ・伸びやすさ（ease）… 体格と個体差から決まる。特訓・試合後の伸び方に効く
+     ・上限（cap）…… ランダムに決まる頭打ち。体格（身長・体重）で上下する。
+                       天才の能力以外は100まで。ほとんどの選手のほとんどの能力は100未満で止まる
+     ・体格の変化が能力に効く強さにも、個体差（indF）が掛かる */
+
+  function rollInd(kind) {
+    const o = {};
+    statKeysOf({ kind }).forEach((k) => {
+      /* ふつうは標準偏差1。まれに大きく外れる（極端に伸びやすい・伸びにくい能力） */
+      o[k] = RNG.clamp(RNG.gauss() * (RNG.rand() < 0.06 ? 2.2 : 1), -3.2, 3.2);
+    });
+    return o;
+  }
+
+  /** 古い保存データを含め、個体差を付ける（すでにあれば何もしない） */
+  function giveTraits(p) {
+    if (!p.ind) p.ind = rollInd(p.kind);
+  }
+
+  /** 体格の変化が能力に効く強さ（個体差による倍率） */
+  function indF(p, key) {
+    const z = (p && p.ind && p.ind[key]) || 0;
+    return RNG.clamp(1 + 0.3 * z, 0.5, 1.7);
+  }
+
+  /** 体重が身長に見合っていない度合い（0なら十分。軽すぎるほど大きい） */
+  function underweight(p) { return Math.max(0, -0.3 - zW(p)); }
+
+  /** 体格が上限に効く分（その能力の単位）。身長が高いほどパワー・肩力・スタミナの上限が上がり、
+      体重が足りないとその分だけ下がる。適切な体重のときに、身長に見合った上限になる */
+  function capBody(p, key) {
+    const h = hz(p), z = zW(p), under = underweight(p);
+    switch (key) {
+      case 'power':   return 9 * h - 8 * under;
+      case 'arm':     return 7 * h - 6 * under;
+      case 'meet':    return -3 * h;
+      case 'speed':   return -3 * h - 5 * Math.max(0, z - 0.6);
+      case 'field':
+      case 'catch':   return -3 * h;
+      case 'control': return -3 * h;
+      case 'stamina': return 2 * h - 2 * under;
+      case 'velo':    return veloCap(p);
+      default:        return 0;
+    }
+  }
+  const CAP_BASE = { meet: 78, power: 82, speed: 78, arm: 80, field: 76, catch: 76, control: 78, stamina: 78, velo: 0 };
+
+  /** 能力の上限を決める（選手を作ったあと、能力がそろってから一度だけ）。
+      体格と個体差とランダムから決まり、いまの値より低くなることはない（すでに上限ぎりぎりの選手もいる） */
+  function makeCaps(p) {
+    if (!p || p.ht == null) return p;
+    giveTraits(p);
+    p.cap0 = {}; p.capBT = {}; p.capUp = p.capUp || {};
+    statKeysOf(p).forEach((k) => {
+      if (p[k] == null || isGenius(p, k)) return;
+      const ind = (p.ind && p.ind[k]) || 0;
+      const bt = capBody(p, k);
+      let raw = k === 'velo' ? bt + 4 * ind + RNG.norm(0, 3) : CAP_BASE[k] + bt + 9 * ind + RNG.norm(0, 4);
+      const r = RNG.rand();
+      if (r < 0.05) raw += k === 'velo' ? 6 : 20;           // まれに、大きく伸びる素質
+      else if (r < 0.08) raw -= k === 'velo' ? 6 : 15;      // まれに、早く頭打ちになる
+      const cur = p[k];
+      p.cap0[k] = Math.min(k === 'velo' ? 168 : 108, Math.max(raw, cur + RNG.range(0, k === 'velo' ? 2 : 3)));
+      p.capBT[k] = bt;
+    });
+    return p;
+  }
+
+  /** いまの上限（その能力の単位）。天才の能力は上限なし */
+  function capOf(p, key) {
+    if (isGenius(p, key)) return key === 'velo' ? VELO_GENIUS_MAX : HARD_MAX;
+    if (!p.cap0 || p.cap0[key] == null) return key === 'velo' ? 168 : 100;
+    const v = p.cap0[key] + (capBody(p, key) - p.capBT[key]) * (p.kind === 'pitcher' ? BODY_GAIN_PIT : BODY_GAIN) + ((p.capUp && p.capUp[key]) || 0);
+    return Math.min(key === 'velo' ? 168 : 100, v);
+  }
+
+  /** あと何伸びられるか（0以上の整数） */
+  function room(p, key) {
+    if (p[key] == null) return 0;
+    return Math.max(0, Math.floor(capOf(p, key)) - p[key]);
+  }
+
+  /** 覚醒などで能力が上がったぶん、その能力の上限も上げる */
+  function capUp(p, key, amount) {
+    if (!p || !(amount > 0) || isGenius(p, key)) return;
+    if (!p.capUp) p.capUp = {};
+    p.capUp[key] = (p.capUp[key] || 0) + amount;
+  }
+
+  /** 伸びやすさ（倍率）。体格と個体差から決まる。特訓の選ばれやすさ・上がり幅、試合後の伸びに効く */
+  function ease(p, key) {
+    const z = (p && p.ind && p.ind[key]) || 0;
+    const h = hz(p), zw = zW(p), under = underweight(p);
+    let b = 1;
+    switch (key) {
+      case 'power':   b = 1 + 0.18 * h - 0.3 * under; break;
+      case 'arm':     b = 1 + 0.14 * h - 0.25 * under; break;
+      case 'velo':    b = 1 + 0.12 * h - 0.25 * under; break;
+      case 'stamina': b = 1 + 0.06 * h; break;
+      case 'speed':   b = 1 - 0.1 * h - 0.25 * Math.max(0, zw - 0.6); break;
+      case 'meet':
+      case 'control': b = 1 - 0.07 * h; break;
+      case 'field':
+      case 'catch':   b = 1 - 0.1 * h; break;
+      default: break;
+    }
+    let g = Math.exp(0.32 * z) * b;
     if (isGenius(p, key)) g *= GENIUS_GM;
-    return Math.max(0.6, Math.min(isGenius(p, key) ? 2.2 : 1.5, g));
+    return RNG.clamp(g, 0.3, isGenius(p, key) ? 3.2 : 2.6);
   }
+  /** 以前の呼び名（伸びやすさ）。ease と同じ */
+  function gm(p, key) { return ease(p, key); }
 
-  /** 能力の上限（0〜100の目盛り。球速は 108〜160km/h を0〜100に直した値） */
+  /** 能力の上限（0〜100の目盛り。球速は 108〜160km/h を0〜100に直した値）。変化球・弾道は100 */
   function ceil(p, key) {
-    /* 天才の能力は上限なし。いまの値の少し上を、いつも伸びしろとして見せる */
-    if (isGenius(p, key)) return key === 'velo' ? 140 : Math.max(135, (p[key] || 0) + 25);
-    return Math.max(CEIL_MIN, Math.min(100, CEIL_BASE + CEIL_K * idxOf(p, key)));
+    if (key === 'pitch' || key === 'traj') return 100;
+    const c = capOf(p, key);
+    return key === 'velo' ? RNG.clamp((c - 108) / 52 * 100, 0, 200) : c;
   }
 
   /* ---------- 生成 ---------- */
@@ -407,7 +543,9 @@ const Body = (() => {
     p.htType = parts.htType; p.wtTrend = parts.wtTrend; p.wtResp = parts.wtResp;
     p.tilt = parts.tilt || null;
     p.bodyT = NOW; p.bodyLog = []; p.bodyV = BODY_VER;
+    p.hz0 = hz(p);
     p.bw = null; giveGrowth(p, parts.growth);
+    p.ind = null; p.cap0 = null; p.capBT = null; p.capUp = {}; giveTraits(p);
     p.zW0 = zW(p);
   }
 
@@ -423,7 +561,8 @@ const Body = (() => {
   /** 身体の効きを、能力にそろえる。「新しい補正 − すでに足した補正」だけを足す
       （同じ補正を二重に足さない）。端数は選手ごとに溜めておく。
       戻り値は、このとき実際に変わった能力 { key: 増減 } */
-  function applyChange(p) {
+  function applyChange(p, mult) {
+    const gain = mult == null ? 1 : mult;
     if (!p.bodyOff) { p.bodyOff = {}; p.bodyAcc = {}; }
     const changed = {};
     if (p.fixedBody) return changed;           // 体格が変わらない選手（熊）は、体格による補正を受けない
@@ -431,7 +570,7 @@ const Body = (() => {
       if (p[key] == null) return;
       const target = offset(p, key);
       const done = p.bodyOff[key] || 0;
-      const d = target - done;
+      const d = (target - done) * gain;
       p.bodyOff[key] = target;
       p.bodyAcc[key] = (p.bodyAcc[key] || 0) + d;
       const whole = Math.round(p.bodyAcc[key]);
@@ -439,6 +578,8 @@ const Body = (() => {
       p.bodyAcc[key] -= whole;
       const before = p[key];
       p[key] = stat(p, key, p[key] + whole);
+      /* 体格で上がっても、その能力の上限は超えない（すでに上限を超えているぶんは動かさない） */
+      if (whole > 0 && p.cap0) p[key] = Math.max(before, Math.min(p[key], Math.floor(capOf(p, key))));
       if (p[key] !== before) changed[key] = p[key] - before;
     });
     return changed;
@@ -490,6 +631,7 @@ const Body = (() => {
     if (p.bodyT == null) p.bodyT = NOW;
     if (!p.bodyLog) p.bodyLog = [];
     if (p.bw == null && !p.fixedBody) giveGrowth(p);     // 古い保存データの選手にも体づくりの型を付ける
+    if (p.ht != null) { giveTraits(p); if (!p.cap0) makeCaps(p); }     // 古い保存データの選手にも、個体差と上限を付ける
     return p;
   }
 
@@ -541,7 +683,7 @@ const Body = (() => {
       (WT_SEASON[mo] || 0) + RNG.norm(0, winter ? 0.75 : 0.35) * (1 + winter * 0.25 * Math.abs(p.wtTrend || 0)));
     p.wt = RNG.clamp(wtOld + dw, 48 * SCALE, Math.max(125 * SCALE, wtOld));      // 熊のように125kgを超える選手は、そこから下限だけ守る
     p.bodyT = to;
-    const changed = applyChange(p);
+    const changed = applyChange(p, p.kind === 'pitcher' ? BODY_GAIN_PIT : BODY_GAIN);
     const knack = bodyKnack(p);
     if (knack) changed[knack.key] = (changed[knack.key] || 0) + knack.d;
     /* 特訓で伸びた分は、特訓から次の大会までの月に、均等にばらけさせて履歴に載せる */
@@ -638,5 +780,6 @@ const Body = (() => {
     idxOf, idxHeight, idxPhys, offset, heightPhysOffset, weightOffset, gm, ceil,
     hz, pz, zW, bmiOf, refHt,
     isGenius, geniusLabel, stat, GENIUS_LABEL, veloCap, veloLimit,
+    ease, capOf, room, capUp, makeCaps, giveTraits, indF,
   };
 })();

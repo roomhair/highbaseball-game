@@ -70,10 +70,10 @@ const Training = (() => {
      velo・pitch の幅はそのまま。新しく覚える変化球（ball）は、どの段階でも
      1〜2から（覚えたては未熟で、そこから練習で伸ばす）。 */
   const POWER_TIERS = [
-    { key: 's',  weight: 30, label: '',        stat: [5, 9],   velo: [1, 2], pitch: 1, ball: [1, 2] },
-    { key: 'm',  weight: 40, label: '',        stat: [9, 13],  velo: [2, 3], pitch: 1, ball: [1, 2] },
-    { key: 'l',  weight: 22, label: 'みっちり', stat: [14, 21], velo: [3, 5], pitch: 1, ball: [1, 2] },
-    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [20, 31], velo: [4, 8], pitch: 4, ball: [1, 2] },
+    { key: 's',  weight: 30, label: '',        stat: [9, 13],  velo: [1, 3], pitch: 1, ball: [1, 2] },
+    { key: 'm',  weight: 40, label: '',        stat: [13, 21], velo: [3, 5], pitch: 1, ball: [1, 2] },
+    { key: 'l',  weight: 22, label: 'みっちり', stat: [22, 32], velo: [5, 8], pitch: 1, ball: [1, 2] },
+    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [32, 47], velo: [7, 12], pitch: 4, ball: [1, 2] },
   ];
 
   /* 1枚のカードで、同じ選手の能力がいくつ同時に上がるか。
@@ -121,11 +121,15 @@ const Training = (() => {
     const base = { kind: menu.key, tier: power.key, tierLabel: power.label, count: n };
 
     if (menu.key === 'velo') {
-      const amount = range(power.velo);
-      return Object.assign(base, {
-        title: n === 1 ? '走り込み' : '合同で走り込み',
-        targets: chosen.map((p) => ({ pid: p.id, name: p.name, label: '球速', amount, key: 'velo', unit: 'km/h' })),
+      const vt = [];
+      chosen.forEach((p) => {
+        Body.ensure(p);
+        const room = Body.room(p, 'velo');
+        const amount = room > 0 ? statAmount(p, 'velo', power, room) : 0;
+        if (amount > 0) vt.push({ pid: p.id, name: p.name, label: '球速', amount, key: 'velo', unit: 'km/h' });
       });
+      if (!vt.length) return plainCard(team);
+      return Object.assign(base, { title: n === 1 ? '走り込み' : '合同で走り込み', targets: vt });
     }
 
     if (menu.key === 'break') {
@@ -160,61 +164,65 @@ const Training = (() => {
       });
     }
 
+    /* 打撃・投球の練習。効く選手はそれぞれ、自分の能力のうち1つ（たまに2つ）が
+       ランダムに上がる。どの能力が選ばれやすいかは、その選手の「伸びやすさ」
+       （体格と個体差）で決まる確率表。上がり幅もランダムで、
+       その能力の上限（頭打ち）を超えることはない */
     const isPit = menu.key === 'pit';
-    const statPool = isPit ? PITCHER_STATS : BATTER_STATS;
-    /* 複数が同時に上がるときだけ、同じ種類の能力に限らず、
-       投手なら球速・変化球、打者なら弾道も候補に入る
-       （球速・変化球・弾道は額面の単位が違うので、候補に入れるのはここだけ）。
-       1つだけ上がるカードは、これまでどおり通常の能力から引く */
-    const extras = isPit
-      ? [{ key: 'velo', label: '球速', unit: 'km/h', amount: () => range(power.velo) }].concat(
-        chosen.some((p) => p.pitches.some((q) => q.level < 7))
-          ? [{ key: 'pitch', label: '変化球', amount: () => power.pitch }] : [])
-      : (chosen.some((p) => p.traj < 4)
-        ? [{ key: 'traj', label: '弾道', amount: () => 1 }]
-        : []);
-    const multiPool = statPool.concat(extras);
-    /* いくつの能力が同時に上がるかは、効き目（猛特訓）とは別に引く */
-    const statN = Math.min(multiPool.length, RNG.weighted(STAT_COUNT_TIERS).n);
-    const multi = statN >= 2;
-    const picked = statN <= 1 ? [RNG.pick(statPool)] : RNG.shuffle(multiPool.slice()).slice(0, statN);
-    /* 上がり幅は能力ごとに引き直す。どれか1つだけ大きく伸びることもある。
-       投手は持ち場が制球・スタミナの2つしか無いぶん、同じ額面でも
-       打者より集中して伸びやすいが、そこは上の headroom（頭打ち）が
-       効いて抑える形にしてあり、額面そのものは打者と揃えてある */
-    const amounts = picked.map((st) => (st.amount ? st.amount() : range(power.stat)));
     const targets = [];
     chosen.forEach((p) => {
-      picked.forEach((st, i) => {
-        if (st.key === 'traj' && p.traj >= 4) return;
-        if (st.key === 'pitch') {
-          /* 変化球は選手ごとに、まだ伸びる球種を1つ選ぶ */
-          const room = p.pitches.filter((x) => x.level < 7);
-          if (!room.length) return;
-          const q = RNG.pick(room);
-          targets.push({ pid: p.id, name: p.name, label: q.name, amount: amounts[i], key: 'pitch', pitch: q.name });
-          return;
-        }
-        const t = { pid: p.id, name: p.name, label: st.label, amount: amounts[i], key: st.key };
-        if (st.unit) t.unit = st.unit;
+      Body.ensure(p);
+      const used = new Set();
+      /* 1つだけ上がる選手が多いが、2つ・3つ同時に上がることもある（そのときは1つあたりを小さく） */
+      const nStat = RNG.weighted([{ weight: 45, n: 1 }, { weight: 35, n: 2 }, { weight: 20, n: 3 }]).n;
+      const share = [1, 0.62, 0.48][nStat - 1];
+      for (let i = 0; i < nStat; i++) {
+        const t = rollStatTarget(p, power, used, share);
+        if (!t) break;
+        used.add(t.key);
         targets.push(t);
-      });
+      }
     });
+    if (!targets.length) return plainCard(team);
     return Object.assign(base, {
-      multi,
+      multi: targets.length > chosen.length,
       title: count.label + (isPit ? '（投手）' : ''),
       targets,
     });
   }
 
+  const STAT_LABEL = { meet: 'ミート', power: 'パワー', speed: '走力', arm: '肩力', field: '守備', catch: '捕球', control: '制球', stamina: 'スタミナ', velo: '球速' };
+
+  /** 選手1人ぶんの練習の中身を引く。能力は伸びやすさに比例して選ばれ、上限まで余裕のない能力は選ばれにくい */
+  function rollStatTarget(p, power, used, share) {
+    const keys = p.kind === 'pitcher' ? ['velo', 'control', 'stamina'] : ['meet', 'power', 'speed', 'arm', 'field', 'catch'];
+    const cand = keys.filter((k) => !used.has(k)).map((k) => {
+      const room = Body.room(p, k);
+      return { key: k, room, weight: room <= 0 ? 0 : Body.ease(p, k) * Math.min(1, room / 6) };
+    }).filter((c) => c.weight > 0);
+    if (!cand.length) return null;
+    const c = RNG.weighted(cand);
+    const amount = statAmount(p, c.key, power, c.room, share || 1);
+    if (amount <= 0) return null;
+    const t = { pid: p.id, name: p.name, label: STAT_LABEL[c.key], amount, key: c.key };
+    if (c.key === 'velo') t.unit = 'km/h';
+    return t;
+  }
+
+  /** 上がり幅。額面（効き目の段階）に、伸びやすさとランダムを掛け、上限までの余裕で止める */
+  function statAmount(p, key, power, room, share) {
+    const base = (key === 'velo' ? range(power.velo) : range(power.stat)) * (share || 1);
+    const f = RNG.clamp(RNG.clamp(0.6 + 0.4 * Body.ease(p, key), 0.5, 1.7) * RNG.clamp(RNG.norm(1, 0.3), 0.4, 1.8), 0.4, 1.6);
+    return Math.min(room, Math.max(1, Math.round(base * f)));
+  }
+
   /** どうしても引けなかったときの、ごくふつうのカード */
   function plainCard(team) {
     const p = RNG.pick(team.batters);
-    const stat = RNG.pick(BATTER_STATS);
-    return {
-      kind: 'bat', tier: 'm', tierLabel: '', count: 1, title: '個人練習',
-      targets: [{ pid: p.id, name: p.name, label: stat.label, amount: RNG.range(5, 9), key: stat.key }],
-    };
+    Body.ensure(p);
+    const t = rollStatTarget(p, POWER_TIERS[1], new Set()) ||
+      { pid: p.id, name: p.name, label: 'ミート', amount: 1, key: 'meet' };
+    return { kind: 'bat', tier: 'm', tierLabel: '', count: 1, title: '個人練習', targets: [t] };
   }
 
   /** カードを選ぶ。能力を実際に上げて、次のカードを引く */
@@ -232,8 +240,6 @@ const Training = (() => {
   /* 体格の成長（冬の体づくりや身のこなしの向上）で能力が自然に伸びるようになったぶん、
      特訓の上がり幅を少し絞って、全体の難しさが変わらないようにしてある。
      体格での伸びは1年で、特訓（1年ぶん）の1〜2割ほど */
-  const BODY_EASE = { bat: 0.83, pit: 0.86 };
-  const easeOf = (p) => (p.kind === 'pitcher' ? BODY_EASE.pit : BODY_EASE.bat);
 
   function choose(state, team) {
     if (state.done) return state;
@@ -245,13 +251,11 @@ const Training = (() => {
       if (t.key === 'traj') {
         before = p.traj; p.traj = Math.min(4, p.traj + t.amount); after = p.traj;
       } else if (t.key === 'velo') {
+        /* 球速も、その選手の上限（頭打ち）を超えない */
         before = p.velo;
-        /* 球速も、身長・身体能力による伸びやすさと上限を受ける */
         Body.ensure(p);
-        const vTop = 108 + 52 * Body.ceil(p, 'velo') / 100;
-        let vAdd = Math.max(1, Math.round(t.amount * Body.gm(p, 'velo') * easeOf(p)));
-        vAdd = p.velo >= vTop ? 0 : Math.min(vAdd, Math.ceil(vTop - p.velo));
-        p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : 168, Math.max(p.velo, Body.veloLimit(p, p.velo + vAdd))); after = p.velo;
+        const vAdd = Math.max(0, Math.min(t.amount, Body.room(p, 'velo')));
+        p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : 168, p.velo + vAdd); after = p.velo;
       } else if (t.key === 'pitch') {
         const q = p.pitches.find((x) => x.name === t.pitch);
         if (!q) return;
@@ -267,8 +271,8 @@ const Training = (() => {
            カードの額面（t.amount）に、いまの能力に応じた頭打ちをかける */
         Body.ensure(p);
         before = p[t.key];
-        const add = Math.max(0, Math.round(t.amount * headroom(before, Body.ceil(p, t.key)) * Body.gm(p, t.key) * easeOf(p)));
-        p[t.key] = Body.stat(p, t.key, before + add);
+        const add = Math.max(0, Math.min(t.amount, Body.room(p, t.key)));
+        p[t.key] = Math.max(before, Math.min(Body.stat(p, t.key, before + add), before + add));
         after = p[t.key];
       }
       /* 成長履歴に載せる（特訓から次の大会までの月に、均等にばらけて出る） */

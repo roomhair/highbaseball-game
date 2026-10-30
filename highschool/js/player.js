@@ -311,6 +311,7 @@ const Player = (() => {
     Body.attach(p, body);          // 身長・体重・身体能力の補正（入部時に一度だけ）
     liftLowStats(p);
     if (opt.genius !== false) maybeGenius(p);
+    Body.makeCaps(p);       // 能力がそろったあとに、各能力の上限を決める
 
     p.career = emptyBat();
     p.tour = emptyBat();
@@ -370,6 +371,7 @@ const Player = (() => {
     Body.STAT_KEYS.forEach((k) => { if (p[k] != null) p.bodyOff[k] = Body.offset(p, k); });
     p.bodyAcc = {};
     p.genius = 'power';
+    Body.makeCaps(p);          // 熊の上限（パワーは天才なので上限なし）
     p.animal = true;           // 画面には「天才：パワー」ではなく「動物」と出す
     p.career = emptyBat();
     addStats(p.career, seedPracticeBat(p, practiceGames(1), opt.level));
@@ -465,6 +467,7 @@ const Player = (() => {
     Body.attach(p, body);          // 身長・体重・身体能力の補正（入部時に一度だけ）
     liftLowStats(p);
     if (opt.genius !== false) maybeGenius(p);
+    Body.makeCaps(p);       // 能力がそろったあとに、各能力の上限を決める
 
     p.career = emptyPit();
     p.tour = emptyPit();

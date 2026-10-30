@@ -83,7 +83,7 @@ const Growth = (() => {
     if (whole <= 0) return;
     p._veloAcc -= whole;
     const before = p.velo;
-    p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : 166, Math.max(before, Body.veloLimit(p, before + whole)));
+    p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : 166, Math.max(before, Math.min(Body.veloLimit(p, before + whole), Math.floor(Body.capOf(p, 'velo')))));
     if (p.velo > before) {
       ups.push({ key: 'velo', label: '球速', amount: p.velo - before, before, after: p.velo, unit: 'km/h' });
     }
@@ -164,7 +164,8 @@ const Growth = (() => {
         if (st.key === 'pitch') { growPitch(p, share, ups); return; }
         if (st.key === 'traj') { growTraj(p, share, ups); return; }
         const before = p[st.key];
-        const add = Math.min(G.MAX_STEP, gainFor(before, share * Body.gm(p, st.key), Body.ceil(p, st.key)));
+        /* 伸びやすさ（体格と個体差）で量が変わり、その能力の上限は超えない */
+        const add = Math.min(G.MAX_STEP, Body.room(p, st.key), gainFor(before, share * Body.ease(p, st.key), Body.ceil(p, st.key)));
         if (add > 0) {
           p[st.key] = Body.stat(p, st.key, before + add);
           if (p[st.key] > before) {
@@ -215,11 +216,13 @@ const Growth = (() => {
       stats.filter((st) => !st.virtual).forEach((st) => {
         const before = p[st.key];
         p[st.key] = Body.stat(p, st.key, before + RNG.range(per[0], per[1]));
+        Body.capUp(p, st.key, p[st.key] - before);       // 覚醒で上がったぶん、上限も上がる
         ups.push({ key: st.key, label: st.label, amount: p[st.key] - before, before, after: p[st.key], awake: true });
       });
       if (isPit) {
         const vb = p.velo;
         p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : 168, Math.max(vb, Body.veloLimit(p, vb + RNG.range(3, 7))));
+        Body.capUp(p, 'velo', p.velo - vb);
         ups.push({ key: 'velo', label: '球速', amount: p.velo - vb, before: vb, after: p.velo, unit: 'km/h', awake: true });
         /* 決め球が一段階よくなる */
         if (p.pitches.length) {
