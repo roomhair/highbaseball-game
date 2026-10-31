@@ -653,9 +653,9 @@ const Screens = (() => {
         (picked.kind === 'pitcher' ? '投手' : posName(picked.pos)) + '）の強奪に挑戦します。';
     };
     UI.rosterPanel(UI.el('poach-bat'), state.opponent.batters,
-      { team: state.opponent, onRow: choose, nameLink: true, nameLinkRename: false });
+      { team: state.opponent, onRow: choose, nameLink: true, nameLinkRename: false, showBody: true });
     UI.rosterPanel(UI.el('poach-pit'), state.opponent.pitchers,
-      { team: state.opponent, onRow: choose, nameLink: true, nameLinkRename: false });
+      { team: state.opponent, onRow: choose, nameLink: true, nameLinkRename: false, showBody: true });
     ok.onclick = () => { if (picked) onTake(picked); };
     skip.onclick = onSkip;
     UI.show('screen-poach');
@@ -692,6 +692,7 @@ const Screens = (() => {
     UI.rosterPanel(UI.el('poach-own'), own, {
       team: state.team,
       nameLink: true,
+      showBody: true,
       onRow: (pid) => {
         body.querySelectorAll('tr.prow').forEach((x) => x.classList.remove('is-picked'));
         body.querySelectorAll('tr.prow[data-pid="' + pid + '"]').forEach((x) => x.classList.add('is-picked'));
