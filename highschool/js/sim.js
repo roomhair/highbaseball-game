@@ -901,7 +901,7 @@ const Sim = (() => {
       if (stop && stop()) break;
 
       /* 投手交代の見きわめ */
-      if (maybeChangePitcher(def, log, inning, half)) { showBases(); yield; }
+      if (maybeChangePitcher(def, off, log, inning, half)) { showBases(); yield; }
 
       const slotIndex = off.order % 9;
       off.order = (off.order + 1) % 9;
@@ -1533,7 +1533,7 @@ const Sim = (() => {
   /* ---------- 投手交代 ---------- */
 
   /** 自動の投手交代。交代したら true を返す（呼ぶ側はそこで止められる） */
-  function maybeChangePitcher(def, log, inning, half) {
+  function maybeChangePitcher(def, off, log, inning, half) {
     if (def.manual && !def.autoPilot) return false;      // 人が操っている側は自動で代えない（スキップしたあとは別）
     if (!def.penId.length) return false;
     const pit = Team.find(def.team, def.pitcherId);
@@ -1543,7 +1543,10 @@ const Sim = (() => {
        ほとんどの試合が完投になっていた。いまの高校野球は継投が当たり前
        なので、スタミナが切れて少ししたところで代える */
     const tired = (def.bf + (pit.staminaCarry || 0)) > cap + 3;
-    const beaten = def.pitcherRuns >= 6 && def.bf >= 12;
+    /* 打ち込まれたとき。スタミナが残っていても、点を取られ続けたら代える。
+       大量失点は早めに、3点でも負けが込んでいるなら代える */
+    const R = def.pitcherRuns, bf = def.bf, behind = (off.runs || 0) - (def.runs || 0);
+    const beaten = (R >= 6 && bf >= 6) || (R >= 4 && bf >= 8) || (R >= 3 && bf >= 6 && behind >= 3);
     /* 球数。スタミナのある投手でも、140球に近づいたら代える */
     const overPitched = (pit.game.np || 0) >= 125 + (pit.stamina - 50) * 0.4;
     if (!tired && !beaten && !overPitched) return false;
