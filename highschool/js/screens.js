@@ -670,7 +670,7 @@ const Screens = (() => {
     UI.el('poach-title').textContent = '放出する選手を選ぶ';
     UI.el('poach-title').classList.remove('is-win', 'is-lose');
     UI.el('poach-lead').textContent =
-      esc(incoming.name) + 'の強奪に挑戦する前に、迎える代わりに放出する' +
+      incoming.name + 'の強奪チャレンジの前に、放出する' +
       (incoming.kind === 'pitcher' ? '投手' : '野手') + 'を1人選んでください。';
     const own = incoming.kind === 'pitcher' ? state.team.pitchers : state.team.batters;
     UI.html('poach-body',
