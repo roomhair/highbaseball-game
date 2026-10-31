@@ -341,7 +341,7 @@ const Body = (() => {
   /** 体格の変化が能力に効く強さ（個体差による倍率） */
   function indF(p, key) {
     const z = (p && p.ind && p.ind[key]) || 0;
-    return RNG.clamp(1 + 0.3 * z, 0.5, 1.7);
+    return RNG.clamp(1 + 0.2 * z, 0.7, 1.45);
   }
 
   /** 体重が身長に見合っていない度合い（0なら十分。軽すぎるほど大きい） */
