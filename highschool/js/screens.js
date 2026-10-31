@@ -626,7 +626,7 @@ const Screens = (() => {
     UI.el('poach-warn').hidden = true;
     UI.el('poach-title').classList.remove('is-win', 'is-lose');
     UI.el('poach-lead').textContent =
-      state.opponent.name + 'から1人、強奪チャレンジができます（必ず成功するとは限りません）。' +
+      state.opponent.name + 'から1人、強奪チャレンジができます。' +
       '強奪する選手を選んで次に進んでください。成功すると、同じ区分（野手／投手）の部員を1人放出します。';
     UI.html('poach-body',
       '<h3 class="sub">' + esc(state.opponent.name) + '　野手</h3><div id="poach-bat"></div>' +
