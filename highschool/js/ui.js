@@ -59,7 +59,7 @@ const UI = (() => {
   }
 
   /* 左上の小さな「◯年目 ◯月」。チーム作り・優勝や強奪の全画面の演出では出さない */
-  const NO_CLOCK = ['screen-top', 'screen-pick', 'screen-ready', 'screen-celebrate', 'screen-champion', 'screen-localwin'];
+  const NO_CLOCK = ['screen-top', 'screen-pick', 'screen-ready', 'screen-celebrate', 'screen-champion', 'screen-localwin', 'screen-game', 'screen-soccer-game'];
   let clockGetter = null;
   function setClockGetter(fn) { clockGetter = fn; }
   function refreshClock() {
