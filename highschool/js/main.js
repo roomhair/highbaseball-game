@@ -106,11 +106,11 @@ const Game = (() => {
     return t;
   }
 
-  /** 画面の左上に出す「◯年目 ◯月」（4月で年度が替わる） */
+  /** 画面の左上に出す「◯年◯月」（2026年4月から始まる） */
   function clockText() {
     if (!state || (!state.team && state.mode !== 'soccer')) return '';
     const now = Body.now();
-    return (Body.yearOf(now - 3) - Body.START_YEAR + 1) + '年目 ' + Body.monthOf(now) + '月';
+    return Body.yearOf(now) + '年' + Body.monthOf(now) + '月';
   }
   UI.setClockGetter(clockText);
 
