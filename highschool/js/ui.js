@@ -1205,6 +1205,16 @@ const UI = (() => {
      部を束ねる1人を決める。特訓に進む前に必ず決めてもらう。
      3年生が引退すると空くので、代替わりのたびに選び直すことになる。 */
 
+  /** 名前の文字そのものを押したか（「先発」「主将」の札や、名前の右の余白は含めない） */
+  function hitName(ev, span) {
+    const t = span && span.firstChild;
+    if (!t || t.nodeType !== 3) return false;
+    const r = document.createRange();
+    r.selectNodeContents(t);
+    return Array.from(r.getClientRects()).some((b) =>
+      ev.clientX >= b.left - 3 && ev.clientX <= b.right + 3 && ev.clientY >= b.top - 3 && ev.clientY <= b.bottom + 3);
+  }
+
   function captainPicker(team, onDone, opts) {
     opts = opts || {};
     /* オフシーズンでは、これから引退する3年生を候補から外す。
@@ -1243,6 +1253,7 @@ const UI = (() => {
           /* 名前を押すと、その選手の個人画面を見られる（閉じると、この一覧に戻る） */
           body.querySelectorAll('.spick__nm[data-detail]').forEach((n) =>
             n.addEventListener('click', (e) => {
+              if (!hitName(e, n)) return;       // 名前以外（札など）は、ふつうに選ぶ扱い
               e.stopPropagation();
               const p = list.find((x) => x.id === n.dataset.detail);
               if (!p) return;
@@ -1266,7 +1277,7 @@ const UI = (() => {
     el, esc, html, show, setClockGetter, refreshClock, currentScreen, curtain, modal, closeModal, confirmBox, prosList, decisionLines,
     avg, era, ipText, trajIcon, stat, rankSpan, rankNum, aptSpan, pullText, handMark, fromText,
     playerRow, rosterTable, rosterPanel, sortPlayers, playerDetail, openPlayer,
-    lineupEditor, roleText, makeSortable, wireRename, captainPicker,
+    lineupEditor, roleText, makeSortable, wireRename, captainPicker, hitName,
     careerBatLine, careerPitLine, init,
   };
 })();

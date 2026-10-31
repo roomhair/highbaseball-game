@@ -493,7 +493,8 @@ const Screens = (() => {
         b.addEventListener('click', (ev) => {
           const pid = b.dataset.pid;
           /* 選手名を押したときは、先発を決めずに、選手の個人画面を開く */
-          if (ev.target.closest && ev.target.closest('.spick__nm')) { open(pid); return; }
+          const nm = ev.target.closest && ev.target.closest('.spick__nm');
+          if (nm && UI.hitName(ev, nm)) { open(pid); return; }
           /* 先発（継投の順番の先頭）だけを入れ替える。以降の継投順は
              そのまま保つ。表示の並びはここでは変えない */
           const rot = state.team.rotation.slice();
