@@ -626,8 +626,8 @@ const Screens = (() => {
     UI.el('poach-warn').hidden = true;
     UI.el('poach-title').classList.remove('is-win', 'is-lose');
     UI.el('poach-lead').textContent =
-      esc(state.opponent.name) + 'から1人、強奪に挑戦できます（必ず成功するとは限りません）。' +
-      '選手を選んでから下のボタンを押してください。成功すると、同じ区分（野手／投手）の部員を1人放出します。';
+      state.opponent.name + 'から1人、強奪チャレンジができます（必ず成功するとは限りません）。' +
+      '強奪する選手を選んで次に進んでください。成功すると、同じ区分（野手／投手）の部員を1人放出します。';
     UI.html('poach-body',
       '<h3 class="sub">' + esc(state.opponent.name) + '　野手</h3><div id="poach-bat"></div>' +
       '<h3 class="sub">' + esc(state.opponent.name) + '　投手</h3><div id="poach-pit"></div>');
@@ -650,7 +650,7 @@ const Screens = (() => {
       ok.disabled = !picked;
       if (picked) UI.el('poach-lead').textContent =
         picked.name + '（' + picked.grade + '年・' +
-        (picked.kind === 'pitcher' ? '投手' : posName(picked.pos)) + '）の強奪に挑戦します。';
+        (picked.kind === 'pitcher' ? '投手' : posName(picked.pos)) + '）を強奪します';
     };
     UI.rosterPanel(UI.el('poach-bat'), state.opponent.batters,
       { team: state.opponent, onRow: choose, nameLink: true, nameLinkRename: false, showBody: true });
@@ -670,8 +670,7 @@ const Screens = (() => {
     UI.el('poach-title').textContent = '放出する選手を選ぶ';
     UI.el('poach-title').classList.remove('is-win', 'is-lose');
     UI.el('poach-lead').textContent =
-      incoming.name + 'の強奪チャレンジの前に、放出する' +
-      (incoming.kind === 'pitcher' ? '投手' : '野手') + 'を1人選んでください。';
+      '放出する' + (incoming.kind === 'pitcher' ? '投手' : '野手') + 'を1人選んでください';
     const own = incoming.kind === 'pitcher' ? state.team.pitchers : state.team.batters;
     UI.html('poach-body',
       '<div class="incoming">' + UI.playerDetail(incoming, { rename: false }) + '</div>' +
@@ -710,7 +709,7 @@ const Screens = (() => {
           ? picked.name + 'は、1年生からレギュラー確約が条件なので放出できません。他の選手を選んでください。'
           : (short ? '1・2年生の野手が10人を下回るため、' + picked.name + 'は放出できません。他の選手を選んでください。' : '');
         if (picked && !short && !locked) UI.el('poach-lead').textContent =
-          picked.name + '（' + UI.roleText(state.team, picked) + '）を放出して、挑戦します。';
+          picked.name + '（' + UI.roleText(state.team, picked) + '）を放出します';
       },
     });
     ok.onclick = () => { if (picked && !picked.regularLock) onRelease(picked); };
