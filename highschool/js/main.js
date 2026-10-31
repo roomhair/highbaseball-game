@@ -116,14 +116,20 @@ const Game = (() => {
 
   const TRAIN_END_MONTH = { local: 7, fallPref: 9, springOrNextSummer: 3, nextSummer: 7 };
 
-  /** 特訓を1回選ぶたびに1か月進む（見送りは進まない）。次の大会の月より先には進めない */
-  function trainClockStep(next) {
+  /** 特訓を選ぶたびに月が進む（見送りは進まない）。次の大会の月までの月数を、
+      選べる回数にならして配る（3か月・5回なら 1・3・5回目に1か月ずつ） */
+  function trainClockStep(next, tr) {
     const m = TRAIN_END_MONTH[next];
-    if (!m) return;
-    const now = Body.now();
-    if (now >= nextMonth(m)) return;
-    Body.advanceTo(clockPlayers(), now + 1);
-    state.clockT = Body.now();
+    if (!m || !tr) return;
+    if (tr.clock0 == null) tr.clock0 = Body.now();
+    const gap = Math.max(0, nextMonth(m) - tr.clock0);
+    const k = Math.min(tr.picks, tr.pickLimit);
+    const to = tr.clock0 + (tr.picks >= tr.pickLimit ? gap : Math.floor((k - 1) * gap / tr.pickLimit) + 1);
+    const t = Math.min(to, tr.clock0 + gap);
+    if (t > Body.now()) {
+      Body.advanceTo(clockPlayers(), t);
+      state.clockT = Body.now();
+    }
   }
 
   /** 大会の月まで進める */
@@ -215,7 +221,7 @@ const Game = (() => {
 
   function trainTake() {
     Training.choose(state.training, state.team);
-    trainClockStep(state.trainingNext);
+    trainClockStep(state.trainingNext, state.training);
     save();
     if (state.training.done) showTrainingResult();
     else Screens.training(state);
@@ -1042,7 +1048,7 @@ const Game = (() => {
   function soccerTrainTake() {
     const S = state.soccer;
     Soccer.trainingChoose(S.training, S);
-    trainClockStep(S.trainingNext);
+    trainClockStep(S.trainingNext, S.training);
     save();
     if (S.training.done) {
       state.phase = 'soccer-training-result';
