@@ -2374,7 +2374,7 @@ a.appbar__title { text-decoration: none; }
 
 /* 選手名の横の天才マーク（小さな星。覚醒の◆があるときは、星が左・◆が右） */
 .gen-mark {
-  display: inline-block; margin-left: 4px; font-style: normal; font-size: 12px; line-height: 1;
+  display: inline-block; margin-left: 3px; font-style: normal; font-size: 9px; line-height: 1;
   vertical-align: 1px; color: #f0a500;
 }
 
