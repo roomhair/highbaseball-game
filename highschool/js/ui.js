@@ -55,6 +55,19 @@ const UI = (() => {
     const home = document.querySelector('.appbar__home');
     if (home) home.hidden = id !== 'screen-top';
     window.scrollTo(0, 0);
+    refreshClock();
+  }
+
+  /* 左上の小さな「◯年目 ◯月」。チーム作り・優勝や強奪の全画面の演出では出さない */
+  const NO_CLOCK = ['screen-top', 'screen-pick', 'screen-ready', 'screen-celebrate', 'screen-champion', 'screen-localwin'];
+  let clockGetter = null;
+  function setClockGetter(fn) { clockGetter = fn; }
+  function refreshClock() {
+    const b = el('clockbadge');
+    if (!b) return;
+    const t = clockGetter && NO_CLOCK.indexOf(current) < 0 ? clockGetter() : '';
+    b.textContent = t || '';
+    b.hidden = !t;
   }
 
   function currentScreen() { return current; }
@@ -1241,7 +1254,7 @@ const UI = (() => {
 
   return {
     pitOrderOf,
-    el, esc, html, show, currentScreen, curtain, modal, closeModal, confirmBox, prosList, decisionLines,
+    el, esc, html, show, setClockGetter, refreshClock, currentScreen, curtain, modal, closeModal, confirmBox, prosList, decisionLines,
     avg, era, ipText, trajIcon, stat, rankSpan, rankNum, aptSpan, pullText, handMark, fromText,
     playerRow, rosterTable, rosterPanel, sortPlayers, playerDetail, openPlayer,
     lineupEditor, roleText, makeSortable, wireRename, captainPicker,

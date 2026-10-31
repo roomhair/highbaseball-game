@@ -2362,3 +2362,12 @@ a.appbar__title { text-decoration: none; }
 .wchip { display: inline-flex; align-items: baseline; gap: 3px; white-space: nowrap; }
 .wchip i { font-style: normal; opacity: .65; font-size: 12px; }
 .wchip em { font-style: normal; font-weight: 700; color: #d9480f; }
+
+/* 左上の年月 */
+.clockbadge {
+  position: fixed; left: 8px; top: 62px; z-index: 30;
+  padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;
+  background: rgba(255, 255, 255, .82); color: #2b4a8a; border: 1px solid rgba(43, 74, 138, .25);
+  pointer-events: none;
+}
+:root[data-theme="dark"] .clockbadge { background: rgba(20, 28, 48, .85); color: #cfe0ff; border-color: rgba(160, 190, 255, .3); }

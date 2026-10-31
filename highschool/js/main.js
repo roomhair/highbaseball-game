@@ -106,6 +106,26 @@ const Game = (() => {
     return t;
   }
 
+  /** 画面の左上に出す「◯年目 ◯月」（4月で年度が替わる） */
+  function clockText() {
+    if (!state || (!state.team && state.mode !== 'soccer')) return '';
+    const now = Body.now();
+    return (Body.yearOf(now - 3) - Body.START_YEAR + 1) + '年目 ' + Body.monthOf(now) + '月';
+  }
+  UI.setClockGetter(clockText);
+
+  const TRAIN_END_MONTH = { local: 7, fallPref: 9, springOrNextSummer: 3, nextSummer: 7 };
+
+  /** 特訓を1回選ぶたびに1か月進む（見送りは進まない）。次の大会の月より先には進めない */
+  function trainClockStep(next) {
+    const m = TRAIN_END_MONTH[next];
+    if (!m) return;
+    const now = Body.now();
+    if (now >= nextMonth(m)) return;
+    Body.advanceTo(clockPlayers(), now + 1);
+    state.clockT = Body.now();
+  }
+
   /** 大会の月まで進める */
   function clockTo(kind) {
     const m = CLOCK_MONTH[kind];
@@ -195,6 +215,7 @@ const Game = (() => {
 
   function trainTake() {
     Training.choose(state.training, state.team);
+    trainClockStep(state.trainingNext);
     save();
     if (state.training.done) showTrainingResult();
     else Screens.training(state);
@@ -1021,6 +1042,7 @@ const Game = (() => {
   function soccerTrainTake() {
     const S = state.soccer;
     Soccer.trainingChoose(S.training, S);
+    trainClockStep(S.trainingNext);
     save();
     if (S.training.done) {
       state.phase = 'soccer-training-result';
