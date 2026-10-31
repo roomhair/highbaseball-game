@@ -2381,3 +2381,5 @@ a.appbar__title { text-decoration: none; }
 
 .time__note { margin: -4px 0 6px; font-size: 11.5px; color: var(--ink-mute); }
 .time__menu .btn[disabled] { opacity: .45; cursor: not-allowed; }
+
+.wrow__meta { font-size: 12px; opacity: .75; margin-bottom: 4px; display: flex; align-items: center; flex-wrap: wrap; }

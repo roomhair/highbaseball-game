@@ -961,7 +961,11 @@ const Screens = (() => {
     };
     const row = (p, keys, extra, no) => {
       const b = snap[p.id] || {};
-      return '<div class="wrow"><div class="wrow__name">' + esc(p.name) + '</div><div class="wrow__stats">' +
+      return '<div class="wrow"><div class="wrow__name">' + esc(p.name) + '</div>' +
+        '<div class="wrow__meta">' + p.grade + '年　' + UI.handMark(p) +
+          (p.ht != null ? '　' + Math.round(p.ht) + 'cm・' + Math.round(p.wt) + 'kg' : '') +
+          (p.kind === 'pitcher' ? '' : '　弾道' + UI.trajIcon(p.traj)) + '</div>' +
+        '<div class="wrow__stats">' +
         keys.map((k) => chip(k[1], p[k[0]], b[k[0]], k[2])).join('') +
         (extra ? extra(p, b) : '') + '</div></div>';
     };
