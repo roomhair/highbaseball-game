@@ -1111,8 +1111,8 @@ const Screens = (() => {
       const p = Team.find(t, pid);
       if (p) UI.openPlayer(p, { team: t, rename: false });
     };
-    UI.rosterPanel(UI.el('ti-bat'), t.batters, { team: t, onRow: open });
-    UI.rosterPanel(UI.el('ti-pit'), t.pitchers, { team: t, onRow: open });
+    UI.rosterPanel(UI.el('ti-bat'), t.batters, { team: t, onRow: open, showBody: true });
+    UI.rosterPanel(UI.el('ti-pit'), t.pitchers, { team: t, onRow: open, showBody: true });
     UI.show('screen-teaminfo');
   }
 
