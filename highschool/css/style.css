@@ -2372,11 +2372,10 @@ a.appbar__title { text-decoration: none; }
 }
 :root[data-theme="dark"] .clockbadge { background: rgba(20, 28, 48, .85); color: #cfe0ff; border-color: rgba(160, 190, 255, .3); }
 
-/* 選手名の横の天才マーク */
+/* 選手名の横の天才マーク（小さな星。覚醒の◆があるときは、星が左・◆が右） */
 .gen-mark {
-  display: inline-block; margin-left: 4px; padding: 0 4px; border-radius: 3px;
-  font-style: normal; font-size: 9px; font-weight: 800; line-height: 14px; vertical-align: 1px;
-  background: #ffd43b; color: #7a4b00; border: 1px solid #e0a800;
+  display: inline-block; margin-left: 4px; font-style: normal; font-size: 12px; line-height: 1;
+  vertical-align: 1px; color: #f0a500;
 }
 
 .time__note { margin: -4px 0 6px; font-size: 11.5px; color: var(--ink-mute); }
