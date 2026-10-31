@@ -50,6 +50,10 @@ const Offseason = (() => {
     Team.all(team).forEach((p) => { p.regularLock = false; });
     team.batters = team.batters.filter((p) => p.grade < 3);
     team.pitchers = team.pitchers.filter((p) => p.grade < 3);
+    /* 強奪や、サッカー部からの復帰で1・2年生の野手が少ないと、3年生が抜けたあとに
+       スタメンが組めなくなる。そのときは、1・2年生の控えを補っておく
+       （人数が足りない分は、春に入る新入生が減るだけ） */
+    Team.topUpBatters(team, 11);
     /* キャプテンが引退したら印を外す。次の特訓の前に選び直してもらう */
     Team.checkCaptain(team);
     Team.repair(team);

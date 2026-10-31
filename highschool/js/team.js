@@ -98,8 +98,24 @@ const Team = (() => {
     return out;
   }
 
+  /** 野手が足りないとき、1・2年生の控えを補う（強奪・引退・サッカー部からの復帰が重なって
+      9人を割ると、スタメンが組めず試合に進めなくなるため）。足りなければ min 人まで。
+      補った選手は、あとで迎える新入生の人数（18人まで）に数えられる */
+  function topUpBatters(team, min) {
+    let added = false;
+    while (team.batters.length < min) {
+      team.batters.push(Player.newBatter({ grade: RNG.chance(0.5) ? 1 : 2, practice: true }));
+      added = true;
+    }
+    if (added && typeof Dataset !== 'undefined') {
+      Dataset.uniqueNames([team.batters.concat(team.pitchers)]);
+    }
+    return added;
+  }
+
   /** 打順と守備位置をおまかせで組む */
   function autoLineup(team) {
+    topUpBatters(team, 9);
     const pool = team.batters.slice();
     if (pool.length < 9) { team.lineup = []; autoRotation(team); return team; }
 
@@ -306,7 +322,7 @@ const Team = (() => {
   }
 
   return {
-    create, all, find, defScore, autoLineup, autoRotation, orderBatters,
+    create, all, find, defScore, topUpBatters, autoLineup, autoRotation, orderBatters,
     bench, defenders, strength, bestPlayer, repair,
     restPitchers, healPitchers, staminaLabel, staminaTier, staminaPct, staminaGauge,
     captain, checkCaptain,

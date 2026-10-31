@@ -1304,6 +1304,8 @@ const Game = (() => {
     if (state.springQualified == null) state.springQualified = false;
     if (state.prestigeScore == null) state.prestigeScore = 0;
     if (state.mode == null) state.mode = 'baseball';
+    /* 野手が足りずにスタメンが組めなくなった保存データは、ここで補って進められるようにする */
+    if (state.mode === 'baseball' && state.team && (state.team.lineup || []).length < 9) Team.autoLineup(state.team);
     if (state.training && state.training.pickLimit == null) {
       state.training.pickLimit = CONFIG.TRAINING.PICKS;
       state.training.passLimit = CONFIG.TRAINING.PASSES;
