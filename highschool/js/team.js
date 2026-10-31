@@ -113,9 +113,32 @@ const Team = (() => {
     return added;
   }
 
+  /** 投手が足りないとき、1・2年生の投手を補う（継投が組める最低限の人数まで） */
+  function topUpPitchers(team, min) {
+    let added = false;
+    while (team.pitchers.length < min) {
+      team.pitchers.push(Player.newPitcher({ grade: RNG.chance(0.5) ? 1 : 2, practice: true }));
+      added = true;
+    }
+    if (added && typeof Dataset !== 'undefined') {
+      Dataset.uniqueNames([team.batters.concat(team.pitchers)]);
+    }
+    return added;
+  }
+
+  /** 試合が行える人数（野手9人・投手2人以上）にそろえる。足りなければ特別に補う。
+      戻り値は補ったかどうか */
+  function ensurePlayable(team) {
+    const a = topUpBatters(team, 9);
+    const b = topUpPitchers(team, 2);
+    if (a || b || (team.lineup || []).length < 9) autoLineup(team);
+    return a || b;
+  }
+
   /** 打順と守備位置をおまかせで組む */
   function autoLineup(team) {
     topUpBatters(team, 9);
+    topUpPitchers(team, 2);
     const pool = team.batters.slice();
     if (pool.length < 9) { team.lineup = []; autoRotation(team); return team; }
 
@@ -322,7 +345,7 @@ const Team = (() => {
   }
 
   return {
-    create, all, find, defScore, topUpBatters, autoLineup, autoRotation, orderBatters,
+    create, all, find, defScore, topUpBatters, topUpPitchers, ensurePlayable, autoLineup, autoRotation, orderBatters,
     bench, defenders, strength, bestPlayer, repair,
     restPitchers, healPitchers, staminaLabel, staminaTier, staminaPct, staminaGauge,
     captain, checkCaptain,

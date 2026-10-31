@@ -430,6 +430,8 @@ const Game = (() => {
       state.opponent.__round = state.tour.index;
       tireOpponent(state.opponent);
     }
+    /* 試合が行えない人数になっていたら、特別に補う（野手9人・投手2人） */
+    Team.ensurePlayable(state.team);
     /* 先攻・後攻はその都度決める */
     state.mySide = RNG.chance(0.5) ? 'home' : 'away';
     state.phase = 'pregame';
@@ -882,6 +884,7 @@ const Game = (() => {
   }
 
   function soccerToPregame() {
+    Soccer.ensurePlayable(state.soccer);
     state.phase = 'soccer-pregame';
     save();
     Screens.soccerPregame(state);

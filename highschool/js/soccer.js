@@ -685,6 +685,21 @@ const Soccer = (() => {
     return sets;
   }
 
+  /** 試合が行える人数（先発11人＋控え1人）にそろえる。足りなければ特別に補う */
+  function ensurePlayable(S) {
+    let added = false;
+    const base = S.players.length ? strength(S) : 40;
+    while (S.players.length < 12) {
+      S.players.push(newRecruit(RNG.clamp(base - 8, 15, 70)));
+      added = true;
+    }
+    if (added) {
+      if (typeof Dataset !== 'undefined') Dataset.uniqueNames([S.players]);
+      autoLineup(S);
+    }
+    return added;
+  }
+
   function enroll(S, players) {
     players.forEach((p) => S.players.push(p));
     autoLineup(S);
@@ -700,6 +715,6 @@ const Soccer = (() => {
     convert, newRecruit, start, autoLineup, findP, mySide, strength, rating, rateFor,
     createTour, currentRound, playUser, buildOpp, halfLenFor, advance,
     startTraining, trainingChoose, trainingPass, canPass, trainingSummary,
-    retiring, retire, promote, freshSets, enroll, canRevive, backToBaseball, applyBaseball,
+    retiring, retire, promote, freshSets, ensurePlayable, enroll, canRevive, backToBaseball, applyBaseball,
   };
 })();
