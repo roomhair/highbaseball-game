@@ -329,7 +329,7 @@ const Player = (() => {
 
   /* まれに（50人に1人ほど）、1つの能力に天才的な才能を持つ選手が出る。
      天才の能力は上限が100ではなくなり（101以上はSS）、伸びやすい（body.js） */
-  const GENIUS_CHANCE = 1 / 50;
+  const GENIUS_CHANCE = 1 / 80;
   const GENIUS_BAT = ['meet', 'power', 'speed', 'arm', 'field', 'catch'];
   const GENIUS_PIT = ['control', 'stamina', 'velo'];
 

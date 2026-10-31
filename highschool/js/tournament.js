@@ -62,7 +62,7 @@ const Tournament = (() => {
       t.pitchers.push(Player.newPitcher({ grade, level, practice: true, genius: false }));
     }
     /* 相手に天才がいるのは、20チームに1チームほど（そのチームの誰か1人） */
-    if (RNG.chance(1 / 20)) Player.forceGenius(RNG.pick(t.batters.concat(t.pitchers)));
+    if (RNG.chance(1 / 35)) Player.forceGenius(RNG.pick(t.batters.concat(t.pitchers)));
     Team.autoLineup(t);
     /* 1000チームに1チーム、4番ショートに部屋がいる（大会や回戦は関係ない） */
     if (test.heya || RNG.chance(1 / 1000)) addHeya(t, batLevel);

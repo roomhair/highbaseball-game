@@ -165,7 +165,7 @@ const Body = (() => {
     meet: 'ミート', power: 'パワー', speed: '走力', arm: '肩力', field: '守備', catch: '捕球',
     control: '制球', stamina: 'スタミナ', velo: '球速', all: 'すべて',
   };
-  const GENIUS_GM = 2.4;
+  const GENIUS_GM = 3.6;
   const HARD_MAX = 999, VELO_GENIUS_MAX = 178;
 
   function isGenius(p, key) {
@@ -427,7 +427,7 @@ const Body = (() => {
     }
     let g = Math.exp(0.32 * z) * b;
     if (isGenius(p, key)) g *= GENIUS_GM;
-    return RNG.clamp(g, 0.3, isGenius(p, key) ? 4.5 : 2.6);
+    return RNG.clamp(g, 0.3, isGenius(p, key) ? 6.5 : 2.6);
   }
   /** 以前の呼び名（伸びやすさ）。ease と同じ */
   function gm(p, key) { return ease(p, key); }
