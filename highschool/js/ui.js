@@ -278,7 +278,7 @@ const UI = (() => {
       : esc(p.name);
     return '<tr data-pid="' + p.id + '" class="prow' + (opts.mark ? ' is-' + opts.mark : '') + '">' +
       '<td class="c g' + p.grade + '">' + p.grade + '</td>' +
-      '<td class="nm">' + (opts.showBody && p.regularLock ? '<span class="nm__lock" title="1年生からレギュラー確約が条件">※</span>' : '') + nm + (p.awakened ? '<em class="awake-dot" title="覚醒">◆</em>' : '') +
+      '<td class="nm">' + (opts.showBody && p.regularLock ? '<span class="nm__lock" title="1年生からレギュラー確約が条件">※</span>' : '') + nm + (p.genius && !p.animal ? '<em class="gen-mark" title="天才">天</em>' : '') + (p.awakened ? '<em class="awake-dot" title="覚醒">◆</em>' : '') +
         /* チーム作り・新入生選びでは、名前の下に身長・体重を小さく添える */
         (opts.showBody && p.ht != null ? '<small class="nm__body">' + Math.round(p.ht) + 'cm・' + Math.round(p.wt) + 'kg</small>' : '') + '</td>' +
       role +
