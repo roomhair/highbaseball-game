@@ -232,10 +232,17 @@ const Game = (() => {
       /* 秋の大会がすべて終わったあとの特訓を終えたら、センバツ相当に
          出られるかどうかをここで発表する。実際にその先（センバツ相当・
          新入生を迎える手続き）へ進むのは、発表の画面を見たあと */
-      case 'springOrNextSummer': showSpringResult(); break;
+      case 'springOrNextSummer': showWinterResult(); break;
       case 'nextSummer': startTournament('local'); break;
       default: startTournament('local');
     }
+  }
+
+  /** 冬の特訓のあと、秋の大会で負けた時点からの伸びを見せる画面へ */
+  function showWinterResult() {
+    state.phase = 'winter-result';
+    save();
+    Screens.winterResult(state);
   }
 
   /** センバツ相当に出られるかどうかの発表画面へ */
@@ -266,6 +273,7 @@ const Game = (() => {
       今までの特訓と同じ仕様（選択5回・見送り3回）のまま */
   function toPostFallTraining() {
     revealPros();
+    state.winterSnap = Screens.snapStats(state.team);
     toTrainingPhase('springOrNextSummer', TRAIN_LIMITS.normal);
   }
 
@@ -1289,6 +1297,7 @@ const Game = (() => {
       case 'poach': toPoach(); break;
       case 'localwin': Screens.localWin(state); break;
       case 'champion': Screens.champion(state); break;
+      case 'winter-result': Screens.winterResult(state); break;
       case 'spring-result': Screens.springResult(state, state.springQualified); break;
       case 'offseason':
         Screens.offseason(state, Offseason.retiring(state.team).map(Offseason.farewell)); break;
@@ -1582,6 +1591,7 @@ const Game = (() => {
     on('btn-localwin-next', () => (state.mode === 'soccer' ? soccerStartTournament('national') : startTournament('national')));
     on('btn-celebrate-next', toVerdict);
     on('btn-champion-next', () => (state.mode === 'soccer' ? toSoccerOffseason() : toOffseason()));
+    on('btn-winter-next', () => showSpringResult());
     on('btn-spring-result-next', () => (state.mode === 'soccer' ? soccerAfterSpringResult() : afterSpringResult()));
     /* 「特訓へ」ボタンは画面を描くたびに作り直されるので、画面側で受ける */
     const intro = UI.el('screen-trainintro');

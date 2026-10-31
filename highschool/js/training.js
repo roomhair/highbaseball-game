@@ -70,10 +70,10 @@ const Training = (() => {
      velo・pitch の幅はそのまま。新しく覚える変化球（ball）は、どの段階でも
      1〜2から（覚えたては未熟で、そこから練習で伸ばす）。 */
   const POWER_TIERS = [
-    { key: 's',  weight: 30, label: '',        stat: [9, 13],  velo: [1, 3], pitch: 1, ball: [1, 2] },
-    { key: 'm',  weight: 40, label: '',        stat: [13, 21], velo: [3, 5], pitch: 1, ball: [1, 2] },
-    { key: 'l',  weight: 22, label: 'みっちり', stat: [22, 32], velo: [5, 8], pitch: 1, ball: [1, 2] },
-    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [32, 47], velo: [7, 12], pitch: 4, ball: [1, 2] },
+    { key: 's',  weight: 30, label: '',        stat: [5, 9],   velo: [1, 3], pitch: 1, ball: [1, 2] },
+    { key: 'm',  weight: 40, label: '',        stat: [9, 14],  velo: [2, 4], pitch: 1, ball: [1, 2] },
+    { key: 'l',  weight: 22, label: 'みっちり', stat: [14, 21], velo: [4, 6], pitch: 1, ball: [1, 2] },
+    { key: 'xl', weight: 4,  label: '猛特訓',   stat: [21, 29], velo: [5, 9], pitch: 4, ball: [1, 2] },
   ];
 
   /* 1枚のカードで、同じ選手の能力がいくつ同時に上がるか。
@@ -212,8 +212,10 @@ const Training = (() => {
   /** 上がり幅。額面（効き目の段階）に、伸びやすさとランダムを掛け、上限までの余裕で止める */
   function statAmount(p, key, power, room, share) {
     const base = (key === 'velo' ? range(power.velo) : range(power.stat)) * (share || 1);
-    const f = RNG.clamp(RNG.clamp(0.6 + 0.4 * Body.ease(p, key), 0.5, 1.7) * RNG.clamp(RNG.norm(1, 0.3), 0.4, 1.8), 0.4, 1.6);
-    return Math.min(room, Math.max(1, Math.round(base * f)));
+    const f = RNG.clamp(RNG.clamp(0.6 + 0.4 * Body.ease(p, key), 0.5, 1.7) * RNG.clamp(RNG.norm(1, 0.3), 0.4, 1.8), 0.4, 1.4);
+    /* 1回の特訓で1つの能力が上がるのは、どんなに当たりでも25まで（球速は10km/hまで） */
+    const most = key === 'velo' ? 10 : 25;
+    return Math.min(room, most, Math.max(1, Math.round(base * f)));
   }
 
   /** どうしても引けなかったときの、ごくふつうのカード */

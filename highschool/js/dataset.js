@@ -79,7 +79,8 @@ const Dataset = (() => {
           : Player.newBatter({ grade: 1, pos: pool[i % pool.length], prestigeBonus }));
       }
     } else {
-      for (let i = 0; i < n; i++) players.push(Player.newPitcher({ grade: 1, prestigeBonus }));
+      /* 新入生の投手の最速は、ほかより少しだけ遅くしてある（veloAdj） */
+      for (let i = 0; i < n; i++) players.push(Player.newPitcher({ grade: 1, prestigeBonus, veloAdj: -2.5 }));
     }
     players.sort((a, b) => Player.rating(b) - Player.rating(a));
     return players;

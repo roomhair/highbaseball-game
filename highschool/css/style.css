@@ -2353,3 +2353,12 @@ a.appbar__title { text-decoration: none; }
 @keyframes celeIn { from { opacity: 0; } to { opacity: 1; } }
 #screen-celebrate .champ { position: static; overflow: visible; }
 #screen-celebrate .champ__rays { display: none; }
+
+/* 冬の成果 */
+.wrow { padding: 8px 0; border-bottom: 1px solid var(--line, #e3e6ea); }
+.wrow__name { font-weight: 700; margin-bottom: 4px; }
+.wrow__name small { font-weight: 400; opacity: .7; }
+.wrow__stats { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; }
+.wchip { display: inline-flex; align-items: baseline; gap: 3px; white-space: nowrap; }
+.wchip i { font-style: normal; opacity: .65; font-size: 12px; }
+.wchip em { font-style: normal; font-weight: 700; color: #d9480f; }

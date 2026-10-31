@@ -341,6 +341,11 @@ const Player = (() => {
     else p[key] = Body.stat(p, key, p[key] + 6);
   }
 
+  /** 天才にする（相手チームに、20チームに1チームほどの割合で混ぜるときに使う） */
+  function forceGenius(p) {
+    setGenius(p, RNG.pick(p.kind === 'pitcher' ? GENIUS_PIT : GENIUS_BAT));
+  }
+
   function maybeGenius(p) {
     if (!RNG.chance(GENIUS_CHANCE)) return;
     setGenius(p, RNG.pick(p.kind === 'pitcher' ? GENIUS_PIT : GENIUS_BAT));
@@ -441,7 +446,7 @@ const Player = (() => {
          prestigeBonus（学校の格）も、同じ考え方で少しだけ乗せる */
       velo: Math.round(softVelo(
         123 + (ownTeam ? 0 : OPP_VELO_BASE) + (GRADE_VELO[grade] || 0) + (ownTeam ? (OWN_VELO_EXTRA[grade] || 0) : 0) + talent * 2.5 + levelShift * (ownTeam ? 0.38 : OPP_VELO_SLOPE) +
-        (opt.prestigeBonus || 0) * 0.3 + RNG.norm(0, 7.5))),
+        (opt.prestigeBonus || 0) * 0.3 + (opt.veloAdj || 0) + RNG.norm(0, 7.5))),
       control: makeStat(base, talent, 0, ownTeam, opt.wide),
       stamina: makeStat(base, talent, 0, ownTeam, opt.wide),
       pitches: rollPitches(talent, grade, levelShift / 8, bodyPhys),
@@ -554,7 +559,7 @@ const Player = (() => {
 
   return {
     pitchesInOrder,
-    newBatter, newPitcher, newBear, newHeya, rating, breakScore, aptPenalty, handLabel, batsText, setThrows, gradeLabel, RIGHT_ONLY,
+    newBatter, newPitcher, newBear, newHeya, forceGenius, rating, breakScore, aptPenalty, handLabel, batsText, setThrows, gradeLabel, RIGHT_ONLY,
     tryAptUp, aptUpChance,
     emptyBat, emptyPit, addStats, seedPracticeBat, seedPracticePit, practiceGames,
     rollTalent, nextId, currentSeq, setSeq,

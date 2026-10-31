@@ -934,6 +934,53 @@ const Screens = (() => {
     UI.show('screen-celebrate');
   }
 
+  const WINTER_BAT = [['meet', 'ミート'], ['power', 'パワー'], ['speed', '走力'], ['arm', '肩'], ['field', '守備'], ['catch', '捕球']];
+  const WINTER_PIT = [['control', '制球'], ['stamina', 'スタミナ']];
+
+  /** 秋の大会が終わった時点の能力を控える（冬の成果で差を出すため） */
+  function snapStats(team) {
+    const snap = {};
+    team.batters.concat(team.pitchers).forEach((p) => {
+      const o = {};
+      WINTER_BAT.concat(WINTER_PIT, [['velo']]).forEach((k) => { if (p[k[0]] != null) o[k[0]] = p[k[0]]; });
+      if (p.kind === 'pitcher') Player.pitchesInOrder(p).forEach((q) => { o['p:' + q.name] = q.level; });
+      snap[p.id] = o;
+    });
+    return snap;
+  }
+
+  /** 冬の特訓のあと、秋の大会以降に誰がどれだけ伸びたかを一覧にする */
+  function winterResult(state) {
+    const t = state.team;
+    const snap = state.winterSnap || {};
+    const chip = (label, val, base, raw) => {
+      const d = base == null ? 0 : val - base;
+      return '<span class="wchip' + (d > 0 ? ' is-up' : '') + '"><i>' + esc(label) + '</i>' +
+        (raw ? '<b class="rankval">' + val + '</b>' : UI.rankNum(val)) +
+        '<em>' + (d > 0 ? '（+' + d + '）' : '') + '</em></span>';
+    };
+    const row = (p, keys, extra, no) => {
+      const b = snap[p.id] || {};
+      return '<div class="wrow"><div class="wrow__name">' + esc(p.name) + '</div><div class="wrow__stats">' +
+        keys.map((k) => chip(k[1], p[k[0]], b[k[0]], k[2])).join('') +
+        (extra ? extra(p, b) : '') + '</div></div>';
+    };
+    const lineupIds = t.lineup.map((s) => s.pid);
+    const bats = lineupIds.map((id) => t.batters.find((p) => p.id === id)).filter(Boolean)
+      .concat(t.batters.filter((p) => lineupIds.indexOf(p.id) < 0)
+        .sort((a, b) => Player.rating(b) - Player.rating(a)));
+    const pits = t.pitchers.slice().sort((a, b) => Player.rating(b) - Player.rating(a));
+    const pitKeys = [['velo', '球速', true]].concat(WINTER_PIT);
+    const pitExtra = (p, b) => Player.pitchesInOrder(p).map((q) =>
+      chip(q.name, q.level, b['p:' + q.name], true)).join('');
+    UI.html('winter-body',
+      '<h3 class="section-sub">野手</h3>' +
+      bats.map((p, i) => row(p, WINTER_BAT, null, i < lineupIds.length ? i + 1 : 0)).join('') +
+      '<h3 class="section-sub">投手</h3>' +
+      pits.map((p) => row(p, pitKeys, pitExtra)).join(''));
+    UI.show('screen-winter');
+  }
+
   /** 秋の大会がすべて終わったあと、センバツ相当に出られるかどうかの発表。
       出られる年は少しだけ華やかに、出られない年は淡々と伝える */
   function springResult(state, qualified) {
@@ -1556,7 +1603,7 @@ const Screens = (() => {
 
   return {
     pick, ready, training, trainingResult, opening, pregame,
-    info, teamInfo, poachWin, poachRelease, poachCinema, poachSuccess, poachFailed, champion, celebrate, springResult, offseason, settings, lineupCard, bindRows,
+    info, teamInfo, poachWin, poachRelease, poachCinema, poachSuccess, poachFailed, champion, celebrate, springResult, winterResult, snapStats, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
     localWin, soccerStart, soccerOpening, soccerPregame, soccerVerdict, soccerGrowth, soccerMatchResult, soccerLineupEditor, soccerCelebrate, soccerOffseason, soccerDecide, soccerReturn,
     soccerTraining, soccerTrainingResult, soccerSpringResult, soccerNewcomers,

@@ -99,7 +99,7 @@ const Body = (() => {
   const OFF_K = 3.2;            // idx 1 あたりに足す能力値（1〜100の能力）
   const VELO_K = 2.0;           // idx 1 あたりに足す球速（km/h）
   /* 月ごとの体格の変化が、能力とその上限に効く強さ（入部時の体格による補正には掛けない） */
-  const BODY_GAIN = 6.0, BODY_GAIN_PIT = 9.0;
+  const BODY_GAIN = 3.5, BODY_GAIN_PIT = 5.5;
   const GM_K = 0.10;            // idx 1 あたりの伸びやすさの変化
   const CEIL_BASE = 98, CEIL_K = 3.5, CEIL_MIN = 80;
   const OFF_CAP = 20, VELO_CAP = 14;    // 補正の合計の上限
@@ -165,7 +165,7 @@ const Body = (() => {
     meet: 'ミート', power: 'パワー', speed: '走力', arm: '肩力', field: '守備', catch: '捕球',
     control: '制球', stamina: 'スタミナ', velo: '球速', all: 'すべて',
   };
-  const GENIUS_GM = 1.45;
+  const GENIUS_GM = 2.4;
   const HARD_MAX = 999, VELO_GENIUS_MAX = 178;
 
   function isGenius(p, key) {
@@ -427,7 +427,7 @@ const Body = (() => {
     }
     let g = Math.exp(0.32 * z) * b;
     if (isGenius(p, key)) g *= GENIUS_GM;
-    return RNG.clamp(g, 0.3, isGenius(p, key) ? 3.2 : 2.6);
+    return RNG.clamp(g, 0.3, isGenius(p, key) ? 4.5 : 2.6);
   }
   /** 以前の呼び名（伸びやすさ）。ease と同じ */
   function gm(p, key) { return ease(p, key); }
@@ -484,10 +484,14 @@ const Body = (() => {
      大きく変わる選手には、身長がぐんと伸びる型・体重がぐんと増える型・どちらも大きく伸びる型がある。
      大きく変わる選手のうち4分の1は、一度能力が落ちたあとで大きく伸びる（体が変わる途中でバランスを崩す）。
        bh … 身長の伸びの倍率　bw … 体重の増減（体づくり）の倍率 */
-  function rollGrowth(kind) {
+  function rollGrowth(kind, hzNow) {
+    /* 大きく変わる選手は、背が高いほど多く、低いほど少ない。あまり変わらない選手はその逆 */
+    const hzc = RNG.clamp(hzNow || 0, -2, 2);
+    const pBig = RNG.clamp(0.20 + 0.10 * hzc, 0.03, 0.42);
+    const pSmall = RNG.clamp(0.30 - 0.06 * hzc, 0.18, 0.45);
     const r = RNG.rand();
-    if (r >= 0.7) return { bh: 0.8, bw: 0.4 };
-    if (r >= 0.2) return { bh: 1.1, bw: 1.2 };
+    if (r >= 1 - pSmall) return { bh: 0.8, bw: 0.4 };
+    if (r >= pBig) return { bh: 1.1, bw: 1.2 };
     const t = RNG.rand();
     if (t < 0.25) {
       /* 一度落ちて、そのあと大きく伸びる。2つの能力に起こる */
@@ -516,7 +520,7 @@ const Body = (() => {
   /** 古い保存データを含め、体づくりの型を付ける（すでにあれば何もしない） */
   function giveGrowth(p, parts) {
     if (p.bw != null) return;
-    const g = parts || rollGrowth(p.kind);
+    const g = parts || rollGrowth(p.kind, hz(p));
     p.bh = g.bh; p.bw = g.bw;
     p.surge = g.surge ? Object.assign({}, g.surge, { t0: tOf(p) + g.surge.after }) : null;
   }
@@ -541,7 +545,7 @@ const Body = (() => {
       htType: r < 0.25 ? -1 : (r < 0.75 ? 0 : 1),
       wtTrend: RNG.clamp(0.3 + RNG.gauss() * 0.8, -1.5, 1.8),
       wtResp: RNG.clamp(0.8 + RNG.gauss() * 0.5, -0.2, 1.4),
-      growth: rollGrowth(kk),
+      growth: rollGrowth(kk, (ht - refH) / HT_SD),
       tilt: rollTilt(kk, (ht - refH) / HT_SD),
     };
   }
@@ -581,9 +585,13 @@ const Body = (() => {
       let d = (target - done) * gain;
       if (gain > 1) {
         /* 月ごとの体格の変化は、1か月に上がるのは多くて4、下がるのは多くて2まで。
-           残りは次の月以降に持ち越す（体重のぶれで能力が急に大きく動かないように） */
-        d = Math.max(-2, Math.min(4, d));
-        p.bodyOff[key] = done + d / gain;
+           残りは次の月以降に持ち越す（体重のぶれで能力が急に大きく動かないように）。
+           背が低い選手は体格での伸びが小さく、背が高い選手は大きい（入部時の身長の高さで決まる） */
+        const hf = RNG.clamp(1 + 0.3 * (p.hz0 == null ? 0 : p.hz0), 0.5, 1.5);
+        const sc = d > 0 ? hf : 1;
+        const step = Math.max(-2, Math.min(4 * sc, d * sc));
+        p.bodyOff[key] = done + step / (gain * sc);
+        d = step;
       } else p.bodyOff[key] = target;
       p.bodyAcc[key] = (p.bodyAcc[key] || 0) + d;
       const whole = Math.round(p.bodyAcc[key]);
