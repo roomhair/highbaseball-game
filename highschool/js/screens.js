@@ -106,7 +106,7 @@ const Screens = (() => {
     return '<div class="capbox' + (ok ? '' : ' is-empty') + '">' +
       '<div class="capbox__label">キャプテン</div>' +
       (ok
-        ? '<div class="capbox__name"><b>' + esc(cap.name) + '</b>' +
+        ? '<div class="capbox__name"><b class="capbox__link" data-cap="' + cap.id + '">' + esc(cap.name) + '</b>' +
           '<span>' + cap.grade + '年・' + UI.roleText(t, cap) + '</span></div>'
         : (out
             ? '<div class="capbox__none"><b>' + esc(cap.name) + '</b> は引退します</div>'
@@ -118,6 +118,11 @@ const Screens = (() => {
 
   /** キャプテンの欄のボタンをつなぐ */
   function wireCaptain(root, team, onDone, exclude) {
+    /* キャプテンの名前を押すと、個人画面を見られる */
+    root.querySelectorAll('.capbox__link').forEach((n) => n.addEventListener('click', () => {
+      const p = Team.find(team, n.dataset.cap);
+      if (p) UI.openPlayer(p, { team: team, rename: false });
+    }));
     const b = root.querySelector('#btn-captain');
     if (b) b.addEventListener('click', () => UI.captainPicker(team, () => {
       onChange();          // 決めた時点で保存する

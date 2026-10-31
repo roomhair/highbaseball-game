@@ -1228,7 +1228,7 @@ const UI = (() => {
           '　走力 ' + rankNum(p.speed);
       return '<button type="button" class="spick__item' +
         (cap && cap.id === p.id ? ' is-on' : '') + '" data-pid="' + p.id + '">' +
-        '<span class="spick__nm">' + esc(p.name) + '</span>' +
+        '<span class="spick__nm" data-detail="' + p.id + '">' + esc(p.name) + '</span>' +
         '<span class="spick__fat">' + p.grade + '年</span>' +
         '<span class="spick__meta">' + meta + '</span>' +
       '</button>';
@@ -1240,6 +1240,15 @@ const UI = (() => {
       {
         kind: 'captain',
         onOpen(body) {
+          /* 名前を押すと、その選手の個人画面を見られる（閉じると、この一覧に戻る） */
+          body.querySelectorAll('.spick__nm[data-detail]').forEach((n) =>
+            n.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const p = list.find((x) => x.id === n.dataset.detail);
+              if (!p) return;
+              closeModal.back = () => { closeModal.back = null; captainPicker(team, onDone, opts); };
+              openPlayer(p, { team, rename: false });
+            }));
           body.querySelectorAll('.spick__item').forEach((b) =>
             b.addEventListener('click', () => {
               team.captainId = b.dataset.pid;
