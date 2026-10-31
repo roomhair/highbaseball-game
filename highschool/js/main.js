@@ -583,10 +583,10 @@ const Game = (() => {
       oppName: state.opponent.name, tourName: tourLabel(),
       cold: res.cold, walkoff: ctx.walkoff,
       last: isLast,
-      first: state.tour.index === 0,
+      first: state.tour.index <= 1,
       /* 負けたときに次へ進む先の文言（大会によっては、負けても
          次の大会へ進むことがある） */
-      loseNext: win ? null : loseNextLabel(state.tour.kind, isLast, res.cold && state.tour.index === 0),
+      loseNext: win ? null : loseNextLabel(state.tour.kind, isLast, res.cold && state.tour.index <= 1),
       winPitcher: findPit('w'), losePitcher: findPit('l'), savePitcher: findPit('sv'),
       homers,
     };
@@ -639,7 +639,7 @@ const Game = (() => {
   /** 負けたときの結果画面に出す「次へ」の文言。大会によっては、
       負けても決勝（＝最後の回）まで来ていれば次の大会へ進む */
   function loseNextLabel(kind, isLast, cold) {
-    /* 県大会の1回戦でのコールド負けは、このあとサッカー転向の画面へ進む */
+    /* 県大会の1・2回戦でのコールド負けは、このあとサッカー転向の画面へ進む */
     if ((kind === 'local' || kind === 'fallPref') && cold) return '次へ';
     if (kind === 'local' || kind === 'national') return 'オフシーズンへ';
     if (kind === 'fallPref' && isLast) return '秋季地区大会へ';
@@ -814,7 +814,7 @@ const Game = (() => {
     /* 秋は「負けても決勝（＝最後の回）まで来ていれば次の大会へ進む」
        （県大会2位以内→地区大会、地区大会2位以内→センバツ相当）。
        地区大会は準優勝でも神宮大会相当には進めない（優勝校だけ） */
-    /* 県大会（夏でも秋でも）の1回戦でコールド負けすると、部員はやる気を無くし、
+    /* 県大会（夏でも秋でも）の1・2回戦でコールド負けすると、部員はやる気を無くし、
        野球部はそのままサッカー部になる */
     if (kind === 'fallPref' && state.lastResult.cold && state.lastResult.first) { toSoccerConversion(); return; }
     if (kind === 'fallPref') {
@@ -833,7 +833,7 @@ const Game = (() => {
     if (kind === 'fallJingu') { toPostFallTraining(); return; }
     if (kind === 'spring') { toPostSpringTraining(); return; }
 
-    /* 夏の県大会の1回戦でコールド負けすると、部員はやる気を無くし、野球部は
+    /* 夏の県大会の1・2回戦でコールド負けすると、部員はやる気を無くし、野球部は
        そのままサッカー部になる（試合のあと、サッカー転向の画面へ進む） */
     if (kind === 'local' && state.lastResult.cold && state.lastResult.first) { toSoccerConversion(); return; }
     toOffseason();
