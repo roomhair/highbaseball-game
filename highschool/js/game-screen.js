@@ -387,6 +387,10 @@ const GameScreen = (() => {
       /* 交代を1つずつ外に渡す／どこまで見たかを外に伝える。
          中断して開き直したときに同じ試合を続けるために使う */
       onSub: gs.onSub || null,
+      /* タイムでの変更をなかったことにする（保存してある交代の数を教え、
+         その数まで巻き戻して試合を流し直してもらう） */
+      subCount: gs.subCount || null,
+      onReset: gs.onReset || null,
       onProgress: gs.onProgress || null,
       timeAt: 0,
       /* この試合で退いた選手。試合ごとに作り直す。
@@ -429,7 +433,13 @@ const GameScreen = (() => {
     toTop();
     requestAnimationFrame(toTop);
     setTimeout(toTop, 120);
-    step();
+    if (gs.openTime) {
+      /* 変更をリセットして流し直したあとは、タイムの画面から続ける */
+      ctx.awaitTap = true;
+      openTime();
+    } else {
+      step();
+    }
   }
 
   /* ---------- 速さの切り替え ---------- */
@@ -778,6 +788,7 @@ const GameScreen = (() => {
     /* この止まった場所を控えておく。中断から戻ったとき、
        同じところで同じ交代を入れ直すために使う */
     ctx.timeAt = ctx.live.log.length;
+    ctx.subN0 = ctx.subCount ? ctx.subCount() : 0;
     ctx.savedOrders = JSON.stringify(ctx.live.state().orders || null);
     /* 「1打席ずつ」でタップ待ちだったかを覚えておく。
        覚えずに戻すと、タイムを閉じた拍子に1打席ぶん進んでしまう */
@@ -814,6 +825,26 @@ const GameScreen = (() => {
     resumeTime();             // 念のため（after が外されていた場合の保険）
   }
 
+  /** いまの投手が受けた打者の数。交代した直後や試合の最初は0 */
+  function myPitcherBf() {
+    const st = ctx.live.state ? ctx.live.state() : null;
+    const S = st && (ctx.mySide === 'home' ? st.H : st.A);
+    return S ? S.bf : 0;
+  }
+
+  /** タイムをかけてから、何か変えたか（保存してある交代が増えたか） */
+  function changedInTime() {
+    return !!(ctx.onReset && ctx.subCount && ctx.subCount() > ctx.subN0);
+  }
+
+  /** このタイムでの変更をすべて取り消し、タイムをかけた時点に戻す */
+  function resetTime() {
+    if (!changedInTime()) { timeMenu(); return; }
+    UI.closeModal.after = null;
+    UI.closeModal();
+    ctx.onReset(ctx.subN0, ctx.timeAt);
+  }
+
   function timeMenu() {
     const t = myTeam();
     const fielding = iAmFielding();
@@ -840,13 +871,15 @@ const GameScreen = (() => {
         (runners.length ?
           '<button type="button" class="btn btn--wide" id="tm-pr">代走を出す</button>' : '') +
         /* 投手交代は守備中だけ。攻撃中は出さない */
-        (fielding ? '<button type="button" class="btn btn--wide" id="tm-pit">投手を交代する</button>' : '') +
+        (fielding ? '<button type="button" class="btn btn--wide" id="tm-pit"' + (myPitcherBf() < 1 ? ' disabled' : '') + '>投手を交代する</button>' +
+          (myPitcherBf() < 1 ? '<p class="time__note">投手は、最低1人の打者に投げるまで交代できません。</p>' : '') : '') +
         (fielding ?
           '<button type="button" class="btn btn--wide" id="tm-sub">守備を交代する</button>' : '') +
         /* 守備位置の変更は守備中だけ。攻撃中は出さない */
         (fielding ? '<button type="button" class="btn btn--wide" id="tm-pos">守備位置を変える</button>' : '') +
       '</div>' +
       '<div class="actions actions--modal">' +
+        (changedInTime() ? '<button type="button" class="btn btn--wide" id="tm-reset">変更をリセット</button>' : '') +
         '<button type="button" class="btn btn--primary btn--wide" id="tm-close">試合に戻る</button>' +
       '</div>',
       {
@@ -859,6 +892,7 @@ const GameScreen = (() => {
           on('#tm-sub', () => subPlayer());
           on('#tm-pos', () => changePos());
           on('#tm-pit', () => { if (iAmFielding()) changePitcher(); });
+          on('#tm-reset', resetTime);
           on('#tm-close', closeTime);
         },
       }
@@ -1099,6 +1133,7 @@ const GameScreen = (() => {
 
   /** 投手交代 */
   function changePitcher() {
+    if (myPitcherBf() < 1) { timeMenu(); return; }
     const t = myTeam();
     const now = Team.find(t, currentPitcherId(t));
     const list = availablePitchers(t).map((p) => ({

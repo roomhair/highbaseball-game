@@ -485,11 +485,21 @@ const Game = (() => {
       catchUp();
     }
 
+    const reopen = !!g.reopenTime;
+    g.reopenTime = false;
     const out = [];
     (g.subs || []).forEach((r) => (r.out || []).forEach((id) => out.push(id)));
     GameScreen.start(
       { away, home, mySide: g.mySide, skipTo,
         retired: out,
+        openTime: reopen,
+        subCount() { return g.subs.length; },
+        /* タイムでの変更をリセット。保存してある交代をその前の数まで戻し、
+           タイムをかけた場所まで試合を流し直して、タイムの画面に戻る */
+        onReset(n, at) {
+          g.subs.length = n; g.step = at; g.reopenTime = true; save();
+          resumeGame();
+        },
         onSub(rec) { g.subs.push(rec); g.step = rec.at; save(); },
         onProgress(i) { g.step = i; save(); } },
       live, () => afterGame(live.result));

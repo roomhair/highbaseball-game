@@ -2378,3 +2378,6 @@ a.appbar__title { text-decoration: none; }
   font-style: normal; font-size: 9px; font-weight: 800; line-height: 14px; vertical-align: 1px;
   background: #ffd43b; color: #7a4b00; border: 1px solid #e0a800;
 }
+
+.time__note { margin: -4px 0 6px; font-size: 11.5px; color: var(--ink-mute); }
+.time__menu .btn[disabled] { opacity: .45; cursor: not-allowed; }
