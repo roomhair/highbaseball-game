@@ -69,8 +69,7 @@ const Screens = (() => {
   function ready(state) {
     const t = state.team;
     const html =
-      '<p class="section-lead">' + esc(t.name) + '　部員' + Team.all(t).length + '人　' +
-        'チーム力 <b>' + Team.strength(t) + '</b></p>' +
+      '<p class="section-lead">' + esc(t.name) + '　部員' + Team.all(t).length + '人</p>' +
       captainBox(t) +
       lineupCard(t) +
       '<h3 class="sub">野手</h3><div id="ready-bat"></div>' +
@@ -1109,8 +1108,7 @@ const Screens = (() => {
       return;
     }
     UI.html('teaminfo-body',
-      '<p class="section-lead">' + esc(t.name) + '　部員' + Team.all(t).length + '人　' +
-        'チーム力 <b>' + Team.strength(t) + '</b></p>' +
+      '<p class="section-lead">' + esc(t.name) + '　部員' + Team.all(t).length + '人</p>' +
       '<h3 class="sub">野手</h3><div id="ti-bat"></div>' +
       '<h3 class="sub">投手</h3><div id="ti-pit"></div>');
     const open = (pid) => {
