@@ -149,6 +149,7 @@ const Game = (() => {
     const tr = state.monthSnap.train;
     Object.keys(post).forEach((id) => {
       Object.keys(post[id]).forEach((k) => {
+        if (k.charAt(0) === '_') return;       // 身長・体重は特訓の分ではない
         const d = post[id][k] - ((pre[id] || {})[k] != null ? pre[id][k] : post[id][k]);
         if (d > 0) { (tr[id] = tr[id] || {})[k] = (tr[id][k] || 0) + d; }
       });

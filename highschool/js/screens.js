@@ -949,6 +949,8 @@ const Screens = (() => {
       const o = {};
       WINTER_BAT.concat(WINTER_PIT, [['velo']]).forEach((k) => { if (p[k[0]] != null) o[k[0]] = p[k[0]]; });
       if (p.kind === 'pitcher') Player.pitchesInOrder(p).forEach((q) => { o['p:' + q.name] = q.level; });
+      /* 身長・体重も控える（成果の画面で、前からの変化を出すため。「_」で始まるものは能力ではない） */
+      if (p.ht != null) { o._ht = p.ht; o._wt = p.wt; }
       snap[p.id] = o;
     });
     return snap;
@@ -982,6 +984,14 @@ const Screens = (() => {
         (raw ? '<b class="rankval">' + val + '</b>' : UI.rankNum(val)) +
         '<em>' + (d > 0 ? '（+' + d + '）' : (d < 0 ? '（−' + (-d) + '）' : '')) + '</em></span>';
     };
+    /* 身長・体重。前からの変化があれば、横に（+1cm）のように添える */
+    const bodyText = (c, b) => {
+      const part = (now, before, unit) => {
+        const n = Math.round(now), d = before == null ? 0 : n - Math.round(before);
+        return n + unit + (d ? '（' + (d > 0 ? '+' : '−') + Math.abs(d) + unit + '）' : '');
+      };
+      return part(c.stats._ht, b._ht, 'cm') + '・' + part(c.stats._wt, b._wt, 'kg');
+    };
     const order = (c) => (c.kind === 'pitcher'
       ? ['velo', 'control', 'stamina'].concat(Object.keys(c.stats).filter((k) => k.indexOf('p:') === 0))
       : ['meet', 'power', 'speed', 'arm', 'field', 'catch']);
@@ -992,7 +1002,7 @@ const Screens = (() => {
       return '<div class="wrow"><div class="wrow__name"><small>' + esc(c.role) + '</small> ' +
           '<button type="button" class="linkbtn wrow__nm" data-pid="' + c.id + '">' + esc(c.name) + '</button></div>' +
         '<div class="wrow__meta">' + c.grade + '年　' + c.hand +
-          (c.ht != null ? '　' + Math.round(c.ht) + 'cm・' + Math.round(c.wt) + 'kg' : '') +
+          (c.ht != null ? '　' + bodyText(c, b) : '') +
           (c.kind === 'pitcher' ? '' : '　弾道' + UI.trajIcon(c.traj)) + '</div>' +
         '<div class="wrow__stats">' + order(c).filter((k) => c.stats[k] != null).map((k) => chip(k, c.stats[k], b[k])).join('') + '</div>' +
         (trKeys.length ? '<div class="wrow__train"><b>特訓</b>' + trKeys.map((k) => '<span>' + esc(statLabel(k)) + ' +' + tr[k] + '</span>').join('') + '</div>' : '') +
