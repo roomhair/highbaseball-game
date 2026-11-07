@@ -377,6 +377,9 @@ const Game = (() => {
       state.prefSchools = NAMES.prefecturePool(22, [state.team && state.team.name, state.settings.schoolName]);
     }
     state.tour = Tournament.create(kind, from, j, used, state.prefSchools);
+    /* 前の大会の相手を持ち越さない。秋・春の大会で1回戦負けすると、負けた相手のチームが
+       残ったままになり、次の大会の1回戦でそのチーム（疲れた先発のまま）と当たってしまっていた */
+    state.opponent = null;
     Growth.resetTour(state.team);
     /* 大きな大会に出場したこと自体で、学校の格が少し上がる */
     const R = CONFIG.SCHOOL_RANK;
