@@ -132,7 +132,7 @@ const Body = (() => {
      弾道         … 長いリーチで打球が上がりやすい（+0.4）
      ミート・スタミナ・変化球 … 身長とは結びつけない（0） */
   const DIR_H = {
-    velo: 1, power: 1.7, arm: 1.2,
+    velo: 0.7, power: 1.2, arm: 1.0,
     field: -0.9, catch: -0.9, control: -0.8,
     speed: -0.7, traj: 0.4,
     meet: -0.8, stamina: 0.4, pitch: -0.8,
@@ -140,7 +140,7 @@ const Body = (() => {
 
   /* 入部後に身長が伸びたとき（標準より伸びたぶん）の、能力への効き方 */
   const DIR_G = {
-    velo: 1, power: 1.7, arm: 1.2, stamina: 0.5,
+    velo: 0.7, power: 1.2, arm: 1.0, stamina: 0.5,
     field: -0.12, catch: -0.12, control: -0.08, speed: -0.1,
     meet: 0, traj: 0.3, pitch: 0,
   };
@@ -177,10 +177,10 @@ const Body = (() => {
   function geniusLabel(p) { return p && p.genius ? (GENIUS_LABEL[p.genius] || '') : ''; }
 
   /** 体格から決まる、球速の目安の上限（km/h）。小柄・細身の投手は、速い球を投げにくい。
-      身長165cmで140、1cmにつき0.9ずつ上がる。BMIが20.5を下回ると、1につき1.2ずつ下がる */
+      身長165cmで140、1cmにつき0.7ずつ上がる。BMIが20.5を下回ると、1につき1.2ずつ下がる */
   function veloCap(p) {
     const bmi = p.wt / Math.pow(p.ht / 100, 2);
-    return 140 + 0.9 * (p.ht - 165) - 1.2 * Math.max(0, 20.5 - bmi);
+    return 140 + 0.7 * (p.ht - 165) - 1.2 * Math.max(0, 20.5 - bmi);
   }
   /** 球速を体格に合わせる。目安の上限を超えたぶんは、3割だけ残す（上限の数字に団子にならないように）。
       天才の球速・体格が変わらない選手（熊）・投手以外はそのまま */
@@ -354,7 +354,7 @@ const Body = (() => {
   function capBody(p, key) {
     const h = hz(p), z = zS(p), under = underweight(p);
     switch (key) {
-      case 'power':   return 9 * h + 4 * Math.max(0, Math.min(z, 1.5)) - 8 * under;
+      case 'power':   return 6 * h + 4 * Math.max(0, Math.min(z, 1.5)) - 8 * under;
       case 'arm':     return 7 * h + 2 * Math.max(0, Math.min(z, 1.5)) - 6 * under;
       case 'meet':    return -3 * h;
       case 'speed':   return -3 * h - 5 * Math.max(0, z - 0.6);
@@ -416,9 +416,9 @@ const Body = (() => {
     const h = hz(p), zw = zS(p), under = underweight(p);
     let b = 1;
     switch (key) {
-      case 'power':   b = 1 + 0.18 * h - 0.3 * under; break;
+      case 'power':   b = 1 + 0.12 * h - 0.3 * under; break;
       case 'arm':     b = 1 + 0.14 * h - 0.25 * under; break;
-      case 'velo':    b = 1 + 0.12 * h - 0.25 * under; break;
+      case 'velo':    b = 1 + 0.07 * h - 0.25 * under; break;
       case 'stamina': b = 1 + 0.06 * h; break;
       case 'speed':   b = 1 - 0.1 * h - 0.25 * Math.max(0, zw - 0.6); break;
       case 'meet':
@@ -589,7 +589,7 @@ const Body = (() => {
         /* 月ごとの体格の変化は、1か月に上がるのは多くて4、下がるのは多くて2まで。
            残りは次の月以降に持ち越す（体重のぶれで能力が急に大きく動かないように）。
            背が低い選手は体格での伸びが小さく、背が高い選手は大きい（入部時の身長の高さで決まる） */
-        const hf = RNG.clamp(1 + 0.3 * (p.hz0 == null ? 0 : p.hz0), 0.5, 1.5);
+        const hf = RNG.clamp(1 + 0.15 * (p.hz0 == null ? 0 : p.hz0), 0.7, 1.3);
         const sc = d > 0 ? hf : 1;
         const step = Math.max(-2, Math.min(4 * sc, d * sc));
         p.bodyOff[key] = done + step / (gain * sc);
