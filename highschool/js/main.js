@@ -112,18 +112,18 @@ const Game = (() => {
     state.monthSnap = { t: Body.now(), base: Screens.snapStats(state.team), train: {} };
   }
 
-  /** 月を進める処理 advance をくるむ。月が進んだら、その月の終わりの能力と、月の初めからの伸びを控える */
+  /** 月を進める処理 advance をくるむ。月が進んだら、その月の成果（月の初めからの伸び。
+      その月の特訓・試合と、月が変わるときの体格・練習による伸び）を控える */
   function advanceMonths(advance) {
     const t0 = Body.now();
     const track = !!state && state.mode !== 'soccer' && !!state.team;
     /* 月の初めの基準が無いとき（この機能の前からの保存データ）は、この月の成果は出せない。
        基準だけ作って、次の月から出す（基準と同じ値を比べても、何も変わっていないように見えてしまうため） */
-    const hadSnap = !!state.monthSnap;
-    const cards = track ? Screens.statCards(state.team) : null;     // 月の終わり（進める前）の能力
+    const snap = track ? state.monthSnap : null;
     advance();
     if (!track || Body.now() <= t0) return;
-    const snap = state.monthSnap;
-    if (hadSnap) {
+    const cards = Screens.statCards(state.team);        // 月が変わったあとの能力
+    if (snap) {
       /* 続けて2回進んだとき（新年度など）は、1つの成果にまとめる */
       if (pendingMonth && pendingMonth.to === t0) pendingMonth = { from: pendingMonth.from, to: Body.now(), snap: pendingMonth.snap, cards };
       else pendingMonth = { from: t0, to: Body.now(), snap, cards };
