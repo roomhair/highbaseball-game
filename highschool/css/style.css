@@ -2393,3 +2393,14 @@ a.appbar__title { text-decoration: none; }
 .wrow__train { margin-top: 3px; font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
 .wrow__train b { color: #d9480f; font-weight: 800; }
 .wrow__train span { font-weight: 700; color: #d9480f; }
+
+/* 月の成果の画面：上空から見た高校のグラウンドと校舎を背景にする */
+.month-bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+#screen-month .month-fg { position: relative; z-index: 1; }
+#screen-month .section-title { display: inline-block; padding: 4px 14px; border-radius: 999px; background: rgba(255, 255, 255, .92); box-shadow: 0 2px 6px rgba(0, 0, 0, .18); border-bottom: 0; }
+#screen-month .section-sub { display: inline-block; padding: 3px 12px; border-radius: 999px; background: rgba(255, 255, 255, .92); box-shadow: 0 2px 6px rgba(0, 0, 0, .18); }
+#screen-month .wrow { margin: 10px 0; padding: 9px 12px; border: 1px solid rgba(255, 255, 255, .7); border-radius: 10px; background: rgba(255, 255, 255, .9); box-shadow: 0 2px 8px rgba(0, 0, 0, .15); }
+:root[data-theme="dark"] #screen-month .section-title, :root[data-theme="dark"] #screen-month .section-sub { background: rgba(20, 28, 48, .88); }
+:root[data-theme="dark"] #screen-month .wrow { background: rgba(20, 28, 48, .88); border-color: rgba(160, 190, 255, .25); }
+/* 背景を画面に固定するため、この画面はふわっと出る動き（transform）を使わない */
+#screen-month.is-active { animation: none; }
