@@ -44,7 +44,12 @@ const Tournament = (() => {
 
   /** level の強さの相手校を1つ作る。kind を渡すと、秋・センバツ相当では
       3年生を出さない（省略時は従来どおり夏の大会として作る） */
+  /* 毎月の練習による成長（body.js の practiceGrowth）で自軍が伸びる分、相手を全体に強くして釣り合わせる。
+     能力が全体に+1伸びると、相手の強さ（level）の+1.5〜2ほどに相当する */
+  const OPP_LEVEL_BONUS = 2.5;
+
   function makeTeam(name, level, kind) {
+    level += OPP_LEVEL_BONUS;
     const t = Team.create(name);
     const noSenior = FALL_SPRING_KINDS.indexOf(kind) >= 0;
     /* 強い相手ほど、投手に比べて野手が強く作られすぎていた（投手が弱いのに打線だけ強い）。

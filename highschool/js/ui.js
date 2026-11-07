@@ -555,6 +555,25 @@ const UI = (() => {
     /* その月の終わりの身長・体重。いまの値から、新しい月から順に増減を引いて戻していく */
     const r1 = (v) => Math.round(v * 10) / 10;
     let hNow = r1(p.ht), wNow = r1(p.wt);
+    /* 能力も同じように、いまの値から戻して「何から何になったか」を出す */
+    const cur = {};
+    const curOf = (k) => {
+      if (cur[k] != null) return cur[k];
+      if (k.indexOf('pitch:') === 0) {
+        const q = Player.pitchesInOrder(p).find((x) => x.name === k.slice(6));
+        return q ? q.level : null;
+      }
+      return p[k] != null ? p[k] : null;
+    };
+    const stText = (k, d) => {
+      const after = curOf(k);
+      if (after == null) return bodyStatName(k) + signed(d, k === 'velo' ? 'km/h' : '');
+      const before = after - d;
+      cur[k] = before;
+      const isLetter = k !== 'velo' && k !== 'traj' && k.indexOf('pitch:') !== 0;
+      const fmt = (v) => isLetter ? rankOf(v) + Math.round(v) : String(Math.round(v)) + (k === 'velo' ? 'km/h' : '');
+      return bodyStatName(k) + ' ' + fmt(before) + '→' + fmt(after) + '（' + signed(d) + '）';
+    };
     const rows = log.map((e) => {
       const hAt = hNow, wAt = wNow;
       hNow = r1(hNow - e.dh); wNow = r1(wNow - e.dw);
@@ -562,7 +581,7 @@ const UI = (() => {
       const head = y !== lastYear ? '<li class="bodylog__year">' + y + '年</li>' : '';
       lastYear = y;
       const stats = Object.keys(e.s || {}).filter((k) => e.s[k]).map((k) =>
-        '<span class="bodylog__st">' + bodyStatName(k) + signed(e.s[k], k === 'velo' ? 'km/h' : '') + '</span>').join('');
+        '<span class="bodylog__st">' + stText(k, e.s[k]) + '</span>').join('');
       return head + '<li class="bodylog__row"><span class="bodylog__m">' + m + '月</span>' +
         '<span class="bodylog__b">身長' + hAt.toFixed(1) + 'cm</span>' +
         '<span class="bodylog__b">体重' + wAt.toFixed(1) + 'kg</span>' + stats + '</li>';
