@@ -2408,3 +2408,11 @@ a.appbar__title { text-decoration: none; }
 #screen-month .month-next { position: fixed; right: 12px; top: 66px; z-index: 35; min-width: 76px; box-shadow: 0 3px 10px rgba(0, 0, 0, .3); }
 
 .wrow__nm { font: inherit; font-weight: 800; color: inherit; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+
+/* オーダー画面の鍵（付けると、おまかせでも必ずスタメンに入る） */
+.lupin { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; margin-left: 6px; padding: 0;
+  border: 1px solid var(--line, #c9d3e6); border-radius: 6px; background: transparent; color: var(--ink-mute, #6b7a99); cursor: pointer; vertical-align: middle; }
+.lupin.is-on { color: #b97800; background: #fff2c2; border-color: #e0a800; }
+
+.luname { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; }
+.luname .lupin { margin-left: 0; flex: none; }

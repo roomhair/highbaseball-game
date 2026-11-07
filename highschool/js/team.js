@@ -156,14 +156,16 @@ const Team = (() => {
       chosen.push({ p, pos: posKey });
     });
 
-    /* レギュラー確約の選手（regularLock）は、必ずスタメンに入れる。
+    /* レギュラー確約の選手（regularLock）と、鍵を付けた選手（pinned）は、必ずスタメンに入れる。
        守れる場所があれば、そこを守っている控えめの選手と入れ替え、
-       どこも守れそうになければ指名打者にする */
+       どこも守れそうになければ指名打者にする（指名打者がすでに埋まっていれば、
+       いちばん守れる場所の選手と入れ替える）。スタメンは9人までなので、9人を超えたぶんは入れられない */
+    const isForced = (p) => p.regularLock || p.pinned;
     let forceDH = null;
-    pool.filter((p) => p.regularLock && !used.has(p.id)).forEach((lp) => {
+    pool.filter((p) => isForced(p) && !used.has(p.id)).forEach((lp) => {
       let bi = -1, bs = -1e9;
       chosen.forEach((c, i) => {
-        if (c.p.regularLock) return;
+        if (isForced(c.p)) return;
         const sc = defScore(lp, c.pos);
         if (sc > bs) { bs = sc; bi = i; }
       });
@@ -173,6 +175,10 @@ const Team = (() => {
         used.add(lp.id);
       } else if (!forceDH) {
         forceDH = lp;
+      } else if (bi >= 0) {
+        used.delete(chosen[bi].p.id);
+        chosen[bi] = { p: lp, pos: chosen[bi].pos };
+        used.add(lp.id);
       }
     });
 

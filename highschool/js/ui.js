@@ -782,6 +782,13 @@ const UI = (() => {
     return p.ht != null ? ' ' + Math.round(p.ht) + 'cm・' + Math.round(p.wt) + 'kg' : '';
   }
 
+  /** 鍵のマーク。付いているときは閉じた鍵（金色）、付いていないときは開いた鍵 */
+  function lockIcon(on) {
+    return on
+      ? '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="3" y="7" width="10" height="7.5" rx="1.6" fill="currentColor"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.6 0V7" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>'
+      : '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="3" y="7" width="10" height="7.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.4-1" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
+  }
+
   function lineupEditor(team, onDone) {
 
     /* 選手ID → 守備位置。'BENCH' なら控え。
@@ -870,7 +877,9 @@ const UI = (() => {
             options + '</select>' +
         '</span>' +
         '<span class="lumain">' +
-          '<button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
+          '<span class="luname"><button type="button" class="linkbtn pname" data-pid="' + p.id + '">' + esc(p.name) + '</button>' +
+          '<button type="button" class="lupin' + (p.pinned ? ' is-on' : '') + '" data-pid="' + p.id + '" aria-pressed="' + (p.pinned ? 'true' : 'false') + '"' +
+            ' title="' + (p.pinned ? '鍵を外す' : '鍵を付ける（おまかせでも、必ずスタメンに入れる）') + '">' + lockIcon(!!p.pinned) + '</button></span>' +
           '<span class="tiny">' + p.grade + '年 ' + handMark(p) + bodyTiny(p) + (p.regularLock ? ' <b class="lulock">確約</b>' : '') + '</span>' +
         '</span>' +
         '<span class="lustats lustats--row">' + trajIcon(p.traj) +
@@ -1080,6 +1089,19 @@ const UI = (() => {
 
       body.querySelectorAll('.pname').forEach((b) =>
         b.addEventListener('click', () => openDetail(b.dataset.pid)));
+
+      /* 鍵。付けた選手は、「野手をおまかせ」でも必ずスタメンに入る（スタメンは9人までなので、鍵も9人まで） */
+      body.querySelectorAll('.lupin').forEach((b) => b.addEventListener('click', () => {
+        const p = Team.find(team, b.dataset.pid);
+        if (!p) return;
+        if (!p.pinned && team.batters.filter((x) => x.pinned).length >= 9) {
+          lockMsg = 'スタメンは9人なので、鍵を付けられるのは9人までです。';
+        } else {
+          p.pinned = !p.pinned;
+          lockMsg = '';
+        }
+        refresh();
+      }));
 
       /* おまかせは、いま開いている面だけを組み直す。
          打線を直したいのに投げる順番まで変わってしまうと、
