@@ -989,7 +989,8 @@ const Screens = (() => {
       const b = (base || {})[c.id] || {};
       const tr = (train || {})[c.id] || {};
       const trKeys = Object.keys(tr).filter((k) => tr[k] > 0 && c.stats[k] != null);
-      return '<div class="wrow"><div class="wrow__name"><small>' + esc(c.role) + '</small> ' + esc(c.name) + '</div>' +
+      return '<div class="wrow"><div class="wrow__name"><small>' + esc(c.role) + '</small> ' +
+          '<button type="button" class="linkbtn wrow__nm" data-pid="' + c.id + '">' + esc(c.name) + '</button></div>' +
         '<div class="wrow__meta">' + c.grade + '年　' + c.hand +
           (c.ht != null ? '　' + Math.round(c.ht) + 'cm・' + Math.round(c.wt) + 'kg' : '') +
           (c.kind === 'pitcher' ? '' : '　弾道' + UI.trajIcon(c.traj)) + '</div>' +
@@ -1001,9 +1002,18 @@ const Screens = (() => {
       '<h3 class="section-sub">投手</h3>' + cards.filter((c) => c.kind === 'pitcher').map(row).join('');
   }
 
+  /** 一覧の選手名を押すと、その選手の個人画面を開く */
+  function wireNames(root, state) {
+    root.querySelectorAll('.wrow__nm').forEach((b) => b.addEventListener('click', () => {
+      const p = Team.find(state.team, b.dataset.pid);
+      if (p) UI.openPlayer(p, { team: state.team, rename: false });
+    }));
+  }
+
   /** 冬の特訓のあと、秋の大会以降に誰がどれだけ伸びたかを一覧にする */
   function winterResult(state) {
     UI.html('winter-body', cardsHtml(statCards(state.team), state.winterSnap || {}, null));
+    wireNames(UI.el('winter-body'), state);
     UI.show('screen-winter');
   }
 
@@ -1014,6 +1024,7 @@ const Screens = (() => {
     const label = (m.to - m.from <= 1 ? mo(m.from) + '月' : mo(m.from) + '〜' + mo(m.to - 1) + '月') + 'の成果';
     UI.el('month-title').textContent = label;
     UI.html('month-body', cardsHtml(m.cards, m.snap.base, m.snap.train));
+    wireNames(UI.el('month-body'), state);
     UI.el('btn-month-next').onclick = onNext;
     UI.show('screen-month');
   }
