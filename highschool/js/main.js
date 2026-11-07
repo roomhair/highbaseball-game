@@ -104,6 +104,7 @@ const Game = (() => {
      state.monthSnap に、月の初めの能力（base）と、その月の特訓で上がった分（train）を持つ。
      画面は一時的なもので、保存した phase は変えない（途中で閉じても、元の画面から再開できる） */
   let pendingMonth = null;
+  let shownMonthT = null;      // 月の成果の画面に出している月（左上の年月をそろえるため）
 
   /** いまの能力を、月の初めの基準にする */
   function monthBegin() {
@@ -133,6 +134,7 @@ const Game = (() => {
     const m = pendingMonth;
     pendingMonth = null;
     if (!m || !state || state.mode === 'soccer') { cont(); return; }
+    shownMonthT = m.from;
     Screens.monthResult(state, m, cont);
   }
 
@@ -160,7 +162,8 @@ const Game = (() => {
   /** 画面の左上に出す「◯年◯月」（2026年4月から始まる） */
   function clockText() {
     if (!state || (!state.team && state.mode !== 'soccer')) return '';
-    const now = Body.now();
+    /* 月の成果の画面にいるあいだは、その成果の月（もう次の月に進んでいても、成果の月）を出す */
+    const now = shownMonthT != null && UI.currentScreen() === 'screen-month' ? shownMonthT : Body.now();
     return Body.yearOf(now) + '年' + Body.monthOf(now) + '月';
   }
   UI.setClockGetter(clockText);
