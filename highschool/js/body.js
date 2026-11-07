@@ -693,6 +693,21 @@ const Body = (() => {
     return p[key] === before ? null : { key, d: p[key] - before };
   }
 
+  /** 毎月の練習で、体格が変わらなくても少しずつ上がる技術の伸び。
+      ひとつの能力が1か月に上がるのは+1まで。伸びやすい能力ほど上がりやすく、上限は超えない */
+  const PRACTICE_RATE = 0.1;
+  function practiceGrowth(p, changed) {
+    statKeysOf(p).forEach((key) => {
+      if (p[key] == null) return;
+      const rate = key === 'velo' ? PRACTICE_RATE * 0.7 : PRACTICE_RATE;
+      if (!RNG.chance(Math.min(0.3, rate * RNG.clamp(ease(p, key), 0.6, 2)))) return;
+      if (p.cap0 && p[key] >= Math.floor(capOf(p, key))) return;
+      const before = p[key];
+      p[key] = stat(p, key, before + 1);
+      if (p[key] !== before) changed[key] = (changed[key] || 0) + (p[key] - before);
+    });
+  }
+
   /** 1か月進める（その月に入るときの変化）。4月に入るときは、学年が上がった
       あとで呼ぶ（その前の学年ぶんの伸びを数える）。履歴に1件残す */
   function stepMonth(p) {
@@ -720,6 +735,7 @@ const Body = (() => {
     const changed = applyChange(p, p.kind === 'pitcher' ? BODY_GAIN_PIT : BODY_GAIN);
     const knack = bodyKnack(p);
     if (knack) changed[knack.key] = (changed[knack.key] || 0) + knack.d;
+    practiceGrowth(p, changed);
     /* 特訓で伸びた分は、特訓から次の大会までの月に、均等にばらけさせて履歴に載せる */
     if (p.gainPlan && p.gainPlan[to]) {
       Object.keys(p.gainPlan[to]).forEach((k) => { changed[k] = (changed[k] || 0) + p.gainPlan[to][k]; });

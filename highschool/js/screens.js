@@ -960,13 +960,13 @@ const Screens = (() => {
     const snap = state.winterSnap || {};
     const chip = (label, val, base, raw) => {
       const d = base == null ? 0 : val - base;
-      return '<span class="wchip' + (d > 0 ? ' is-up' : '') + '"><i>' + esc(label) + '</i>' +
+      return '<span class="wchip' + (d > 0 ? ' is-up' : (d < 0 ? ' is-down' : '')) + '"><i>' + esc(label) + '</i>' +
         (raw ? '<b class="rankval">' + val + '</b>' : UI.rankNum(val)) +
-        '<em>' + (d > 0 ? '（+' + d + '）' : '') + '</em></span>';
+        '<em>' + (d > 0 ? '（+' + d + '）' : (d < 0 ? '（−' + (-d) + '）' : '')) + '</em></span>';
     };
     const row = (p, keys, extra, no) => {
       const b = snap[p.id] || {};
-      return '<div class="wrow"><div class="wrow__name">' + esc(p.name) + '</div>' +
+      return '<div class="wrow"><div class="wrow__name"><small>' + esc(UI.roleText(t, p)) + '</small> ' + esc(p.name) + '</div>' +
         '<div class="wrow__meta">' + p.grade + '年　' + UI.handMark(p) +
           (p.ht != null ? '　' + Math.round(p.ht) + 'cm・' + Math.round(p.wt) + 'kg' : '') +
           (p.kind === 'pitcher' ? '' : '　弾道' + UI.trajIcon(p.traj)) + '</div>' +
@@ -984,7 +984,7 @@ const Screens = (() => {
       chip(q.name, q.level, b['p:' + q.name], true)).join('');
     UI.html('winter-body',
       '<h3 class="section-sub">野手</h3>' +
-      bats.map((p, i) => row(p, WINTER_BAT, null, i < lineupIds.length ? i + 1 : 0)).join('') +
+      bats.map((p) => row(p, WINTER_BAT)).join('') +
       '<h3 class="section-sub">投手</h3>' +
       pits.map((p) => row(p, pitKeys, pitExtra)).join(''));
     UI.show('screen-winter');
