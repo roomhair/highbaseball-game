@@ -1013,10 +1013,25 @@ const Screens = (() => {
   }
 
   /** 一覧の選手名を押すと、その選手の個人画面を開く */
-  function wireNames(root, state) {
+  function wireNames(root, state, m) {
     root.querySelectorAll('.wrow__nm').forEach((b) => b.addEventListener('click', () => {
       const p = Team.find(state.team, b.dataset.pid);
-      if (p) UI.openPlayer(p, { team: state.team, rename: false });
+      if (!p) return;
+      let view = p;
+      /* 月の成果から開くときは、成果の画面と同じ値（その月の終わりの能力・体格・成長履歴）で見せる。
+         月はもう次に進んでいるので、そのままだと、次の月の伸びぶんだけ数字が違ってしまう */
+      const c = m && m.cards.find((x) => x.id === p.id);
+      if (c) {
+        view = Object.assign({}, p);
+        Object.keys(c.stats).forEach((k) => {
+          if (k.charAt(0) === '_' || k.indexOf('p:') === 0) return;
+          view[k] = c.stats[k];
+        });
+        if (c.stats._ht != null) { view.ht = c.stats._ht; view.wt = c.stats._wt; }
+        if (p.pitches) view.pitches = p.pitches.map((q) => (c.stats['p:' + q.name] != null ? Object.assign({}, q, { level: c.stats['p:' + q.name] }) : q));
+        view.bodyLog = (p.bodyLog || []).filter((e) => e.t <= m.from);
+      }
+      UI.openPlayer(view, { team: state.team, rename: false });
     }));
   }
 
@@ -1034,7 +1049,7 @@ const Screens = (() => {
     const label = (m.to - m.from <= 1 ? mo(m.from) + '月' : mo(m.from) + '〜' + mo(m.to - 1) + '月') + 'の成果';
     UI.el('month-title').textContent = label;
     UI.html('month-body', cardsHtml(m.cards, m.snap.base, m.snap.train));
-    wireNames(UI.el('month-body'), state);
+    wireNames(UI.el('month-body'), state, m);
     UI.el('btn-month-next').onclick = onNext;
     UI.show('screen-month');
   }
