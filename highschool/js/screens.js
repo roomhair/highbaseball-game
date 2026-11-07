@@ -998,7 +998,7 @@ const Screens = (() => {
     const row = (c) => {
       const b = (base || {})[c.id] || {};
       const tr = (train || {})[c.id] || {};
-      const trKeys = Object.keys(tr).filter((k) => tr[k] > 0 && c.stats[k] != null);
+      const trKeys = order(c).filter((k) => tr[k] > 0 && c.stats[k] != null);   // 能力の並びと同じ順（上がったものだけ）
       return '<div class="wrow"><div class="wrow__name"><small>' + esc(c.role) + '</small> ' +
           '<button type="button" class="linkbtn wrow__nm" data-pid="' + c.id + '">' + esc(c.name) + '</button></div>' +
         '<div class="wrow__meta">' + c.grade + '年　' + c.hand +
