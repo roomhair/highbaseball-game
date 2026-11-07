@@ -10,8 +10,8 @@
 # 2026-10 に直した欠陥（README の「AdSense 審査の経緯」）：
 #   1. 審査コードの抜け … js/ads.js は adsense.slots が空だと AdSense を読み込まないので、
 #      各ページの <head> に直書きのタグが無いと審査コードが存在しないことになる
-#   2. 住所のずれ     … 正規は https://baseball.roomhaird.com。apex（roomhaird.com）は将来別サイト用なので、
-#      野球サイトのURLに apex を書いてはいけない（canonical がぶれる）
+#   2. 住所のずれ     … 正規は https://roomhaird.com。baseball.roomhaird.com を書くと、
+#      審査対象の apex が「自分は複製だ」と宣言することになる
 #   3. noindex        … わざと付けているページ以外に付いていたら止める
 #
 # 見つけたら GitHub Actions の注釈（::error）で場所を示し、終了コード 1 で止まる。
@@ -64,15 +64,15 @@ for f in "${pages[@]}"; do
   fi
 done
 
-# 2. apex（https://roomhaird.com）を書いていないか
+# 2. baseball.roomhaird.com を書いていないか
 while IFS= read -r hit; do
   file="${hit%%:*}"
   rest="${hit#*:}"
   line="${rest%%:*}"
-  echo "::error file=${file#./},line=$line::apex の https://roomhaird.com と書かれています。https://baseball.roomhaird.com で書いてください"
+  echo "::error file=${file#./},line=$line::baseball.roomhaird.com と書かれています。https://roomhaird.com で書いてください"
   fail=1
 done < <(
-  grep -rnIE 'https?://roomhaird\.com' "$dir" \
+  grep -rnI 'baseball\.roomhaird\.com' "$dir" \
     --include='*.html' --include='*.xml' --include='*.txt' --include='*.js' \
     --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=data --exclude-dir=tools
 )
