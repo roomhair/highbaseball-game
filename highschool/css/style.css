@@ -2416,3 +2416,8 @@ a.appbar__title { text-decoration: none; }
 
 .luname { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; }
 .luname .lupin { margin-left: 0; flex: none; }
+
+/* 攻略ガイドの表 */
+.gtable { width: 100%; max-width: 100%; table-layout: fixed; border-collapse: collapse; margin: 10px 0 14px; font-size: 13px; }
+.gtable th, .gtable td { padding: 6px 7px; border: 1px solid var(--line, #c9d3e6); text-align: left; overflow-wrap: anywhere; }
+.gtable thead th { background: var(--panel-2, #eef3fb); font-weight: 800; }
