@@ -653,7 +653,11 @@ const Sim = (() => {
           k: 'half', inning, half, tie, score: [A.runs, H.runs],
           nextOrder: (off.order % 9) + 1,
         });
+        /* 回の頭で止まったとき（タイム）に、前の回のアウトカウントと走者が残って見えないように、
+           この回の走者（タイブレークなら無死一二塁）とアウトカウントを、ここで置いておく */
+        const startBases = tie ? tieRunners(off, def) : [null, null, null];
         ctl.off = off; ctl.def = def; ctl.inning = inning; ctl.half = half;
+        ctl.bases = startBases; ctl.outs = 0;
         yield;
         /* 表の途中でコールドの点差に達しても、まだ試合を終えない
            （後攻が最後の攻撃をする前に、先攻の攻撃中に決まってしまうのは
@@ -661,7 +665,7 @@ const Sim = (() => {
            途中で打ち切ってよい。先攻がリードしている裏は、3アウトまで
            行う（点差だけを見ると、裏が1人も打たずに終わってしまう） */
         const stopHalf = () => coldNow() && H.runs > A.runs;
-        const got = yield* playHalf(off, def, log, inning, half, tie, A, H, stopHalf, ctl);
+        const got = yield* playHalf(off, def, log, inning, half, tie, A, H, stopHalf, ctl, startBases);
         off.byInning[inning - 1] = got;
 
         if (half === 'bottom' && inning >= CONFIG.GAME.INNINGS && H.runs > A.runs) {
@@ -875,24 +879,28 @@ const Sim = (() => {
   /* 半分の回を進める。ジェネレータにしてあるのは、
      打席と打席のあいだで止めて「タイム」を受け付けられるようにするため。
      log に積むたびに yield するので、呼ぶ側はそこで止められる。 */
-  function* playHalf(off, def, log, inning, half, tie, A, H, stop, ctl) {
+  /** タイブレークの走者（無死一二塁）。走者は前の打順の2人にしておく */
+  function tieRunners(off, def) {
+    const bases = [null, null, null];
+    const i1 = (off.order + 7) % 9, i2 = (off.order + 8) % 9;
+    bases[0] = Team.find(off.team, off.team.lineup[i2].pid);
+    bases[1] = Team.find(off.team, off.team.lineup[i1].pid);
+    /* タイブレークの走者は、還っても投手の自責点にはならない */
+    bases.forEach((r) => { if (r) { r._resp = def.pitcherId; r._uer = true; } });
+    return bases;
+  }
+
+  function* playHalf(off, def, log, inning, half, tie, A, H, stop, ctl, startBases) {
     const offTeam = off.team, defTeam = def.team;
     let outs = 0;
-    let bases = [null, null, null];
+    let bases = startBases || (tie ? tieRunners(off, def) : [null, null, null]);
     let got = 0;
     /* タイムの画面から、いまの走者を見たり代走を出したりできるように、
        外から見えるところに置いておく。bases はここから先、新しい配列に
        差し替えられることがあるので、yield のたびに置き直す */
     const showBases = () => { if (ctl) { ctl.bases = bases; ctl.outs = outs; } };
 
-    /* タイブレークは無死一二塁から。走者は前の打順の2人にしておく */
-    if (tie) {
-      const i1 = (off.order + 7) % 9, i2 = (off.order + 8) % 9;
-      bases[0] = Team.find(offTeam, off.team.lineup[i2].pid);
-      bases[1] = Team.find(offTeam, off.team.lineup[i1].pid);
-      /* タイブレークの走者は、還っても投手の自責点にはならない */
-      bases.forEach((r) => { if (r) { r._resp = def.pitcherId; r._uer = true; } });
-    }
+    /* タイブレークは無死一二塁から（走者は回の頭で置いてある） */
     showBases();
 
     while (outs < 3) {
