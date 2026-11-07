@@ -2389,3 +2389,7 @@ a.appbar__title { text-decoration: none; }
 .spick__nm { justify-self: start; }
 
 .wchip.is-down em { color: #1d6fd1; }
+
+.wrow__train { margin-top: 3px; font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
+.wrow__train b { color: #d9480f; font-weight: 800; }
+.wrow__train span { font-weight: 700; color: #d9480f; }

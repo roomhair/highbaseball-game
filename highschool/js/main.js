@@ -98,6 +98,57 @@ const Game = (() => {
     return state.team ? Team.all(state.team) : [];
   }
 
+  /* ---------- 月ごとの成果 ----------
+     月が進むたびに、その月の成果（月の初めからの能力の伸び）を一覧にして見せる。
+     特訓があった月は、そのうち特訓で上がった分も出す。
+     state.monthSnap に、月の初めの能力（base）と、その月の特訓で上がった分（train）を持つ。
+     画面は一時的なもので、保存した phase は変えない（途中で閉じても、元の画面から再開できる） */
+  let pendingMonth = null;
+
+  /** いまの能力を、月の初めの基準にする */
+  function monthBegin() {
+    if (!state || !state.team || state.mode === 'soccer') return;
+    state.monthSnap = { t: Body.now(), base: Screens.snapStats(state.team), train: {} };
+  }
+
+  /** 月を進める処理 advance をくるむ。月が進んだら、その月の終わりの能力と、月の初めからの伸びを控える */
+  function advanceMonths(advance) {
+    const t0 = Body.now();
+    const track = !!state && state.mode !== 'soccer' && !!state.team;
+    if (track && !state.monthSnap) monthBegin();
+    const cards = track ? Screens.statCards(state.team) : null;     // 月の終わり（進める前）の能力
+    advance();
+    if (!track || Body.now() <= t0) return;
+    const snap = state.monthSnap;
+    /* 続けて2回進んだとき（新年度など）は、1つの成果にまとめる */
+    if (pendingMonth && pendingMonth.to === t0) pendingMonth = { from: pendingMonth.from, to: Body.now(), snap: pendingMonth.snap, cards };
+    else pendingMonth = { from: t0, to: Body.now(), snap, cards };
+    const base = {};
+    cards.forEach((c) => { base[c.id] = c.stats; });
+    state.monthSnap = { t: Body.now(), base, train: {} };
+  }
+
+  /** 月の成果が控えてあれば、画面に出して、そのあと cont へ。なければそのまま cont へ */
+  function flushMonth(cont) {
+    const m = pendingMonth;
+    pendingMonth = null;
+    if (!m || !state || state.mode === 'soccer') { cont(); return; }
+    Screens.monthResult(state, m, cont);
+  }
+
+  /** 特訓で上がった分を、その月の成果に足す（特訓の前の能力 pre と比べる） */
+  function noteMonthTrain(pre) {
+    if (!state.monthSnap) return;
+    const post = Screens.snapStats(state.team);
+    const tr = state.monthSnap.train;
+    Object.keys(post).forEach((id) => {
+      Object.keys(post[id]).forEach((k) => {
+        const d = post[id][k] - ((pre[id] || {})[k] != null ? pre[id][k] : post[id][k]);
+        if (d > 0) { (tr[id] = tr[id] || {})[k] = (tr[id][k] || 0) + d; }
+      });
+    });
+  }
+
   /** 次にその月が来る通し番号（いまの月と同じ月ならいま） */
   function nextMonth(month) {
     const now = Body.now();
@@ -127,7 +178,7 @@ const Game = (() => {
     const to = tr.clock0 + (tr.picks >= tr.pickLimit ? gap : Math.floor((k - 1) * gap / tr.pickLimit) + 1);
     const t = Math.min(to, tr.clock0 + gap);
     if (t > Body.now()) {
-      Body.advanceTo(clockPlayers(), t);
+      advanceMonths(() => Body.advanceTo(clockPlayers(), t));
       state.clockT = Body.now();
     }
   }
@@ -136,15 +187,15 @@ const Game = (() => {
   function clockTo(kind) {
     const m = CLOCK_MONTH[kind];
     if (!m) return;
-    Body.advanceTo(clockPlayers(), nextMonth(m));
+    advanceMonths(() => Body.advanceTo(clockPlayers(), nextMonth(m)));
     state.clockT = Body.now();
   }
 
   /** 新年度。3月まで進め、学年を上げてから4月に入る（4月の分は新しい学年で数える） */
   function clockNewYear(promote) {
-    Body.advanceTo(clockPlayers(), nextMonth(3));
+    advanceMonths(() => Body.advanceTo(clockPlayers(), nextMonth(3)));
     const r = promote();
-    Body.advanceTo(clockPlayers(), nextMonth(4));
+    advanceMonths(() => Body.advanceTo(clockPlayers(), nextMonth(4)));
     state.clockT = Body.now();
     return r;
   }
@@ -193,6 +244,7 @@ const Game = (() => {
         state.team.pitchers = state.sets.list[i];
         state.sets = null;
         Team.autoLineup(state.team);
+        monthBegin();
         toReady();
       },
     });
@@ -220,11 +272,17 @@ const Game = (() => {
   }
 
   function trainTake() {
+    if (!state.monthSnap) monthBegin();
+    const pre = Screens.snapStats(state.team);
     Training.choose(state.training, state.team);
+    noteMonthTrain(pre);
     trainClockStep(state.trainingNext, state.training);
     save();
-    if (state.training.done) showTrainingResult();
-    else Screens.training(state);
+    /* 月が変わったときは、その月の成果を見せてから続ける */
+    flushMonth(() => {
+      if (state.training.done) showTrainingResult();
+      else Screens.training(state);
+    });
   }
 
   function trainPass() {
@@ -390,8 +448,10 @@ const Game = (() => {
     save();
     /* 先に開幕画面を描いてから幕を下ろす。幕が開いたときに
        前の画面が残っていないようにするため */
-    Screens.opening(state);
-    UI.curtain('<b>' + UI.esc(tourLabel()) + '</b><span>開幕</span>', function () {});
+    flushMonth(() => {
+      Screens.opening(state);
+      UI.curtain('<b>' + UI.esc(tourLabel()) + '</b><span>開幕</span>', function () {});
+    });
   }
 
   /** 勝ち上がるほど、相手の投手も連戦で疲れている。自軍の先発の疲れ（staminaCarry）を目安に、
@@ -961,6 +1021,7 @@ const Game = (() => {
     state.mode = 'baseball';
     state.team = R.team;
     Body.advanceTo(Team.all(R.team), Body.now());    // サッカー部のあいだに過ぎた月ぶん、体格も進める
+    monthBegin();
     state.soccer = null;
     state.soccerReturn = null;
     state.tour = null;
@@ -1202,7 +1263,7 @@ const Game = (() => {
     state.phase = 'new-bat';
     state.sets = null;
     save();
-    newcomerBatters();
+    flushMonth(newcomerBatters);
   }
 
   /** 新入生の組を決める前の確認（決めたあとは選び直せない） */

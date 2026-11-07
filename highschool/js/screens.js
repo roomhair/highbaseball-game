@@ -954,40 +954,68 @@ const Screens = (() => {
     return snap;
   }
 
-  /** 冬の特訓のあと、秋の大会以降に誰がどれだけ伸びたかを一覧にする */
-  function winterResult(state) {
-    const t = state.team;
-    const snap = state.winterSnap || {};
-    const chip = (label, val, base, raw) => {
-      const d = base == null ? 0 : val - base;
-      return '<span class="wchip' + (d > 0 ? ' is-up' : (d < 0 ? ' is-down' : '')) + '"><i>' + esc(label) + '</i>' +
+  const STAT_LABEL = { meet: 'ミート', power: 'パワー', speed: '走力', arm: '肩', field: '守備', catch: '捕球', control: '制球', stamina: 'スタミナ', velo: '球速' };
+  const statLabel = (k) => STAT_LABEL[k] || (k.indexOf('p:') === 0 ? k.slice(2) : k);
+
+  /** 一覧に出す選手の札。野手はオーダー順（スタメンのあとに控えを能力順）、投手は能力順。
+      そのときの能力を札に写しておく（月が進んだあとで画面に出しても、その月の終わりの値で出せる） */
+  function statCards(team) {
+    const lineupIds = team.lineup.map((s) => s.pid);
+    const bats = lineupIds.map((id) => team.batters.find((p) => p.id === id)).filter(Boolean)
+      .concat(team.batters.filter((p) => lineupIds.indexOf(p.id) < 0)
+        .sort((a, b) => Player.rating(b) - Player.rating(a)));
+    const pits = team.pitchers.slice().sort((a, b) => Player.rating(b) - Player.rating(a));
+    const one = (p) => ({
+      id: p.id, name: p.name, kind: p.kind, role: UI.roleText(team, p), grade: p.grade,
+      hand: UI.handMark(p), ht: p.ht, wt: p.wt, traj: p.traj,
+      stats: snapStats({ batters: p.kind === 'pitcher' ? [] : [p], pitchers: p.kind === 'pitcher' ? [p] : [] })[p.id],
+    });
+    return bats.map(one).concat(pits.map(one));
+  }
+
+  /** 札の一覧を、伸びた幅つきで描く。base はその前の能力、train は特訓で上がった分 */
+  function cardsHtml(cards, base, train) {
+    const chip = (key, val, before) => {
+      const d = before == null ? 0 : val - before;
+      const raw = key === 'velo' || key.indexOf('p:') === 0;
+      return '<span class="wchip' + (d > 0 ? ' is-up' : (d < 0 ? ' is-down' : '')) + '"><i>' + esc(statLabel(key)) + '</i>' +
         (raw ? '<b class="rankval">' + val + '</b>' : UI.rankNum(val)) +
         '<em>' + (d > 0 ? '（+' + d + '）' : (d < 0 ? '（−' + (-d) + '）' : '')) + '</em></span>';
     };
-    const row = (p, keys, extra, no) => {
-      const b = snap[p.id] || {};
-      return '<div class="wrow"><div class="wrow__name"><small>' + esc(UI.roleText(t, p)) + '</small> ' + esc(p.name) + '</div>' +
-        '<div class="wrow__meta">' + p.grade + '年　' + UI.handMark(p) +
-          (p.ht != null ? '　' + Math.round(p.ht) + 'cm・' + Math.round(p.wt) + 'kg' : '') +
-          (p.kind === 'pitcher' ? '' : '　弾道' + UI.trajIcon(p.traj)) + '</div>' +
-        '<div class="wrow__stats">' +
-        keys.map((k) => chip(k[1], p[k[0]], b[k[0]], k[2])).join('') +
-        (extra ? extra(p, b) : '') + '</div></div>';
+    const order = (c) => (c.kind === 'pitcher'
+      ? ['velo', 'control', 'stamina'].concat(Object.keys(c.stats).filter((k) => k.indexOf('p:') === 0))
+      : ['meet', 'power', 'speed', 'arm', 'field', 'catch']);
+    const row = (c) => {
+      const b = (base || {})[c.id] || {};
+      const tr = (train || {})[c.id] || {};
+      const trKeys = Object.keys(tr).filter((k) => tr[k] > 0 && c.stats[k] != null);
+      return '<div class="wrow"><div class="wrow__name"><small>' + esc(c.role) + '</small> ' + esc(c.name) + '</div>' +
+        '<div class="wrow__meta">' + c.grade + '年　' + c.hand +
+          (c.ht != null ? '　' + Math.round(c.ht) + 'cm・' + Math.round(c.wt) + 'kg' : '') +
+          (c.kind === 'pitcher' ? '' : '　弾道' + UI.trajIcon(c.traj)) + '</div>' +
+        '<div class="wrow__stats">' + order(c).filter((k) => c.stats[k] != null).map((k) => chip(k, c.stats[k], b[k])).join('') + '</div>' +
+        (trKeys.length ? '<div class="wrow__train"><b>特訓</b>' + trKeys.map((k) => '<span>' + esc(statLabel(k)) + ' +' + tr[k] + '</span>').join('') + '</div>' : '') +
+        '</div>';
     };
-    const lineupIds = t.lineup.map((s) => s.pid);
-    const bats = lineupIds.map((id) => t.batters.find((p) => p.id === id)).filter(Boolean)
-      .concat(t.batters.filter((p) => lineupIds.indexOf(p.id) < 0)
-        .sort((a, b) => Player.rating(b) - Player.rating(a)));
-    const pits = t.pitchers.slice().sort((a, b) => Player.rating(b) - Player.rating(a));
-    const pitKeys = [['velo', '球速', true]].concat(WINTER_PIT);
-    const pitExtra = (p, b) => Player.pitchesInOrder(p).map((q) =>
-      chip(q.name, q.level, b['p:' + q.name], true)).join('');
-    UI.html('winter-body',
-      '<h3 class="section-sub">野手</h3>' +
-      bats.map((p) => row(p, WINTER_BAT)).join('') +
-      '<h3 class="section-sub">投手</h3>' +
-      pits.map((p) => row(p, pitKeys, pitExtra)).join(''));
+    return '<h3 class="section-sub">野手</h3>' + cards.filter((c) => c.kind !== 'pitcher').map(row).join('') +
+      '<h3 class="section-sub">投手</h3>' + cards.filter((c) => c.kind === 'pitcher').map(row).join('');
+  }
+
+  /** 冬の特訓のあと、秋の大会以降に誰がどれだけ伸びたかを一覧にする */
+  function winterResult(state) {
+    UI.html('winter-body', cardsHtml(statCards(state.team), state.winterSnap || {}, null));
     UI.show('screen-winter');
+  }
+
+  /** 月が変わるときに、その月の成果（月の初めからの伸び。特訓があった月は、そのうち特訓で上がった分も）を出す。
+      m は main.js が控えた { from, to, snap, cards }。onNext は「次へ」を押したあとの続き */
+  function monthResult(state, m, onNext) {
+    const mo = (t) => Body.monthOf(t);
+    const label = (m.to - m.from <= 1 ? mo(m.from) + '月' : mo(m.from) + '〜' + mo(m.to - 1) + '月') + 'の成果';
+    UI.el('month-title').textContent = label;
+    UI.html('month-body', cardsHtml(m.cards, m.snap.base, m.snap.train));
+    UI.el('btn-month-next').onclick = onNext;
+    UI.show('screen-month');
   }
 
   /** 秋の大会がすべて終わったあと、センバツ相当に出られるかどうかの発表。
@@ -1611,7 +1639,7 @@ const Screens = (() => {
 
   return {
     pick, ready, training, trainingResult, opening, pregame,
-    info, teamInfo, poachWin, poachRelease, poachCinema, poachSuccess, poachFailed, champion, celebrate, springResult, winterResult, snapStats, offseason, settings, lineupCard, bindRows,
+    info, teamInfo, poachWin, poachRelease, poachCinema, poachSuccess, poachFailed, champion, celebrate, springResult, winterResult, monthResult, statCards, snapStats, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
     localWin, soccerStart, soccerOpening, soccerPregame, soccerVerdict, soccerGrowth, soccerMatchResult, soccerLineupEditor, soccerCelebrate, soccerOffseason, soccerDecide, soccerReturn,
     soccerTraining, soccerTrainingResult, soccerSpringResult, soccerNewcomers,
