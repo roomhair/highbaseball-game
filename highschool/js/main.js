@@ -138,7 +138,7 @@ const Game = (() => {
     const m = pendingMonth;
     pendingMonth = null;
     if (!m || !state || state.mode === 'soccer') { cont(); return; }
-    shownMonthT = m.from;
+    shownMonthT = m.to - 1;      // 複数の月をまとめたときは、いちばん新しい月
     Screens.monthResult(state, m, cont);
   }
 

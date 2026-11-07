@@ -2404,3 +2404,5 @@ a.appbar__title { text-decoration: none; }
 :root[data-theme="dark"] #screen-month .wrow { background: rgba(20, 28, 48, .88); border-color: rgba(160, 190, 255, .25); }
 /* 背景を画面に固定するため、この画面はふわっと出る動き（transform）を使わない */
 #screen-month.is-active { animation: none; }
+
+#screen-month .month-next { position: fixed; right: 12px; top: 66px; z-index: 35; min-width: 76px; box-shadow: 0 3px 10px rgba(0, 0, 0, .3); }
