@@ -572,7 +572,7 @@ const UI = (() => {
       cur[k] = before;
       const isLetter = k !== 'velo' && k !== 'traj' && k.indexOf('pitch:') !== 0;
       const fmt = (v) => isLetter ? rankOf(v) + Math.round(v) : String(Math.round(v)) + (k === 'velo' ? 'km/h' : '');
-      return bodyStatName(k) + ' ' + fmt(before) + '→' + fmt(after) + '（' + signed(d) + '）';
+      return bodyStatName(k) + ' ' + signed(d) + '（' + fmt(before) + '→' + fmt(after) + '）';
     };
     const rows = log.map((e) => {
       const hAt = hNow, wAt = wNow;
