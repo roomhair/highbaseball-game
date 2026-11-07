@@ -188,7 +188,7 @@ const Growth = (() => {
       /* ---- 覚醒（判定だけ。実際に反映するのは、重複を1人に絞ってから） ---- */
       let awakenRoll = false;
       if (!p.awakened && played) {
-        const chance = RNG.clamp(0.004 + Math.max(0, perf) * 0.004, 0.004, 0.035);
+        const chance = RNG.clamp(0.004 + Math.max(0, perf) * 0.004, 0.004, 0.035) * 0.5;   // 覚醒の出やすさ（以前の半分）
         if (RNG.chance(chance)) awakenRoll = true;
       }
       if (awakenRoll) pendingAwaken.push({ p, isPit, stats, ups });
