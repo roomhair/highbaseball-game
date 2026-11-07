@@ -167,6 +167,8 @@ const Body = (() => {
   };
   const GENIUS_GM = 5;
   const HARD_MAX = 999, VELO_GENIUS_MAX = 178;
+  /* 球速の上限。160km/h を超えられるのは、球速の天才だけ */
+  const VELO_MAX = 159;
 
   function isGenius(p, key) {
     if (!p || !p.genius) return false;
@@ -206,7 +208,7 @@ const Body = (() => {
   /** 能力 key の値を、その選手の上限に収めて整数にする（天才の能力は100を超えられる） */
   function stat(p, key, v) {
     v = bodyFit(p, key, v);
-    if (key === 'velo') return RNG.clamp(Math.round(veloLimit(p, v)), 100, isGenius(p, 'velo') ? VELO_GENIUS_MAX : 168);
+    if (key === 'velo') return RNG.clamp(Math.round(veloLimit(p, v)), 100, isGenius(p, 'velo') ? VELO_GENIUS_MAX : VELO_MAX);
     return Math.max(1, Math.min(isGenius(p, key) ? HARD_MAX : 100, Math.round(v)));
   }
 
@@ -381,7 +383,7 @@ const Body = (() => {
       if (r < 0.05) raw += k === 'velo' ? 6 : 20;           // まれに、大きく伸びる素質
       else if (r < 0.08) raw -= k === 'velo' ? 6 : 15;      // まれに、早く頭打ちになる
       const cur = p[k];
-      p.cap0[k] = Math.min(k === 'velo' ? 168 : 108, Math.max(raw, cur + RNG.range(0, k === 'velo' ? 2 : 3)));
+      p.cap0[k] = Math.min(k === 'velo' ? VELO_MAX : 108, Math.max(raw, cur + RNG.range(0, k === 'velo' ? 2 : 3)));
       p.capBT[k] = bt;
     });
     return p;
@@ -390,9 +392,9 @@ const Body = (() => {
   /** いまの上限（その能力の単位）。天才の能力は上限なし */
   function capOf(p, key) {
     if (isGenius(p, key)) return key === 'velo' ? VELO_GENIUS_MAX : HARD_MAX;
-    if (!p.cap0 || p.cap0[key] == null) return key === 'velo' ? 168 : 100;
+    if (!p.cap0 || p.cap0[key] == null) return key === 'velo' ? VELO_MAX : 100;
     const v = p.cap0[key] + (capBody(p, key) - p.capBT[key]) * (p.kind === 'pitcher' ? BODY_GAIN_PIT : BODY_GAIN) + ((p.capUp && p.capUp[key]) || 0);
-    return Math.min(key === 'velo' ? 168 : 100, v);
+    return Math.min(key === 'velo' ? VELO_MAX : 100, v);
   }
 
   /** あと何伸びられるか（0以上の整数） */
@@ -829,7 +831,7 @@ const Body = (() => {
     noteGrowth, noteTraining, setNow, now, monthIdx, monthOf, yearOf, START_YEAR, rollTilt,
     idxOf, idxHeight, idxPhys, offset, heightPhysOffset, weightOffset, gm, ceil,
     hz, pz, zW, bmiOf, refHt,
-    isGenius, geniusLabel, stat, GENIUS_LABEL, veloCap, veloLimit,
+    isGenius, geniusLabel, stat, GENIUS_LABEL, veloCap, veloLimit, VELO_MAX,
     ease, capOf, room, capUp, makeCaps, giveTraits, indF,
   };
 })();

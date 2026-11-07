@@ -45,7 +45,7 @@ const Training = (() => {
   /* どれだけ効くか。ここが「猛特訓」を引けるかどうか。
      試合1つの伸びが大きいゲームなので、特訓の幅もそれに合わせて広く取ってある。
      ここが小さいと、年に1度しか来ない特訓が誤差になってしまう。
-     球速と変化球は上限（168km/h・切れ味7）が近いので、控えめにしてある。
+     球速と変化球は上限（159km/h・切れ味7）が近いので、控えめにしてある。
 
      「猛特訓」は当たりではあるが、1枚で代が決まるほどではない、くらいに
      抑えてある。出やすさも4%まで下げた。ここを強くしすぎると、
@@ -59,7 +59,7 @@ const Training = (() => {
      0.6倍にしたのと釣り合わせてあり、夏の大会の決勝進出時点の強さは
      これまでとほぼ変わらないことを実測で確認済み）。
      ただし球速（velo）だけは、この2段の引き上げを他の能力と同じ比率で
-     乗せると「特訓だけで3年かけて168km/h上限まで届く」ほど伸びすぎて
+     乗せると「特訓だけで3年かけて159km/h上限まで届く」ほど伸びすぎて
      しまっていた（実測: 1回あたり平均7.1km/h、球速一本に絞れば
      卒業時点で平均44.6km/hも伸びていた）。そのため velo の幅だけは
      他の能力より控えめに取り直してある。 */
@@ -257,7 +257,7 @@ const Training = (() => {
         before = p.velo;
         Body.ensure(p);
         const vAdd = Math.max(0, Math.min(t.amount, Body.room(p, 'velo')));
-        p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : 168, p.velo + vAdd); after = p.velo;
+        p.velo = Math.min(Body.isGenius(p, 'velo') ? 178 : Body.VELO_MAX, p.velo + vAdd); after = p.velo;
       } else if (t.key === 'pitch') {
         const q = p.pitches.find((x) => x.name === t.pitch);
         if (!q) return;
