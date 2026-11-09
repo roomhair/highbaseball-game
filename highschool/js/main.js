@@ -125,8 +125,17 @@ const Game = (() => {
     const cards = Screens.statCards(state.team);        // 月が変わったあとの能力
     if (snap) {
       /* 続けて2回進んだとき（新年度など）は、1つの成果にまとめる */
-      if (pendingMonth && pendingMonth.to === t0) pendingMonth = { from: pendingMonth.from, to: Body.now(), snap: pendingMonth.snap, cards };
-      else pendingMonth = { from: t0, to: Body.now(), snap, cards };
+      if (pendingMonth && pendingMonth.to === t0) {
+        /* 基準は最初の月の初め。特訓で上がった分は、月ごとのぶんを足し合わせる */
+        const train = {};
+        [pendingMonth.snap.train, snap.train].forEach((tr) => {
+          Object.keys(tr || {}).forEach((id) => {
+            Object.keys(tr[id]).forEach((k) => { (train[id] = train[id] || {})[k] = (train[id][k] || 0) + tr[id][k]; });
+          });
+        });
+        pendingMonth = { from: pendingMonth.from, to: Body.now(), snap: { t: pendingMonth.snap.t, base: pendingMonth.snap.base, train }, cards };
+      } else pendingMonth = { from: t0, to: Body.now(), snap, cards };
+      state.pendingMonth = pendingMonth;       // 途中で閉じても、続きで特訓のぶんをまとめて見られるように
     }
     const base = {};
     cards.forEach((c) => { base[c.id] = c.stats; });
@@ -137,6 +146,7 @@ const Game = (() => {
   function flushMonth(cont) {
     const m = pendingMonth;
     pendingMonth = null;
+    if (state) state.pendingMonth = null;
     if (!m || !state || state.mode === 'soccer') { cont(); return; }
     shownMonthT = m.to - 1;      // 複数の月をまとめたときは、いちばん新しい月
     Screens.monthResult(state, m, cont);
@@ -212,6 +222,7 @@ const Game = (() => {
 
   function start() {
     state = fresh();
+    pendingMonth = null;
     Body.setNow(state.clockT);
     Player.setSeq(1);
     pickBatters();
@@ -286,11 +297,10 @@ const Game = (() => {
     noteMonthTrain(pre);
     trainClockStep(state.trainingNext, state.training);
     save();
-    /* 月が変わったときは、その月の成果を見せてから続ける */
-    flushMonth(() => {
-      if (state.training.done) showTrainingResult();
-      else Screens.training(state);
-    });
+    /* 特訓のあいだは、月の成果を毎月は出さず、控えておく。
+       特訓が終わったときに、その期間ぶんをまとめて見せる */
+    if (state.training.done) flushMonth(showTrainingResult);
+    else Screens.training(state);
   }
 
   function trainPass() {
@@ -1358,6 +1368,7 @@ const Game = (() => {
        試合を続けるときは runGame が掛け直す */
     RNG.unseed();
     state = loaded;
+    pendingMonth = state.pendingMonth || null;
     /* 変化球の切れ味は7が上限。以前の版で8・9まで付いた球は7に直す */
     if (state.team) Team.all(state.team).forEach((p) => {
       (p.pitches || []).forEach((q) => { if (q.level > 7) q.level = 7; });
@@ -1521,7 +1532,7 @@ const Game = (() => {
       yes: '削除して最初から',
     }, () => {
       Storage.clear();
-      state = fresh();
+      state = fresh(); pendingMonth = null;
       applySettings();
       showTopButtons();
       UI.show('screen-top');
@@ -1564,7 +1575,7 @@ const Game = (() => {
     UI.init();
     GameScreen.init();
     SoccerGameScreen.init();
-    state = fresh();
+    state = fresh(); pendingMonth = null;
     /* テストプレイのリンク（?test=bear / heya / lock）。保存はしない */
     const testKind = new URLSearchParams(location.search).get('test');
     if (['bear', 'heya', 'lock'].indexOf(testKind) >= 0) {
@@ -1588,7 +1599,7 @@ const Game = (() => {
    *   heya … 夏の県大会の開幕から。相手の4番ショートに、いつも部屋がいる
    */
   function startTest(kind) {
-    state = fresh();
+    state = fresh(); pendingMonth = null;
     state.testMode = true;
     Body.setNow(state.clockT);
     Player.setSeq(1);
