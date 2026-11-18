@@ -665,7 +665,11 @@ const Sim = (() => {
            おかしいため）。後攻がすでに勝っているときだけ、表でも裏でも
            途中で打ち切ってよい。先攻がリードしている裏は、3アウトまで
            行う（点差だけを見ると、裏が1人も打たずに終わってしまう） */
-        const stopHalf = () => coldNow() && H.runs > A.runs;
+        /* 後攻がリードしているときの、回の途中の打ち切りは、裏だけ。
+           表は、かならず3アウトまで行う（先攻の攻撃で点差が縮まりうるうえ、
+           点差がついているだけで、その回がまだ始まらないうちに終わってしまうのは
+           おかしい）。表を終えたところで、あらためてコールドを判定する */
+        const stopHalf = () => half === 'bottom' && coldNow() && H.runs > A.runs;
         const got = yield* playHalf(off, def, log, inning, half, tie, A, H, stopHalf, ctl, startBases);
         off.byInning[inning - 1] = got;
 

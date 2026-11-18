@@ -120,6 +120,12 @@ const Game = (() => {
     /* 月の初めの基準が無いとき（この機能の前からの保存データ）は、この月の成果は出せない。
        基準だけ作って、次の月から出す（基準と同じ値を比べても、何も変わっていないように見えてしまうため） */
     const snap = track ? state.monthSnap : null;
+    /* 月の途中で入った選手（強奪・新入生・補充）は、入ったときの能力を基準に足す。
+       これが無いと、入った月の成長が成果の画面に出ない */
+    if (snap) {
+      const cur = Screens.snapStats(state.team);
+      Object.keys(cur).forEach((id) => { if (!snap.base[id]) snap.base[id] = cur[id]; });
+    }
     advance();
     if (!track || Body.now() <= t0) return;
     const cards = Screens.statCards(state.team);        // 月が変わったあとの能力
@@ -133,7 +139,8 @@ const Game = (() => {
             Object.keys(tr[id]).forEach((k) => { (train[id] = train[id] || {})[k] = (train[id][k] || 0) + tr[id][k]; });
           });
         });
-        pendingMonth = { from: pendingMonth.from, to: Body.now(), snap: { t: pendingMonth.snap.t, base: pendingMonth.snap.base, train }, cards };
+        const base = Object.assign({}, snap.base, pendingMonth.snap.base);     // 途中で入った選手の基準も足す
+        pendingMonth = { from: pendingMonth.from, to: Body.now(), snap: { t: pendingMonth.snap.t, base, train }, cards };
       } else pendingMonth = { from: t0, to: Body.now(), snap, cards };
       state.pendingMonth = pendingMonth;       // 途中で閉じても、続きで特訓のぶんをまとめて見られるように
     }
@@ -351,17 +358,10 @@ const Game = (() => {
       /* 秋の大会がすべて終わったあとの特訓を終えたら、センバツ相当に
          出られるかどうかをここで発表する。実際にその先（センバツ相当・
          新入生を迎える手続き）へ進むのは、発表の画面を見たあと */
-      case 'springOrNextSummer': showWinterResult(); break;
+      case 'springOrNextSummer': showSpringResult(); break;
       case 'nextSummer': startTournament('local'); break;
       default: startTournament('local');
     }
-  }
-
-  /** 冬の特訓のあと、秋の大会で負けた時点からの伸びを見せる画面へ */
-  function showWinterResult() {
-    state.phase = 'winter-result';
-    save();
-    Screens.winterResult(state);
   }
 
   /** センバツ相当に出られるかどうかの発表画面へ */
@@ -393,7 +393,6 @@ const Game = (() => {
   function toPostFallTraining() {
     revealPros();
     Team.healPitchers(state.team);
-    state.winterSnap = Screens.snapStats(state.team);
     toTrainingPhase('springOrNextSummer', TRAIN_LIMITS.normal);
   }
 
@@ -1443,7 +1442,7 @@ const Game = (() => {
       case 'poach': toPoach(); break;
       case 'localwin': Screens.localWin(state); break;
       case 'champion': Screens.champion(state); break;
-      case 'winter-result': Screens.winterResult(state); break;
+      case 'winter-result': showSpringResult(); break;      // 冬の成果の画面は無くなった（月の成果にまとめた）。古い保存データはここから
       case 'spring-result': Screens.springResult(state, state.springQualified); break;
       case 'offseason':
         Screens.offseason(state, Offseason.retiring(state.team).map(Offseason.farewell)); break;
@@ -1737,7 +1736,6 @@ const Game = (() => {
     on('btn-localwin-next', () => (state.mode === 'soccer' ? soccerStartTournament('national') : startTournament('national')));
     on('btn-celebrate-next', toVerdict);
     on('btn-champion-next', () => (state.mode === 'soccer' ? toSoccerOffseason() : toOffseason()));
-    on('btn-winter-next', () => showSpringResult());
     on('btn-spring-result-next', () => (state.mode === 'soccer' ? soccerAfterSpringResult() : afterSpringResult()));
     /* 「特訓へ」ボタンは画面を描くたびに作り直されるので、画面側で受ける */
     const intro = UI.el('screen-trainintro');

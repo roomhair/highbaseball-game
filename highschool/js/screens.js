@@ -951,7 +951,7 @@ const Screens = (() => {
   const WINTER_BAT = [['meet', 'ミート'], ['power', 'パワー'], ['speed', '走力'], ['arm', '肩'], ['field', '守備'], ['catch', '捕球']];
   const WINTER_PIT = [['control', '制球'], ['stamina', 'スタミナ']];
 
-  /** 秋の大会が終わった時点の能力を控える（冬の成果で差を出すため） */
+  /** その時点の能力を控える（月の成果で差を出すため） */
   function snapStats(team) {
     const snap = {};
     team.batters.concat(team.pitchers).forEach((p) => {
@@ -1031,13 +1031,6 @@ const Screens = (() => {
       if (!p) return;
       UI.openPlayer(p, { team: state.team, rename: false });
     }));
-  }
-
-  /** 冬の特訓のあと、秋の大会以降に誰がどれだけ伸びたかを一覧にする */
-  function winterResult(state) {
-    UI.html('winter-body', cardsHtml(statCards(state.team), state.winterSnap || {}, null));
-    wireNames(UI.el('winter-body'), state);
-    UI.show('screen-winter');
   }
 
   /** 月が変わるときに、その月の成果（月の初めからの伸び。特訓があった月は、そのうち特訓で上がった分も）を出す。
@@ -1695,7 +1688,7 @@ const Screens = (() => {
 
   return {
     pick, ready, training, trainingResult, opening, pregame,
-    info, teamInfo, poachWin, poachRelease, poachCinema, poachSuccess, poachFailed, champion, celebrate, springResult, winterResult, monthResult, monthLabel, aheadText, statCards, snapStats, offseason, settings, lineupCard, bindRows,
+    info, teamInfo, poachWin, poachRelease, poachCinema, poachSuccess, poachFailed, champion, celebrate, springResult, monthResult, monthLabel, aheadText, statCards, snapStats, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
     localWin, soccerStart, soccerOpening, soccerPregame, soccerVerdict, soccerGrowth, soccerMatchResult, soccerLineupEditor, soccerCelebrate, soccerOffseason, soccerDecide, soccerReturn,
     soccerTraining, soccerTrainingResult, soccerSpringResult, soccerNewcomers,
