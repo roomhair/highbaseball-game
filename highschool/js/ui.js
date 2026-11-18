@@ -1198,24 +1198,83 @@ const UI = (() => {
   }
 
   /** プロ入りした選手の一覧（info から）。名前を押すと、能力・通算成績・活躍シーンが見られる */
+  /** プロで取った個人タイトル（シーズンごとの太字の数字と同じ基準）。見えている年ぶんだけ */
+  const PRO_TITLE_NAME = {
+    pitcher: [['w', '最多勝'], ['era', '最優秀防御率'], ['so', '最多奪三振']],
+    batter: [['avg', '首位打者'], ['hr', '本塁打王'], ['rbi', '打点王'], ['sb', '盗塁王']],
+  };
+  function proTitlesOf(x) {
+    if (!x.pro) return [];
+    const isPit = x.player.kind === 'pitcher';
+    const shown = x.pro.seasons.slice(0, x.shown || 0);
+    return PRO_TITLE_NAME[isPit ? 'pitcher' : 'batter'].map((t) => {
+      const years = shown.filter((sn) => Pro.rowView(sn, isPit).bold[t[0]]).map((sn) => sn.y);
+      return years.length ? { name: t[1], years } : null;
+    }).filter(Boolean);
+  }
+  function proWarOf(x) {
+    if (!x.pro) return 0;
+    const shown = x.pro.seasons.slice(0, x.shown || 0);
+    if (!shown.length) return 0;
+    const v = Pro.totalView(shown, x.player.kind === 'pitcher').war;
+    return parseFloat(v) || 0;
+  }
+  const PRO_POS_ORDER = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'];
+  const PRO_SORTS = [
+    ['new', 'ドラフトの新しい順'],
+    ['round', '指名順位（上位から）'],
+    ['pos', 'ポジション'],
+    ['titles', '獲得タイトル（多い順）'],
+    ['war', 'プロでの通算WAR（高い順）'],
+  ];
+  let proSortKey = 'new';
+
   function prosList(list) {
-    /* 直近のドラフトが上。同じ年の中は指名順 */
-    const sorted = list.slice().sort((a, b) => (b.year - a.year) || (a.round - b.round));
+    const sortList = () => {
+      const key = proSortKey;
+      const posIdx = (x) => { const k = x.player.kind === 'pitcher' ? 'P' : x.player.pos; const i = PRO_POS_ORDER.indexOf(k); return i < 0 ? 99 : i; };
+      const base = (a, b) => (b.year - a.year) || (a.round - b.round);       // 同じなら、直近のドラフトが上、同じ年は指名順
+      const cmp = {
+        new: base,
+        round: (a, b) => (a.round - b.round) || base(a, b),
+        pos: (a, b) => (posIdx(a) - posIdx(b)) || base(a, b),
+        titles: (a, b) => (proTitlesOf(b).reduce((n, t) => n + t.years.length, 0) - proTitlesOf(a).reduce((n, t) => n + t.years.length, 0)) || base(a, b),
+        war: (a, b) => (proWarOf(b) - proWarOf(a)) || base(a, b),
+      }[key] || base;
+      return list.slice().sort(cmp);
+    };
+    let sorted = sortList();
     const draftYear = (x) => (Body.START_YEAR + x.year - 1) + '年ドラフト';
     const row = (x, i) => {
       const p = x.player;
       return '<li class="proslist__row"><button type="button" class="linkbtn pname" data-i="' + i + '">' + esc(p.name) + '</button>' +
         '<span class="proslist__meta">' + (p.kind === 'pitcher' ? '投手' : posName(p.pos)) + '　' + handMark(p) + '</span>' +
         '<em class="retire__draft">' + esc(x.text) + '</em>' +
-        '<span class="proslist__sub">' + esc(x.school || '') + '　' + draftYear(x) + '</span></li>';
+        '<span class="proslist__sub">' + esc(x.school || '') + '　' + draftYear(x) + proExtra(x) + '</span></li>';
+    };
+    /* 並べ替えの基準によって、その数字も添える */
+    const proExtra = (x) => {
+      if (proSortKey === 'titles') {
+        const n = proTitlesOf(x).reduce((a, t) => a + t.years.length, 0);
+        return '　タイトル' + n + '回';
+      }
+      if (proSortKey === 'war') return '　通算WAR ' + proWarOf(x).toFixed(1);
+      return '';
     };
     const show = () => {
       closeModal.back = null;
       html('modal-body',
         '<h3 class="modal__title">プロ入りした選手（' + sorted.length + '人）</h3>' +
+        (sorted.length > 1
+          ? '<label class="proslist__sort">並び順　<select id="pl-sort">' +
+            PRO_SORTS.map((o) => '<option value="' + o[0] + '"' + (o[0] === proSortKey ? ' selected' : '') + '>' + o[1] + '</option>').join('') +
+            '</select></label>'
+          : '') +
         (sorted.length
           ? '<ul class="proslist">' + sorted.map(row).join('') + '</ul>'
           : '<p class="note">まだプロ入りした選手はいません。引退する3年生が、ドラフトで指名されると、ここに残ります。</p>'));
+      const sel = el('modal-body').querySelector('#pl-sort');
+      if (sel) sel.addEventListener('change', () => { proSortKey = sel.value; sorted = sortList(); show(); });
       el('modal-body').querySelectorAll('.pname').forEach((b) => b.addEventListener('click', () => {
         const x = sorted[+b.dataset.i];
         Body.ensure(x.player);

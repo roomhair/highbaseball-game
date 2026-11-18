@@ -528,9 +528,29 @@ const GameScreen = (() => {
     return false;
   }
 
+  /** 次に打席に立つ打者を「3番 山田太郎」の形で返す（ない・分からないときは空）。
+      3つ目のアウトで回が終わったあとは、次に攻撃するほう（相手）の打者 */
+  function upNextText() {
+    try {
+      const st = ctx && ctx.live && ctx.live.state ? ctx.live.state() : null;
+      if (!st || !st.A || !st.H || !st.off) return '';
+      const off = (st.outs || 0) >= 3 ? (st.off === st.A ? st.H : st.A) : st.off;
+      const idx = off.order % 9;
+      const slot = off.team.lineup[idx];
+      const p = slot && Team.find(off.team, slot.pid);
+      return p ? (idx + 1) + '番 ' + p.name : '';
+    } catch (err) { return ''; }
+  }
+
   function showTapHint(on) {
     const n = UI.el('game-taphint');
     if (n) n.hidden = !on;
+    const nb = UI.el('game-nextbat');
+    if (nb) {
+      const t = on ? upNextText() : '';
+      nb.textContent = t;
+      nb.hidden = !t;
+    }
     const st = UI.el('game-stage');
     if (st) st.classList.toggle('is-tappable', !!on);
   }
@@ -606,7 +626,10 @@ const GameScreen = (() => {
     }
 
     if (e.k === 'sub') {
-      if (e.side === 'home') cur.homePitcher = e.pitcher; else cur.awayPitcher = e.pitcher;
+      /* 代打・守備交代のお知らせ（live.note）には投手も側も無い。それで書き換えると、
+         先攻側の投手の表示が消えてしまうので、投手交代のときだけ更新する */
+      if (e.pitcher && e.side === 'home') cur.homePitcher = e.pitcher;
+      else if (e.pitcher && e.side === 'away') cur.awayPitcher = e.pitcher;
       return '<div class="stage__sub">' + esc(e.text) + '</div>' + fieldView([false, false, false], 0, null);
     }
 
@@ -1198,15 +1221,37 @@ const GameScreen = (() => {
 
   /* ---------- 結果画面 ---------- */
 
-  function batBox(t, label) {
-    const inLineup = t.lineup.map((s) => ({ p: Team.find(t, s.pid), pos: s.pos }))
-      .filter((x) => x.p);
-    const subs = Team.all(t).filter((p) =>
-      p.kind !== 'pitcher' && p.game.pa > 0 && !inLineup.some((x) => x.p.id === p.id))
-      .map((p) => ({ p, pos: p.pos }));
-    const rows = inLineup.concat(subs).map((x, i) => {
+  /** 試合の成績表の並び。打順（1〜9）ごとに、その打順で打った選手を打った順に並べる
+      （先発が先、代打で出た選手があと）。試合が終わった時点のオーダー（t.lineup）は
+      代打などで書き換わっているので、そのままは使わず、打席の記録（res.log）から組む。
+      まだ誰も打っていない打順は、いまのオーダーの選手を入れる。 */
+  function boxOrder(res, t) {
+    const isAway = res.away.team === t || (res.away.team.name === t.name && res.home.team !== t);
+    const half = isAway ? 'top' : 'bottom';
+    const slots = Array.from({ length: 9 }, () => []);
+    res.log.forEach((e) => {
+      if (e.k !== 'pa' || e.half !== half || !e.batter) return;
+      const sl = slots[e.order - 1];
+      if (sl && sl.indexOf(e.batter) < 0) sl.push(e.batter);
+    });
+    const rows = [];
+    slots.forEach((ids, i) => {
+      const fin = t.lineup[i];
+      if (!ids.length && fin) ids = [fin.pid];
+      ids.forEach((id, j) => {
+        const p = Team.find(t, id);
+        if (!p) return;
+        const inFinal = t.lineup.find((x) => x.pid === id);
+        rows.push({ p, pos: inFinal ? inFinal.pos : p.pos, ord: j === 0 ? i + 1 : '' });
+      });
+    });
+    return rows;
+  }
+
+  function batBox(res, t, label) {
+    const rows = boxOrder(res, t).map((x) => {
       const s = x.p.game;
-      return '<tr data-pid="' + x.p.id + '" class="prow"><td class="c ord">' + (i < 9 ? i + 1 : '') + '</td>' +
+      return '<tr data-pid="' + x.p.id + '" class="prow"><td class="c ord">' + x.ord + '</td>' +
         '<td class="c">' + posShort(x.pos) + '</td>' +
         '<td class="nm">' + esc(x.p.name) + '</td>' +
         '<td class="c">' + s.ab + '</td><td class="c">' + s.h + '</td><td class="c">' + s.hr + '</td>' +
@@ -1259,17 +1304,13 @@ const GameScreen = (() => {
       (m[e.inning] = m[e.inning] || []).push(e);
     });
     const innings = Math.max(9, res.innings || 9);
-    const order = team.lineup.map((sl) => ({ p: Team.find(team, sl.pid), pos: sl.pos }))
-      .filter((x) => x.p);
-    const extra = team.batters
-      .filter((p) => byPid[p.id] && !order.some((x) => x.p.id === p.id))
-      .map((p) => ({ p, pos: p.pos }));
+    const boxRows = boxOrder(res, team);
 
     let head = '<th class="c">打順</th><th class="c">守</th>';
     for (let i = 1; i <= innings; i++) head += '<th class="c">' + i + '</th>';
 
-    const rows = order.concat(extra).map((x, i) => {
-      let tds = '<td class="c ord">' + (i < 9 ? i + 1 : '―') + '</td>' +
+    const rows = boxRows.map((x) => {
+      let tds = '<td class="c ord">' + (x.ord || '―') + '</td>' +
         '<td class="c">' + posShort(x.pos) + '</td>';
       for (let n = 1; n <= innings; n++) {
         const list = (byPid[x.p.id] || {})[n] || [];
@@ -1281,7 +1322,7 @@ const GameScreen = (() => {
     }).join('');
 
     /* 選手名は1列目の左に別表で出す（回の列が多いので分けたほうが読める） */
-    const names = order.concat(extra).map((x) =>
+    const names = boxRows.map((x) =>
       '<tr data-pid="' + x.p.id + '" class="prow"><td class="nm">' + esc(x.p.name) + '</td></tr>').join('');
 
     return '<h4 class="sub">' + esc(label) + '　打席結果</h4>' +
@@ -1336,11 +1377,11 @@ const GameScreen = (() => {
       growthList(meta.report) +
       '<div class="boxes">' +
         paLog(res, state.team, state.team.name) +
-        batBox(state.team, state.team.name) +
+        batBox(res, state.team, state.team.name) +
         pitBox(state.team, state.team.name) +
         '<details class="rosterbox"><summary>' + esc(state.opponent.name) + 'の成績</summary>' +
           paLog(res, state.opponent, state.opponent.name) +
-          batBox(state.opponent, state.opponent.name) +
+          batBox(res, state.opponent, state.opponent.name) +
           pitBox(state.opponent, state.opponent.name) +
         '</details>' +
       '</div>' +

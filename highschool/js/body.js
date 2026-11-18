@@ -95,6 +95,12 @@ const Body = (() => {
   const HT_UP_SD = 4.8, HT_UP_WIDE_SD = 10.5, HT_UP_WIDE_P = 0.065, HT_DOWN_SD = 4.8;
   const HT_UP_MEAN_SD = HT_UP_WIDE_P * HT_UP_WIDE_SD + (1 - HT_UP_WIDE_P) * HT_UP_SD;
   const HT_SHIFT = 0.3989 * (HT_UP_MEAN_SD - HT_DOWN_SD);     // 高い側と低い側を半々で引くときの、平均のずれ
+  /* 身長の上限と、ばらつきの倍率。自校・新入生は上限190cm。対戦相手は上限200cm で、
+     ばらつきを少しだけ小さくしてある（tournament.makeTeam が、相手を作るあいだだけ切り替える） */
+  const HT_PROFILE_DEFAULT = { cap: 190, sd: 1 };
+  let htProfile = HT_PROFILE_DEFAULT;
+  function setHtProfile(pr) { htProfile = pr || HT_PROFILE_DEFAULT; }
+  const HT_HARD_CAP = 200;      // これを超える身長は、保存データの選手でも直す
   const PHYS_SD = 1.0;          // 身体能力の標準偏差
   const OFF_K = 3.2;            // idx 1 あたりに足す能力値（1〜100の能力）
   const VELO_K = 2.0;           // idx 1 あたりに足す球速（km/h）
@@ -536,12 +542,15 @@ const Body = (() => {
     /* 身長は、端が切れない正規分布から引く。上限は設けない（2mを超える選手も、
        きわめて小さい確率で出うる）。下限だけ155cm */
     const zt = Math.sqrt(-2 * Math.log(1 - RNG.rand())) * Math.cos(2 * Math.PI * RNG.rand());
-    const ht = Math.max(HT_MIN, refH + posHt(posKey) - HT_SHIFT + zt * (zt > 0 ? (RNG.rand() < HT_UP_WIDE_P ? HT_UP_WIDE_SD : HT_UP_SD) : HT_DOWN_SD));
+    const cap = htProfile.cap;
+    let ht = Math.max(HT_MIN, refH + posHt(posKey) - HT_SHIFT + zt * htProfile.sd * (zt > 0 ? (RNG.rand() < HT_UP_WIDE_P ? HT_UP_WIDE_SD : HT_UP_SD) : HT_DOWN_SD));
+    if (ht > cap) ht = cap - RNG.rand() * 3;          // 上限をこえたぶんは、上限のすぐ下にばらけさせる
     const bmi = refB + posBmi(posKey) + RNG.norm(0, 2.0 / SCALE);
     const wt = bmi * Math.pow(ht / 100, 2);
     const r = RNG.rand();
     return {
       ht: Math.round(ht * 10) / 10,
+      htCap: cap,
       wt: Math.round(wt * 10) / 10,
       phys: RNG.clamp(RNG.gauss() * PHYS_SD, -2.6, 2.6),
       htType: r < 0.25 ? -1 : (r < 0.75 ? 0 : 1),
@@ -554,6 +563,7 @@ const Body = (() => {
 
   function setParts(p, parts) {
     p.ht = parts.ht; p.wt = parts.wt; p.phys = parts.phys;
+    p.htCap = parts.htCap || HT_HARD_CAP;
     p.htType = parts.htType; p.wtTrend = parts.wtTrend; p.wtResp = parts.wtResp;
     p.tilt = parts.tilt || null;
     p.bodyT = NOW; p.bodyLog = []; p.bodyV = BODY_VER;
@@ -591,7 +601,10 @@ const Body = (() => {
            背が低い選手は体格での伸びが小さく、背が高い選手は大きい（入部時の身長の高さで決まる） */
         const hf = RNG.clamp(1 + 0.15 * (p.hz0 == null ? 0 : p.hz0), 0.7, 1.3);
         const sc = d > 0 ? hf : 1;
-        const step = Math.max(-2, Math.min(4 * sc, d * sc));
+        let step = Math.max(-1, Math.min(4 * sc, d * sc));
+        /* 下がる月は、毎月は下がらない（球速は下がりにくい）。下がる分は持ち越され、
+           次の月に体重が戻れば、そのまま消える。ずっと下がり続けることは少ない */
+        if (step < 0 && !RNG.chance(key === 'velo' ? 0.3 : 0.5)) step = 0;
         p.bodyOff[key] = done + step / (gain * sc);
         d = step;
       } else p.bodyOff[key] = target;
@@ -657,6 +670,7 @@ const Body = (() => {
       }
       p.wref = 2;
     }
+    if (p.ht != null && p.ht > HT_HARD_CAP) { p.ht = HT_HARD_CAP; p.htCap = HT_HARD_CAP; }     // 古い保存データの、並外れて高い選手
     if (p.fixedBody && p.bodyT == null) p.bodyT = NOW;
     if (p.ht == null) {
       setParts(p, roll(p.kind, p.pos, p.grade));
@@ -722,7 +736,7 @@ const Body = (() => {
     const grow = Math.max(0, (HT_GROW[gEff] != null ? HT_GROW[gEff] : 0.3) * HT_TYPE_FACTOR[String(p.htType || 0)] * bh / 12 + RNG.norm(0, 0.05));
     const htOld = p.ht, wtOld = p.wt;
     const h0 = htOld / 100;
-    p.ht = htOld + grow;
+    p.ht = Math.min(htOld + grow, Math.max(htOld, p.htCap || HT_HARD_CAP));      // 作ったときの上限は超えて伸びない
     const h1 = p.ht / 100;
     /* 標準の体格の変化（学年が上がるぶん＋身長が伸びたぶん） */
     const posNew = posOf(g, to);
@@ -743,12 +757,19 @@ const Body = (() => {
       Object.keys(p.gainPlan[to]).forEach((k) => { changed[k] = (changed[k] || 0) + p.gainPlan[to][k]; });
       delete p.gainPlan[to];
     }
-    p.bodyLog.push({
-      t: to,
-      dh: r1(r1(p.ht) - r1(htOld)),
-      dw: r1(r1(p.wt) - r1(wtOld)),
-      s: changed,
-    });
+    /* 月が変わるときの変化は、いま終わった月（to - 1）の行に載せる。
+       「9月の成果」の変化は、履歴でも9月の行に出る（10月の行ではない）。
+       その月に試合などの行がすでにあれば、同じ行にまとめる */
+    const ended = to - 1;
+    const logDh = r1(r1(p.ht) - r1(htOld)), logDw = r1(r1(p.wt) - r1(wtOld));
+    const last = p.bodyLog.length ? p.bodyLog[p.bodyLog.length - 1] : null;
+    if (last && last.t === ended) {
+      last.dh = r1((last.dh || 0) + logDh); last.dw = r1((last.dw || 0) + logDw);
+      if (!last.s) last.s = {};
+      Object.keys(changed).forEach((k) => { last.s[k] = (last.s[k] || 0) + changed[k]; });
+    } else {
+      p.bodyLog.push({ t: ended, dh: logDh, dw: logDw, s: changed });
+    }
     return p;
   }
 
@@ -831,7 +852,7 @@ const Body = (() => {
     noteGrowth, noteTraining, setNow, now, monthIdx, monthOf, yearOf, START_YEAR, rollTilt,
     idxOf, idxHeight, idxPhys, offset, heightPhysOffset, weightOffset, gm, ceil,
     hz, pz, zW, bmiOf, refHt,
-    isGenius, geniusLabel, stat, GENIUS_LABEL, veloCap, veloLimit, VELO_MAX,
+    setHtProfile, isGenius, geniusLabel, stat, GENIUS_LABEL, veloCap, veloLimit, VELO_MAX,
     ease, capOf, room, capUp, makeCaps, giveTraits, indF,
   };
 })();

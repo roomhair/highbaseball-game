@@ -142,15 +142,30 @@ const Team = (() => {
     const pool = team.batters.slice();
     if (pool.length < 9) { team.lineup = []; autoRotation(team); return team; }
 
-    /* 守備を第一に見つつ、打てる選手を外に出さないよう打力も少し混ぜる */
-    const cost = FIELD_POSITIONS.map((posKey) =>
-      pool.map((p) => -(defScore(p, posKey) + Player.rating(p) * 0.25)));
-    const picked = bestAssign(cost);
+    /* 守備を第一に見つつ、打てる選手を外に出さないよう打力も少し混ぜる。
+       指名打者は守備をしないので、守備の力は見ずに、打力だけで選ぶ。
+       そのため、指名打者にする選手の候補（打力の高い順）ごとに、残りの8人で守備を組み、
+       全体でいちばん良くなる組み合わせを採る */
+    const hitScore = (p) => p.meet * 0.4 + p.power * 0.45 + p.speed * 0.15;
+    const fieldValue = (p, posKey) => defScore(p, posKey) + Player.rating(p) * 0.25;
+    const dhValue = (p) => defScore(p, 'DH') + hitScore(p) * 0.25;
+    const dhCands = pool.slice().sort((a, b) => hitScore(b) - hitScore(a)).slice(0, 5);
+    let bestPick = null;
+    dhCands.forEach((d) => {
+      const rest = pool.filter((p) => p !== d);
+      const cost = FIELD_POSITIONS.map((posKey) => rest.map((p) => -fieldValue(p, posKey)));
+      const pk = bestAssign(cost);
+      let total = dhValue(d);
+      FIELD_POSITIONS.forEach((posKey, i) => { if (rest[pk[i]]) total += fieldValue(rest[pk[i]], posKey); });
+      if (!bestPick || total > bestPick.total) bestPick = { total, rest, pk };
+    });
+    const picked = bestPick.pk;
+    const pool8 = bestPick.rest;
 
     const chosen = [];
     const used = new Set();
     FIELD_POSITIONS.forEach((posKey, i) => {
-      const p = pool[picked[i]];
+      const p = pool8[picked[i]];
       if (!p) return;
       used.add(p.id);
       chosen.push({ p, pos: posKey });
@@ -187,7 +202,7 @@ const Team = (() => {
     if (forceDH) { dh = forceDH; dhScore = 1e9; }
     pool.forEach((p) => {
       if (used.has(p.id) || p === forceDH) return;
-      const sc = p.meet * 0.4 + p.power * 0.45 + p.speed * 0.15;
+      const sc = hitScore(p);
       if (sc > dhScore) { dhScore = sc; dh = p; }
     });
     if (dh) { used.add(dh.id); chosen.push({ p: dh, pos: 'DH' }); }
@@ -288,8 +303,9 @@ const Team = (() => {
       const limit = cap + 18;
       /* 以前は 0.35 と 0.45。疲れが溜まりにくく、連投しても万全のままだったので、
          1試合で積む量を増やし、抜けるのも遅くした */
-      const used = cap > 0 ? (bf / cap) * (limit * 0.55) : 0;
-      p.staminaCarry = before * 0.6 + used;
+      /* 試合での減りを少し早くしたぶん（sim.capacityOf）、抜けるのも少し早くした */
+      const used = cap > 0 ? (bf / cap) * (limit * 0.48) : 0;
+      p.staminaCarry = before * 0.5 + used;
     });
   }
 

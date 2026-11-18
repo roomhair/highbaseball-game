@@ -143,14 +143,27 @@ const Game = (() => {
   }
 
   /** 月の成果が控えてあれば、画面に出して、そのあと cont へ。なければそのまま cont へ */
-  function flushMonth(cont) {
+  function flushMonth(cont, nextLabel) {
     const m = pendingMonth;
     pendingMonth = null;
     if (state) state.pendingMonth = null;
     if (!m || !state || state.mode === 'soccer') { cont(); return; }
     shownMonthT = m.to - 1;      // 複数の月をまとめたときは、いちばん新しい月
-    Screens.monthResult(state, m, cont);
+    Screens.monthResult(state, m, cont, nextLabel);
   }
+
+  /** t1 の月まで進むと「月の成果」の画面が先に出るなら、その見出し（出ないなら null）。
+      手前の画面のボタンを「◯月の成果へ」にするために使う */
+  function monthAheadLabel(t1) {
+    if (!state || !state.team || state.mode === 'soccer' || !state.monthSnap) return null;
+    const t0 = Body.now();
+    return t1 > t0 ? Screens.monthLabel(t0, t1) : null;
+  }
+  /** kind は次の大会（CLOCK_MONTH の名前）か 'newSeason'（春の新入生の入部） */
+  window.monthAheadFor = (kind) => {
+    if (kind === 'newSeason') return monthAheadLabel(nextMonth(4));
+    return CLOCK_MONTH[kind] ? monthAheadLabel(nextMonth(CLOCK_MONTH[kind])) : null;
+  };
 
   /** 特訓で上がった分を、その月の成果に足す（特訓の前の能力 pre と比べる） */
   function noteMonthTrain(pre) {
@@ -299,7 +312,7 @@ const Game = (() => {
     save();
     /* 特訓のあいだは、月の成果を毎月は出さず、控えておく。
        特訓が終わったときに、その期間ぶんをまとめて見せる */
-    if (state.training.done) flushMonth(showTrainingResult);
+    if (state.training.done) flushMonth(showTrainingResult, '特訓の成果へ');
     else Screens.training(state);
   }
 
@@ -312,7 +325,10 @@ const Game = (() => {
   function showTrainingResult() {
     state.phase = 'training-result';
     save();
-    Screens.trainingResult(state, trainingNextLabel());
+    /* このあと月の成果の画面が先に出るなら、ボタンは「◯月の成果へ」 */
+    const tn = state.trainingNext;
+    const aheadKind = tn === 'fallPref' ? 'fallPref' : (tn === 'springOrNextSummer' ? null : 'local');
+    Screens.trainingResult(state, Screens.aheadText(aheadKind, trainingNextLabel()));
   }
 
   /** 特訓が終わったあと、どこへ進むかの文言。state.trainingNext で決まる */
@@ -376,6 +392,7 @@ const Game = (() => {
       今までの特訓と同じ仕様（選択5回・見送り3回）のまま */
   function toPostFallTraining() {
     revealPros();
+    Team.healPitchers(state.team);
     state.winterSnap = Screens.snapStats(state.team);
     toTrainingPhase('springOrNextSummer', TRAIN_LIMITS.normal);
   }
@@ -469,7 +486,7 @@ const Game = (() => {
     flushMonth(() => {
       Screens.opening(state);
       UI.curtain('<b>' + UI.esc(tourLabel()) + '</b><span>開幕</span>', function () {});
-    });
+    }, tourLabel() + 'へ');
   }
 
   /** 勝ち上がるほど、相手の投手も連戦で疲れている。自軍の先発の疲れ（staminaCarry）を目安に、
@@ -725,9 +742,9 @@ const Game = (() => {
     /* 県大会の1・2回戦でのコールド負けは、このあとサッカー転向の画面へ進む */
     if ((kind === 'local' || kind === 'fallPref') && cold) return '次へ';
     if (kind === 'local' || kind === 'national') return 'オフシーズンへ';
-    if (kind === 'fallPref' && isLast) return '秋季地区大会へ';
+    if (kind === 'fallPref' && isLast) return Screens.aheadText('fallDistrict', '秋季地区大会へ');
     /* 春の全国大会の次は、特訓ではなく新入生の入部 */
-    if (kind === 'spring') return '新入生の入部へ';
+    if (kind === 'spring') return Screens.aheadText('newSeason', '新入生の入部へ');
     return 'オフシーズンへ';   // 秋の大会で負けたあと（このあと冬の特訓）
   }
 
@@ -822,6 +839,7 @@ const Game = (() => {
   /* ---------- 大会の終わり ---------- */
 
   function finishTournament(won) {
+    Team.healPitchers(state.team);       // 大会が終わったら、投手の疲れは抜ける
     /* 優勝の演出（カーテン）は、勝った瞬間・結果画面へ進むところで
        すでに出している（toResult）。ここでは実際に次へ進むための
        画面と状態の更新だけを行う */
@@ -871,6 +889,7 @@ const Game = (() => {
   }
 
   function lose() {
+    Team.healPitchers(state.team);       // 大会が終わったら、投手の疲れは抜ける
     const kind = state.tour.kind;
     const round = state.lastResult.round;
     const isLast = state.lastResult.last;
@@ -1281,7 +1300,7 @@ const Game = (() => {
     state.phase = 'new-bat';
     state.sets = null;
     save();
-    flushMonth(newcomerBatters);
+    flushMonth(newcomerBatters, '新入生の入部へ');
   }
 
   /** 新入生の組を決める前の確認（決めたあとは選び直せない） */

@@ -645,7 +645,7 @@ const Screens = (() => {
     ok.hidden = false;
     ok.disabled = true;
     skip.hidden = false;
-    skip.textContent = more ? '強奪せず次の試合へ' : (nextTourName(state) ? '強奪せず' + nextTourName(state) + 'へ' : '強奪せず次へ');
+    skip.textContent = more ? '強奪せず次の試合へ' : '強奪せず' + nextStepText(state);
 
     const body = UI.el('poach-body');
     const choose = (pid) => {
@@ -745,6 +745,14 @@ const Screens = (() => {
     return '';
   }
 
+  /** 決勝のあとのボタンの言い方（「◯◯へ」）。月の成果の画面が先に出るなら、その見出しへ */
+  function nextStepText(state) {
+    const k = state.tour.kind;
+    const next = k === 'fallPref' ? 'fallDistrict' : (k === 'fallDistrict' ? 'fallJingu' : (k === 'spring' ? 'newSeason' : null));
+    const name = nextTourName(state);
+    return aheadText(next, name ? name + 'へ' : '次へ');
+  }
+
   /** 強奪の結果を出す前の演出。交渉中の画面から、成功なら紙吹雪、失敗なら暗転。
       タップすれば飛ばせる */
   function poachCinema(incoming, success, done) {
@@ -809,7 +817,7 @@ const Screens = (() => {
     const more = state.tour.index < state.tour.rounds.length - 1;
     const ok = UI.el('btn-poach-ok');
     const skip = UI.el('btn-poach-skip');
-    ok.textContent = more ? '次の試合へ' : (nextTourName(state) ? nextTourName(state) + 'へ' : '次へ');
+    ok.textContent = more ? '次の試合へ' : nextStepText(state);
     ok.hidden = false;
     ok.disabled = false;
     skip.hidden = true;
@@ -830,7 +838,7 @@ const Screens = (() => {
     const more = state.tour.index < state.tour.rounds.length - 1;
     const ok = UI.el('btn-poach-ok');
     const skip = UI.el('btn-poach-skip');
-    ok.textContent = more ? '次の試合へ' : (nextTourName(state) ? nextTourName(state) + 'へ' : '次へ');
+    ok.textContent = more ? '次の試合へ' : nextStepText(state);
     ok.hidden = false;
     ok.disabled = false;
     skip.hidden = true;
@@ -892,6 +900,7 @@ const Screens = (() => {
   /** 地方大会を勝ち切ったとき。ここから全国大会へ進む */
   function localWin(state) {
     const t = state.team;
+    UI.el('btn-localwin-next').textContent = aheadText('national', '全国大会へ');
     UI.html('localwin-body',
       '<div class="champ champ--local">' +
         confetti(18, ['#1f9447', '#ffd43b', '#7cc4ff', '#ffffff']) +
@@ -966,7 +975,10 @@ const Screens = (() => {
     const bats = lineupIds.map((id) => team.batters.find((p) => p.id === id)).filter(Boolean)
       .concat(team.batters.filter((p) => lineupIds.indexOf(p.id) < 0)
         .sort((a, b) => Player.rating(b) - Player.rating(a)));
-    const pits = team.pitchers.slice().sort((a, b) => Player.rating(b) - Player.rating(a));
+    /* 投手は番手の順（1番手から）。番手に入っていない投手は、そのあとに力の順で */
+    const pitOrder = UI.pitOrderOf(team);
+    const pitIdx = (p) => { const i = pitOrder.indexOf(p.id); return i < 0 ? 1000 : i; };
+    const pits = team.pitchers.slice().sort((a, b) => (pitIdx(a) - pitIdx(b)) || (Player.rating(b) - Player.rating(a)));
     const one = (p) => ({
       id: p.id, name: p.name, kind: p.kind, role: UI.roleText(team, p), grade: p.grade,
       hand: UI.handMark(p), ht: p.ht, wt: p.wt, traj: p.traj,
@@ -1030,9 +1042,23 @@ const Screens = (() => {
 
   /** 月が変わるときに、その月の成果（月の初めからの伸び。特訓があった月は、そのうち特訓で上がった分も）を出す。
       m は main.js が控えた { from, to, snap, cards }。onNext は「次へ」を押したあとの続き */
-  function monthResult(state, m, onNext) {
+  /** 「◯月の成果」「◯〜◯月の成果」の見出し（t0 の月から、t1 の前の月まで） */
+  function monthLabel(t0, t1) {
     const mo = (t) => Body.monthOf(t);
-    const label = (m.to - m.from <= 1 ? mo(m.from) + '月' : mo(m.from) + '〜' + mo(m.to - 1) + '月') + 'の成果';
+    return (t1 - t0 <= 1 ? mo(t0) + '月' : mo(t0) + '〜' + mo(t1 - 1) + '月') + 'の成果';
+  }
+
+  /** 次に進むと月の成果の画面が先に出るときの、手前の画面のボタンの言い方。
+      kind は次の大会（'local' など）、'newSeason' は新入生の入部。出ないときは fallback */
+  function aheadText(kind, fallback) {
+    const f = window.monthAheadFor;
+    const a = f ? f(kind) : null;
+    return a ? a + 'へ' : fallback;
+  }
+
+  function monthResult(state, m, onNext, nextLabel) {
+    const label = monthLabel(m.from, m.to);
+    UI.el('btn-month-next').textContent = (nextLabel || '次へ') + ' ›';
     UI.el('month-title').textContent = label;
     UI.html('month-body', cardsHtml(m.cards, m.snap.base, m.snap.train));
     wireNames(UI.el('month-body'), state);
@@ -1061,7 +1087,7 @@ const Screens = (() => {
           '<p class="champ__lead">来年の' + esc(name) + 'への出場はかなわなかった。新入生を迎え、夏へ。</p>' +
         '</div>';
     UI.html('spring-result-body', body);
-    UI.el('btn-spring-result-next').textContent = qualified ? (name + 'へ') : '新入生の入部';
+    UI.el('btn-spring-result-next').textContent = qualified ? aheadText('spring', name + 'へ') : aheadText('newSeason', '新入生の入部へ');
     UI.show('screen-spring-result');
   }
 
@@ -1157,8 +1183,16 @@ const Screens = (() => {
       UI.show('screen-teaminfo');
       return;
     }
+    /* 全国大会（夏）と春の全国大会の、出場回数と優勝回数。
+       大会が終わるたびに state.history に1件残るので、そこから数える */
+    const rec = (kind, name) => {
+      const hs = (state.history || []).filter((h) => h.tour === kind);
+      const champs = hs.filter((h) => h.result === '優勝').length;
+      return '<li><b>' + esc(name) + '</b>　出場 ' + hs.length + '回　優勝 ' + champs + '回</li>';
+    };
     UI.html('teaminfo-body',
       '<p class="section-lead">' + esc(t.name) + '　部員' + Team.all(t).length + '人</p>' +
+      '<ul class="tourrec">' + rec('national', state.settings.nationalName) + rec('spring', state.settings.springName) + '</ul>' +
       '<h3 class="sub">野手</h3><div id="ti-bat"></div>' +
       '<h3 class="sub">投手</h3><div id="ti-pit"></div>');
     const open = (pid) => {
@@ -1661,7 +1695,7 @@ const Screens = (() => {
 
   return {
     pick, ready, training, trainingResult, opening, pregame,
-    info, teamInfo, poachWin, poachRelease, poachCinema, poachSuccess, poachFailed, champion, celebrate, springResult, winterResult, monthResult, statCards, snapStats, offseason, settings, lineupCard, bindRows,
+    info, teamInfo, poachWin, poachRelease, poachCinema, poachSuccess, poachFailed, champion, celebrate, springResult, winterResult, monthResult, monthLabel, aheadText, statCards, snapStats, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
     localWin, soccerStart, soccerOpening, soccerPregame, soccerVerdict, soccerGrowth, soccerMatchResult, soccerLineupEditor, soccerCelebrate, soccerOffseason, soccerDecide, soccerReturn,
     soccerTraining, soccerTrainingResult, soccerSpringResult, soccerNewcomers,

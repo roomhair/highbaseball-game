@@ -1747,8 +1747,21 @@ tr.prow.is-picked .luball { background: rgba(255, 255, 255, .5); color: var(--ye
     color-mix(in srgb, #9fd3ff 7%, transparent) 40%,
     transparent 70%);
 }
+/* 出場決定は、明るい空の青にして、出場ならずの暗い面とはっきり変える */
+.champ.champ--spring {
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(255, 255, 255, .55), transparent 62%),
+    linear-gradient(180deg, #6fb8ff 0%, #3b82ea 55%, #2459bd 100%);
+  border-color: #ffffff;
+}
+.champ--spring .champ__title { color: #ffffff; text-shadow: 0 3px 0 #1c4fa8, 0 8px 22px rgba(20, 60, 140, .45); }
+.champ--spring .champ__eyebrow, .champ--spring .champ__lead { color: #ffffff; }
+.champ--spring .champ__rays {
+  background: radial-gradient(ellipse at 50% 34%, rgba(255, 255, 255, .55) 0%, rgba(255, 255, 255, .18) 40%, transparent 70%);
+}
 /* センバツ相当に出られなかった年は、派手にしない。見出しも地味な色に */
 .champ--miss { border-color: #8aa0c6; }
+.champ.champ--miss { background: linear-gradient(180deg, #3a4558 0%, #232b3a 100%); }
 .champ--miss .champ__title { color: #c7d3e8; animation: none; }
 
 /* =========================================================
@@ -2293,6 +2306,19 @@ a.appbar__title { text-decoration: none; }
   margin: 0; padding: 0; font-size: 11px; white-space: nowrap; z-index: 1;
 }
 
+/* 次の打者。「タップで次の打席へ」と同じ高さの、枠の左端に置く */
+.stagewrap .nextbat {
+  position: absolute; bottom: 8px; left: 12px; max-width: 42%;
+  margin: 0; padding: 0; font-size: 11px; font-weight: 700; line-height: 1.2; color: var(--ink-mute);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 1; pointer-events: none;
+}
+/* いまの打者の行（黄色）では、能力の評価も、ほかの能力と同じ黒（文字色そのまま）にする。
+   S の金色や SS の虹色は、黄色の上では読みにくいため */
+.ll__item.is-now .ll__ab b {
+  background: none; -webkit-background-clip: border-box; background-clip: border-box;
+  -webkit-text-fill-color: currentColor; color: inherit; filter: none;
+}
+
 /* 敗戦は、墨色の極太ゴシックに銀灰色の縁取り（斜体にしない） */
 .verdict__box.is-lose .verdict__word {
   font-style: normal; letter-spacing: .08em;
@@ -2422,3 +2448,10 @@ a.appbar__title { text-decoration: none; }
 .gtable { width: 100%; max-width: 100%; table-layout: fixed; border-collapse: collapse; margin: 10px 0 14px; font-size: 13px; }
 .gtable th, .gtable td { padding: 6px 7px; border: 1px solid var(--line, #c9d3e6); text-align: left; overflow-wrap: anywhere; }
 .gtable thead th { background: var(--panel-2, #eef3fb); font-weight: 800; }
+
+/* プロ入りした選手の一覧の並び替え */
+.proslist__sort { display: block; margin: 0 0 10px; font-size: 13px; font-weight: 700; }
+.proslist__sort select { font: inherit; font-weight: 400; padding: 4px 6px; max-width: 100%; }
+
+/* チーム情報の、全国大会の記録 */
+.tourrec { list-style: none; margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--line, #e3e6ea); border-radius: 8px; font-size: 13px; line-height: 1.9; }

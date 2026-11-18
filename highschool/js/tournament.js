@@ -49,6 +49,12 @@ const Tournament = (() => {
   const OPP_LEVEL_BONUS = 2.5;
 
   function makeTeam(name, level, kind) {
+    /* 相手の選手は、身長の上限が自校より高く（200cm）、ばらつきは少しだけ小さい */
+    Body.setHtProfile({ cap: 200, sd: 0.93 });
+    try { return makeTeamInner(name, level, kind); } finally { Body.setHtProfile(null); }
+  }
+
+  function makeTeamInner(name, level, kind) {
     level += OPP_LEVEL_BONUS;
     const t = Team.create(name);
     const noSenior = FALL_SPRING_KINDS.indexOf(kind) >= 0;

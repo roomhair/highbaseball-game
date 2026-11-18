@@ -378,10 +378,10 @@ const Sim = (() => {
   function resolveTactic(kind, bat, pit, defRating, bases) {
     if (kind === 'ibb') return { code: 'BB', text: '申告敬遠', out: 0 };
     if (kind === 'safety') return resolveSafety(bat, pit, defRating, bases);
-    const skill = C(0.68 + (bat.meet / 100) * 0.22 - (stuffOf(pit) - 0.45) * 0.12, 0.48, 0.94);
+    const skill = C(0.75 + (bat.meet / 100) * 0.22 - (stuffOf(pit) - 0.45) * 0.12, 0.55, 0.95);
     if (kind === 'squeeze') {
       /* スクイズは決まれば1点、外されれば三塁走者が憤死する */
-      return RNG.chance(skill * 0.86)
+      return RNG.chance(skill * 0.93)
         ? { code: 'SQ', text: 'スクイズ', out: 1 }
         : { code: 'SQF', text: 'スクイズ失敗', out: 1 };
     }
@@ -595,8 +595,9 @@ const Sim = (() => {
   /* 息が上がりはじめるまでに受けられる打者の数。
      ここを大きく取りすぎると、スタミナ50の投手でも9回まで
      限界に届かず、スタミナがほとんど効かなくなる。
-     いまは スタミナ20 で4回、50 で7回、85 なら9回もつくらい */
-  function capacityOf(p) { return 8 + p.stamina * 0.45; }
+     以前より少し早く減る（スタミナが低いのに、満タンならかなり投げられてしまうため）。
+     そのぶん、次の試合までの回復を少し早めてある（Team.restPitchers） */
+  function capacityOf(p) { return 7 + p.stamina * 0.40; }
 
   /**
    * 試合を最後まで計算する。
