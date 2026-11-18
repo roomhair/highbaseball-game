@@ -604,7 +604,13 @@ const Body = (() => {
         let step = Math.max(-1, Math.min(4 * sc, d * sc));
         /* 下がる月は、毎月は下がらない（球速は下がりにくい）。下がる分は持ち越され、
            次の月に体重が戻れば、そのまま消える。ずっと下がり続けることは少ない */
-        if (step < 0 && !RNG.chance(key === 'velo' ? 0.3 : 0.5)) step = 0;
+        if (step < 0) {
+          if (!p.bodyDown) p.bodyDown = {};
+          /* 前の月に下がっていたら、続けて下がることはまれ（上がったり下がったりに見えるように） */
+          const base = key === 'velo' ? 0.3 : 0.5;
+          if (RNG.chance(p.bodyDown[key] ? base * 0.35 : base)) p.bodyDown[key] = true;
+          else { step = 0; p.bodyDown[key] = false; }
+        } else if (p.bodyDown) p.bodyDown[key] = false;
         p.bodyOff[key] = done + step / (gain * sc);
         d = step;
       } else p.bodyOff[key] = target;
