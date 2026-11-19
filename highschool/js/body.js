@@ -366,15 +366,19 @@ const Body = (() => {
 
   /** 体格が上限に効く分（その能力の単位）。身長が高いほどパワー・肩力・スタミナの上限が上がり、
       体重が足りないとその分だけ下がる。適切な体重のときに、身長に見合った上限になる */
+  /* 背が高いことによる「育ちにくさ」（ミート・走力・守備・捕球）は、背が低い側の「育ちやすさ」の
+     半分にしてある（背の高い野手が、小柄な野手よりずっと伸びにくくならないように） */
+  const TALL_PEN = 0.5;
+  const tallEase = (h) => (h > 0 ? TALL_PEN * h : h);
   function capBody(p, key) {
     const h = hz(p), z = zS(p), under = underweight(p);
     switch (key) {
       case 'power':   return 6 * h + 4 * Math.max(0, Math.min(z, 1.5)) - 8 * under;
       case 'arm':     return 7 * h + 2 * Math.max(0, Math.min(z, 1.5)) - 6 * under;
-      case 'meet':    return -3 * h;
-      case 'speed':   return -3 * h - 5 * Math.max(0, z - 0.6);
+      case 'meet':    return -3 * tallEase(h);
+      case 'speed':   return -3 * tallEase(h) - 5 * Math.max(0, z - 0.6);
       case 'field':
-      case 'catch':   return -3 * h;
+      case 'catch':   return -3 * tallEase(h);
       case 'control': return -3 * h;
       case 'stamina': return 2 * h - 2 * under;
       case 'velo':    return veloCap(p);
@@ -435,11 +439,11 @@ const Body = (() => {
       case 'arm':     b = 1 + 0.14 * h - 0.25 * under; break;
       case 'velo':    b = 1 + 0.07 * h - 0.25 * under; break;
       case 'stamina': b = 1 + 0.06 * h; break;
-      case 'speed':   b = 1 - 0.1 * h - 0.25 * Math.max(0, zw - 0.6); break;
-      case 'meet':
+      case 'speed':   b = 1 - 0.1 * tallEase(h) - 0.25 * Math.max(0, zw - 0.6); break;
+      case 'meet':    b = 1 - 0.07 * tallEase(h); break;
       case 'control': b = 1 - 0.07 * h; break;
       case 'field':
-      case 'catch':   b = 1 - 0.1 * h; break;
+      case 'catch':   b = 1 - 0.1 * tallEase(h); break;
       default: break;
     }
     let g = Math.exp(0.32 * z) * b;
