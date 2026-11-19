@@ -52,7 +52,9 @@ const Team = (() => {
     /* 守る場所ごとに、要る能力が違う */
     const tilt =
       posKey === 'C'  ? p.arm * 0.12 + p.catch * 0.18 :
-      posKey === 'SS' || posKey === '2B' ? p.field * 0.14 + p.speed * 0.06 :
+      /* 遊撃は二塁より、守備と肩力（深い位置からの長い送球）が大きく効く */
+      posKey === 'SS' ? p.field * 0.16 + p.arm * 0.22 + p.speed * 0.04 :
+      posKey === '2B' ? p.field * 0.12 + p.speed * 0.06 + p.arm * 0.04 :
       posKey === 'CF' ? p.speed * 0.16 + p.field * 0.04 :
       posKey === 'RF' || posKey === 'LF' ? p.arm * 0.10 : 0;
     return Math.max(1, base + tilt * 0.5 - pen);
