@@ -149,7 +149,7 @@ const Body = (() => {
   const DIR_H = {   // 新しい選手（dv 2）の向き
     velo: 0.7, power: 1.2, arm: 1.0,
     field: -0.31, catch: -0.29, control: -0.8,
-    speed: -0.245, traj: 0.4,
+    speed: 0, traj: 0.4,         // 走力は身長ではなく体重（体格の標準との差）で決まる
     meet: -0.26, stamina: 0.4, pitch: -0.8,
   };
   /* これまでの選手（dv 1）の向き。体格の効き方を調整する前に作られた選手は、これのまま */
@@ -221,7 +221,7 @@ const Body = (() => {
       const floor = 18 + 7.5 * Math.max(0, hz(p)) + 5 * Math.max(0, zS(p) - 0.3);
       if (v < floor) return floor - (floor - v) * 0.4;
     } else if (key === 'speed') {
-      const top = 95 - 14 * Math.max(0, zS(p) - 0.4) - 5 * Math.max(0, hz(p) - 1.0);
+      const top = 95 - 14 * Math.max(0, zS(p) - 0.4) - (p.dv === 1 ? 5 * Math.max(0, hz(p) - 1.0) : 0);
       if (v > top) return top + (v - top) * 0.35;
     }
     return v;
@@ -333,7 +333,11 @@ const Body = (() => {
        伸びたときは、力のいる能力（球速・パワー・肩力・スタミナ）が上がりやすく、
        守備・捕球・走力などが下がる効き方はごく小さい */
     const h = hz(p), h0 = p.hz0 == null ? h : p.hz0;
-    return k * (h0 * (dirTable(p)[key] || 0) + (h - h0) * (DIR_G[key] || 0) + pz(p));
+    /* 走力は身長ではなく体重で決まる（調整後の選手）。入部時の体重が標準より重いほど遅く、軽いほど速い */
+    const v1 = p.dv === 1;
+    const g = (key === 'speed' && !v1) ? 0 : (DIR_G[key] || 0);
+    const wInit = (key === 'speed' && !v1) ? -0.45 * RNG.clamp(p.zW0 == null ? zS(p) : p.zW0, -2, 2) : 0;
+    return k * (h0 * (dirTable(p)[key] || 0) + (h - h0) * g + pz(p) + wInit);
   }
 
   /** 能力 key に足す補正の合計。上限を超えないようにしてある */
@@ -386,7 +390,7 @@ const Body = (() => {
       case 'power':   return 6 * h + 4 * Math.max(0, Math.min(z, 1.5)) - 8 * under;
       case 'arm':     return 7 * h + 2 * Math.max(0, Math.min(z, 1.5)) - 6 * under;
       case 'meet':    return v1 ? -3 * tallEase(h) : -1.27 * h;
-      case 'speed':   return (v1 ? -3 * tallEase(h) : 2.0 * h) - 5 * Math.max(0, z - 0.6);
+      case 'speed':   return (v1 ? -3 * tallEase(h) : -2.5 * RNG.clamp(z, -1.5, 1.5)) - 5 * Math.max(0, z - 0.6);
       case 'field':
       case 'catch':   return -3 * tallEase(h);
       case 'control': return -3 * h;
@@ -450,7 +454,7 @@ const Body = (() => {
       case 'arm':     b = 1 + (v1 ? 0.14 : 0.10) * h - 0.25 * under; break;
       case 'velo':    b = 1 + 0.07 * h - 0.25 * under; break;
       case 'stamina': b = 1 + (v1 ? 0.06 : 0.032) * h; break;
-      case 'speed':   b = 1 - (v1 ? 0.1 * tallEase(h) : 0) - 0.25 * Math.max(0, zw - 0.6); break;
+      case 'speed':   b = 1 - (v1 ? 0.1 * tallEase(h) : 0.08 * RNG.clamp(zw, -1.5, 1.5)) - 0.25 * Math.max(0, zw - 0.6); break;
       case 'meet':    b = 1 - (v1 ? 0.07 * tallEase(h) : 0.039 * h); break;
       case 'control': b = 1 - 0.07 * h; break;
       case 'field':
