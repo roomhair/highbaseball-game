@@ -112,9 +112,13 @@ const Body = (() => {
 
   /* 同じ学年・同じ区分の平均身長（cm）。投手はやや高い */
   const refOf = (extra) => { const o = {}; [1, 2, 3, 4].forEach((g) => { o[g] = JP_HT[g] * SCALE + extra; }); return o; };
+  /* 投手も野手も、まったく同じ基準（身長・体重の平均とばらつき）。
+     以前は投手だけ2cm高く作っていたが、そろえた。すでにいる投手は、
+     作られたときの基準のまま（refAdj）にして、身長も能力も動かさない */
+  const REF_ADJ_OLD_PITCHER = 2.0 * SCALE;
   const HT_REF = {
     batter:  refOf(0),
-    pitcher: refOf(2.0 * SCALE),
+    pitcher: refOf(0),
   };
   /* 標準的な体格（BMI）。学年が上がると少し増える */
   const BMI_REF = {};
@@ -124,8 +128,10 @@ const Body = (() => {
   [1, 2, 3, 4].forEach((g) => { BMI_REF_PREV[g] = JP_WT_PREV[g] * SCALE / Math.pow(JP_HT[g] * SCALE / 100, 2); });
   const BMI_SD = 2.1 / SCALE;
   /* 守る場所による体格の違い（BMI）。生成のときだけ使う */
-  const POS_BMI = { C: 1.0, '1B': 1.2, DH: 0.8, '3B': 0.4, SS: -0.5, '2B': -0.4, CF: -0.6, LF: 0.1, RF: 0.3, P: 0.2 };
-  const POS_HT = { C: 0.5, '1B': 2.0, DH: 1.0, '3B': 0.8, SS: -1.5, '2B': -1.5, CF: -0.5, LF: 0.4, RF: 0.8, P: 0 };
+  /* 守る場所による体格の違いは、つけていない（投手も野手も、守る場所に関係なく同じ分布）。
+     以前は捕手・一塁手を大きく、遊撃・二塁手を小さくしていた */
+  const POS_BMI = {};
+  const POS_HT = {};
   const posHt = (k) => (POS_HT[k] || 0) * SCALE;
   const posBmi = (k) => (POS_BMI[k] || 0) / SCALE;
 
@@ -248,7 +254,7 @@ const Body = (() => {
   function refHtAt(kind, grade, idx) { return interp(HT_REF[kind === 'pitcher' ? 'pitcher' : 'batter'], posOf(grade, idx)); }
   function bmiRefAt(grade, idx) { return interp(BMI_REF, posOf(grade, idx)); }
   function tOf(p) { return p.bodyT == null ? NOW : p.bodyT; }
-  function refHt(p) { return refHtAt(kindOf(p), p.grade, tOf(p)); }
+  function refHt(p) { return refHtAt(kindOf(p), p.grade, tOf(p)) + (p.refAdj || 0); }
   function hz(p) { return (p.ht - refHt(p)) / HT_SD; }
   function pz(p) { return (p.phys || 0) / PHYS_SD; }
 
@@ -563,6 +569,7 @@ const Body = (() => {
 
   function setParts(p, parts) {
     p.ht = parts.ht; p.wt = parts.wt; p.phys = parts.phys;
+    p.hv = 2; p.refAdj = 0;
     p.htCap = parts.htCap || HT_HARD_CAP;
     p.htType = parts.htType; p.wtTrend = parts.wtTrend; p.wtResp = parts.wtResp;
     p.tilt = parts.tilt || null;
@@ -665,6 +672,12 @@ const Body = (() => {
         p.zW0 = zW(p); p.zWs = p.zW0;
       }
       p.bodyV = BODY_VER;
+    }
+    /* 投手と野手の身長の基準をそろえた（hv 2）。それ以前に作られた投手は、
+       以前の基準（2cm高い）のまま評価する。移行（上の migrated）した選手は、基準ごと直してあるので不要 */
+    if (p.ht != null && p.hv !== 2) {
+      p.refAdj = (!migrated && p.kind === 'pitcher') ? REF_ADJ_OLD_PITCHER : 0;
+      p.hv = 2;
     }
     /* 体重の基準を軽くした（wref 2）。それ以前に作られた選手は、基準が動いたぶんだけ
        入部時の標準との差（zW0）をずらして、能力が勝手に動かないようにする */
