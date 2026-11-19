@@ -152,6 +152,50 @@ const Pro = (() => {
     };
   }
 
+  /* ---------- 引退 ----------
+     その年の成績（と年齢）で決める。好成績の選手は、全盛期に引退しない。
+     高卒で入団するので、k年目の年齢は 18 + k。
+       活躍度 … star（主力級）／regular（レギュラー）／marginal（控え・二軍が中心）／poor（ほとんど出られない）
+     年齢が上がるほど、成績が悪いほど、引退しやすい。 */
+  function tier(row, isPit) {
+    if (!row.g) return 'poor';
+    if (isPit) {
+      if (row.war >= 2.5) return 'star';
+      if (row.war >= 1.0) return 'regular';
+      return row.war >= 0.2 ? 'marginal' : 'poor';
+    }
+    const avg = row.ab ? row.h / row.ab : 0;
+    const obp = (row.ab + row.bb + row.hbp + row.sf) ? (row.h + row.bb + row.hbp) / (row.ab + row.bb + row.hbp + row.sf) : 0;
+    const ops = row.ab ? obp + row.tb / row.ab : 0;
+    const full = row.pa >= 300;
+    if (row.war >= 2.5 || (full && (avg >= 0.300 || ops >= 0.850))) return 'star';
+    if (row.war >= 1.0 || (full && ops >= 0.730)) return 'regular';
+    return row.war >= 0.2 ? 'marginal' : 'poor';
+  }
+
+  const RETIRE_P = [
+    // 年齢の上限, { poor, marginal, regular, star }
+    [26, { poor: 0.05, marginal: 0.00, regular: 0.00, star: 0.00 }],
+    [31, { poor: 0.30, marginal: 0.06, regular: 0.01, star: 0.00 }],
+    [35, { poor: 0.50, marginal: 0.20, regular: 0.06, star: 0.02 }],
+    [38, { poor: 0.70, marginal: 0.40, regular: 0.20, star: 0.08 }],
+    [41, { poor: 0.90, marginal: 0.60, regular: 0.40, star: 0.25 }],
+    [99, { poor: 1.00, marginal: 0.90, regular: 0.70, star: 0.55 }],
+  ];
+
+  function retires(row, k, idle, isPit, round) {
+    const age = 18 + k;
+    /* 一軍に出られない年が続けば、戦力外になる */
+    if (k >= 3 && idle >= 2 && RNG.chance(0.6)) return true;
+    /* 育成指名は、出番のないまま早く戦力外になりやすい（好成績の年は残る） */
+    if (round === 6 && k >= 2 && k <= 5 && tier(row, isPit) === 'poor' && RNG.chance(0.3)) return true;
+    const t = tier(row, isPit);
+    const tab = RETIRE_P.find((x) => age <= x[0])[1];
+    /* ごくまれな大けがでの引退（全盛期の好成績の選手でも、ごくまれに） */
+    if (k >= 5 && RNG.chance(0.008)) return true;
+    return RNG.chance(tab[t]);
+  }
+
   /* ---------- 全シーズン ---------- */
 
   /** 引退までの全シーズンを作る。first は1年目の西暦 */
@@ -162,21 +206,15 @@ const Pro = (() => {
     const role = isPit ? ((player.stamina || 0) >= 48 && RNG.chance(0.75) ? 'SP' : 'RP') : null;
     const seasons = [];
     let idle = 0;
-    for (let k = 1; k <= 22; k++) {
+    for (let k = 1; k <= 25; k++) {
       const s = levelAt(sPeak, k, devRate) + RNG.norm(0, 0.35);
       const row = isPit ? pitSeason(player, s, k, role) : batSeason(player, s, k);
       row.y = first + k - 1;
       row.lines = titleLines(isPit);
       seasons.push(row);
-      /* 一軍に出られない年が続けば、戦力外になる */
       idle = row.g === 0 ? idle + 1 : 0;
-      if (k >= 3 && idle >= 2 && RNG.chance(0.6)) break;
-      if (k >= 4 && s < -1.6 && RNG.chance(0.35)) break;
-      if (k >= 10 && s < -0.2 && RNG.chance(0.18 + 0.05 * (k - 10))) break;
-      if (k >= 15 && RNG.chance(0.2 + 0.07 * (k - 15))) break;
+      if (retires(row, k, idle, isPit, round)) break;
     }
-    /* 育成指名は、短く終わりやすい */
-    if (round === 6 && seasons.length > 4 && RNG.chance(0.5)) seasons.length = RNG.range(2, 4);
     return { seasons, kind: isPit ? 'pitcher' : 'batter' };
   }
 
