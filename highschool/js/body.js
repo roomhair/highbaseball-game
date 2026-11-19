@@ -147,7 +147,7 @@ const Body = (() => {
      弾道         … 長いリーチで打球が上がりやすい（+0.4）
      ミート・スタミナ・変化球 … 身長とは結びつけない（0） */
   const DIR_H = {   // 新しい選手（dv 2）の向き
-    velo: 0.7, power: 1.2, arm: 1.0,
+    velo: 0.7, power: 0.40, arm: 1.0,      // パワー：身長4割・体重6割の影響力（入部時・育ちやすさ・上限のそれぞれで、測って合わせてある）
     field: -0.31, catch: -0.29, control: -0.8,
     speed: 0, traj: 0.4,         // 走力は身長ではなく体重（体格の標準との差）で決まる
     meet: -0.26, stamina: 0.4, pitch: -0.8,
@@ -340,7 +340,12 @@ const Body = (() => {
     /* 走力は身長ではなく体重で決まる（調整後の選手）。入部時の体重が標準より重いほど遅い。標準より軽くても、それ以上は速くならない */
     const v1 = p.dv === 1;
     const g = (key === 'speed' && !v1) ? 0 : (DIR_G[key] || 0);
-    const wInit = (key === 'speed' && !v1) ? -0.45 * Math.min(2, Math.max(0, p.zW0 == null ? zS(p) : p.zW0)) : 0;
+    const zInit = p.zW0 == null ? zS(p) : p.zW0;
+    let wInit = 0;
+    if (key === 'speed' && !v1) wInit = -0.45 * Math.min(2, Math.max(0, zInit));
+    /* パワーは、身長4割・体重6割の影響力（調整後の選手）。入部時の体重が標準より重いほど強く、軽いほど弱い。
+       重すぎるときの伸びは頭打ち（gBat） */
+    else if (key === 'power' && p.kind !== 'pitcher' && !v1) wInit = 1.2 * Math.max(-2, gBat(zInit));
     return k * (h0 * (dirTable(p)[key] || 0) + (h - h0) * g + pz(p) + wInit);
   }
 
@@ -391,7 +396,7 @@ const Body = (() => {
     const h = hz(p), z = zS(p), under = underweight(p);
     const v1 = !!(p && p.dv === 1);        // 体格の効き方を調整する前に作られた選手
     switch (key) {
-      case 'power':   return 6 * h + 4 * Math.max(0, Math.min(z, 1.5)) - 8 * under;
+      case 'power':   return (v1 ? 6 * h + 4 * Math.max(0, Math.min(z, 1.5)) : 5.0 * h + 6.0 * RNG.clamp(gBat(z), -1.5, 1.2)) - 8 * under;
       case 'arm':     return 7 * h + 2 * Math.max(0, Math.min(z, 1.5)) - 6 * under;
       case 'meet':    return v1 ? -3 * tallEase(h) : -1.27 * h;
       case 'speed':   return (v1 ? -3 * tallEase(h) : -2.5 * Math.min(1.5, Math.max(0, z))) - 5 * Math.max(0, z - 0.6);
@@ -454,7 +459,7 @@ const Body = (() => {
     const v1 = !!(p && p.dv === 1);        // 体格の効き方を調整する前に作られた選手
     let b = 1;
     switch (key) {
-      case 'power':   b = 1 + 0.12 * h - 0.3 * under; break;
+      case 'power':   b = 1 + (v1 ? 0.12 * h : 0.12 * h + 0.085 * RNG.clamp(gBat(zw), -1.5, 1.2)) - 0.3 * under; break;
       case 'arm':     b = 1 + (v1 ? 0.14 : 0.10) * h - 0.25 * under; break;
       case 'velo':    b = 1 + 0.07 * h - 0.25 * under; break;
       case 'stamina': b = 1 + (v1 ? 0.06 : 0.032) * h; break;
