@@ -146,7 +146,14 @@ const Body = (() => {
      走力         … 小回り・敏捷性ではやや不利（−0.4）
      弾道         … 長いリーチで打球が上がりやすい（+0.4）
      ミート・スタミナ・変化球 … 身長とは結びつけない（0） */
-  const DIR_H = {
+  const DIR_H = {   // 新しい選手（dv 2）の向き
+    velo: 0.7, power: 1.2, arm: 1.0,
+    field: -0.31, catch: -0.29, control: -0.8,
+    speed: -0.245, traj: 0.4,
+    meet: -0.26, stamina: 0.4, pitch: -0.8,
+  };
+  /* これまでの選手（dv 1）の向き。体格の効き方を調整する前に作られた選手は、これのまま */
+  const DIR_H_OLD = {
     velo: 0.7, power: 1.2, arm: 1.0,
     field: -0.9, catch: -0.9, control: -0.8,
     speed: -0.7, traj: 0.4,
@@ -262,11 +269,13 @@ const Body = (() => {
   function pz(p) { return (p.phys || 0) / PHYS_SD; }
 
   /** 能力 key への効き。身長と身体能力は同じ係数で足し合わせる */
+  /** その選手に使う、身長の向きの表。dv 1（調整前に作られた選手）は古い表、それ以外は新しい表 */
+  function dirTable(p) { return p && p.dv === 1 ? DIR_H_OLD : DIR_H; }
   function idxOf(p, key) {
-    return hz(p) * (DIR_H[key] || 0) + pz(p) * 1;
+    return hz(p) * (dirTable(p)[key] || 0) + pz(p) * 1;
   }
   /** 身長だけ・身体能力だけの効き（テスト用） */
-  function idxHeight(p, key) { return hz(p) * (DIR_H[key] || 0); }
+  function idxHeight(p, key) { return hz(p) * (dirTable(p)[key] || 0); }
   function idxPhys(p) { return pz(p); }
 
   /* ---------- 体重 ---------- */
@@ -324,7 +333,7 @@ const Body = (() => {
        伸びたときは、力のいる能力（球速・パワー・肩力・スタミナ）が上がりやすく、
        守備・捕球・走力などが下がる効き方はごく小さい */
     const h = hz(p), h0 = p.hz0 == null ? h : p.hz0;
-    return k * (h0 * (DIR_H[key] || 0) + (h - h0) * (DIR_G[key] || 0) + pz(p));
+    return k * (h0 * (dirTable(p)[key] || 0) + (h - h0) * (DIR_G[key] || 0) + pz(p));
   }
 
   /** 能力 key に足す補正の合計。上限を超えないようにしてある */
@@ -372,11 +381,12 @@ const Body = (() => {
   const tallEase = (h) => (h > 0 ? TALL_PEN * h : h);
   function capBody(p, key) {
     const h = hz(p), z = zS(p), under = underweight(p);
+    const v1 = !!(p && p.dv === 1);        // 体格の効き方を調整する前に作られた選手
     switch (key) {
       case 'power':   return 6 * h + 4 * Math.max(0, Math.min(z, 1.5)) - 8 * under;
       case 'arm':     return 7 * h + 2 * Math.max(0, Math.min(z, 1.5)) - 6 * under;
-      case 'meet':    return -3 * tallEase(h);
-      case 'speed':   return -3 * tallEase(h) - 5 * Math.max(0, z - 0.6);
+      case 'meet':    return v1 ? -3 * tallEase(h) : -1.27 * h;
+      case 'speed':   return (v1 ? -3 * tallEase(h) : 2.0 * h) - 5 * Math.max(0, z - 0.6);
       case 'field':
       case 'catch':   return -3 * tallEase(h);
       case 'control': return -3 * h;
@@ -433,17 +443,18 @@ const Body = (() => {
   function ease(p, key) {
     const z = (p && p.ind && p.ind[key]) || 0;
     const h = hz(p), zw = zS(p), under = underweight(p);
+    const v1 = !!(p && p.dv === 1);        // 体格の効き方を調整する前に作られた選手
     let b = 1;
     switch (key) {
       case 'power':   b = 1 + 0.12 * h - 0.3 * under; break;
-      case 'arm':     b = 1 + 0.14 * h - 0.25 * under; break;
+      case 'arm':     b = 1 + (v1 ? 0.14 : 0.10) * h - 0.25 * under; break;
       case 'velo':    b = 1 + 0.07 * h - 0.25 * under; break;
-      case 'stamina': b = 1 + 0.06 * h; break;
-      case 'speed':   b = 1 - 0.1 * tallEase(h) - 0.25 * Math.max(0, zw - 0.6); break;
-      case 'meet':    b = 1 - 0.07 * tallEase(h); break;
+      case 'stamina': b = 1 + (v1 ? 0.06 : 0.032) * h; break;
+      case 'speed':   b = 1 - (v1 ? 0.1 * tallEase(h) : 0) - 0.25 * Math.max(0, zw - 0.6); break;
+      case 'meet':    b = 1 - (v1 ? 0.07 * tallEase(h) : 0.039 * h); break;
       case 'control': b = 1 - 0.07 * h; break;
       case 'field':
-      case 'catch':   b = 1 - 0.1 * tallEase(h); break;
+      case 'catch':   b = 1 - (v1 ? 0.1 * tallEase(h) : 0.06 * h); break;
       default: break;
     }
     let g = Math.exp(0.32 * z) * b;
@@ -576,7 +587,7 @@ const Body = (() => {
 
   function setParts(p, parts) {
     p.ht = parts.ht; p.wt = parts.wt; p.phys = parts.phys;
-    p.hv = 3; p.refAdj = 0;
+    p.hv = 3; p.refAdj = 0; p.dv = 2;
     p.htCap = parts.htCap || HT_HARD_CAP;
     p.htType = parts.htType; p.wtTrend = parts.wtTrend; p.wtResp = parts.wtResp;
     p.tilt = parts.tilt || null;
@@ -682,6 +693,7 @@ const Body = (() => {
     }
     /* 投手と野手の身長の基準をそろえた（hv 2）。それ以前に作られた投手は、
        以前の基準（2cm高い）のまま評価する。移行（上の migrated）した選手は、基準ごと直してあるので不要 */
+    if (p.ht != null && p.dv == null) p.dv = 1;      // 体格の効き方を調整する前に作られた選手は、これまでの効き方のまま
     if (p.ht != null && p.hv !== 3) {
       if (migrated) p.refAdj = 0;
       else if (p.hv === 2) p.refAdj = -HT_SHIFT_NEW;       // 投手も野手も同じ基準だったころ
