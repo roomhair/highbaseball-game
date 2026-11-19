@@ -408,21 +408,6 @@ const Screens = (() => {
     return rankOf(p[t.key]) + ' ' + p[t.key] + ' → ' + rankOf(Body.stat(p, t.key, p[t.key] + t.amount)) + ' ' + Body.stat(p, t.key, p[t.key] + t.amount);
   }
 
-  function trainingResult(state, nextLabel) {
-    const rows = Training.summarize(state.training);
-    const html = rows.length
-      ? '<div class="tablewrap"><table class="growth"><thead><tr><th class="nm">選手</th><th>年</th><th>項目</th><th>上がり幅</th><th>変化</th></tr></thead><tbody>' +
-        rows.map((r) => '<tr><td class="nm">' + esc(r.name) + '</td><td class="c">' + r.grade + '</td>' +
-          '<td>' + esc(r.label) + '</td>' +
-          '<td class="c up"><b class="gr__up">+' + r.amount + (r.unit ? esc(r.unit) : '') + '</b></td>' +
-          '<td class="c">' + upText(r) + '</td></tr>').join('') +
-        '</tbody></table></div>'
-      : '<p class="note">今回は伸びた選手がいませんでした。</p>';
-    UI.html('train-result', html);
-    UI.el('btn-train-done').textContent = nextLabel;
-    UI.show('screen-training-result');
-  }
-
   /* ---------- 大会開幕 ---------- */
 
   /** 大会開幕の見出し下に出す一言。大会の種類ごとに変える */
@@ -1687,7 +1672,7 @@ const Screens = (() => {
   }
 
   return {
-    pick, ready, training, trainingResult, opening, pregame,
+    pick, ready, training, opening, pregame,
     info, teamInfo, poachWin, poachRelease, poachCinema, poachSuccess, poachFailed, champion, celebrate, springResult, monthResult, monthLabel, aheadText, statCards, snapStats, offseason, settings, lineupCard, bindRows,
     abilityLine, pitchText, verdict, growth, nextUp, trainingIntro, setOnChange,
     localWin, soccerStart, soccerOpening, soccerPregame, soccerVerdict, soccerGrowth, soccerMatchResult, soccerLineupEditor, soccerCelebrate, soccerOffseason, soccerDecide, soccerReturn,

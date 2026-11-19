@@ -319,7 +319,13 @@ const Game = (() => {
     save();
     /* 特訓のあいだは、月の成果を毎月は出さず、控えておく。
        特訓が終わったときに、その期間ぶんをまとめて見せる */
-    if (state.training.done) flushMonth(showTrainingResult, '特訓の成果へ');
+    if (state.training.done) {
+      /* 「特訓の成果」の画面は無い。月の成果（特訓の期間ぶんをまとめたもの）のあと、そのまま次へ進む。
+         途中で閉じても、続きから同じ流れに戻れるよう、この印を残す */
+      state.phase = 'training-result';
+      save();
+      flushMonth(trainingDone, trainingNextLabel());
+    }
     else Screens.training(state);
   }
 
@@ -327,15 +333,6 @@ const Game = (() => {
     Training.pass(state.training, state.team);
     save();
     Screens.training(state);
-  }
-
-  function showTrainingResult() {
-    state.phase = 'training-result';
-    save();
-    /* このあと月の成果の画面が先に出るなら、ボタンは「◯月の成果へ」 */
-    const tn = state.trainingNext;
-    const aheadKind = tn === 'fallPref' ? 'fallPref' : (tn === 'springOrNextSummer' ? null : 'local');
-    Screens.trainingResult(state, Screens.aheadText(aheadKind, trainingNextLabel()));
   }
 
   /** 特訓が終わったあと、どこへ進むかの文言。state.trainingNext で決まる */
@@ -1428,7 +1425,7 @@ const Game = (() => {
       case 'pick-pit': pickPitchers(); break;
       case 'ready': toReady(); break;
       case 'training': Screens.training(state); break;
-      case 'training-result': Screens.trainingResult(state, trainingNextLabel()); break;
+      case 'training-result': flushMonth(trainingDone, trainingNextLabel()); break;      // 特訓の成果の画面は無い。月の成果のあと、次へ
       case 'opening': Screens.opening(state); break;
       case 'pregame': Screens.pregame(state, { onChange: save }); break;
       /* 試合の途中で閉じたときは、同じ試合の同じところから続ける */
