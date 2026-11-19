@@ -116,9 +116,12 @@ const Body = (() => {
      以前は投手だけ2cm高く作っていたが、そろえた。すでにいる投手は、
      作られたときの基準のまま（refAdj）にして、身長も能力も動かさない */
   const REF_ADJ_OLD_PITCHER = 2.0 * SCALE;
+  /* 投手と野手の「間くらい」にそろえた。従来（野手の基準を0、投手を+2cm）から、
+     野手は+1cm、投手は-1cm（＝どちらも +1cm）。すでにいる選手は、作られたときの基準のまま（refAdj） */
+  const HT_SHIFT_NEW = 1.0;
   const HT_REF = {
-    batter:  refOf(0),
-    pitcher: refOf(0),
+    batter:  refOf(HT_SHIFT_NEW),
+    pitcher: refOf(HT_SHIFT_NEW),
   };
   /* 標準的な体格（BMI）。学年が上がると少し増える */
   const BMI_REF = {};
@@ -128,10 +131,10 @@ const Body = (() => {
   [1, 2, 3, 4].forEach((g) => { BMI_REF_PREV[g] = JP_WT_PREV[g] * SCALE / Math.pow(JP_HT[g] * SCALE / 100, 2); });
   const BMI_SD = 2.1 / SCALE;
   /* 守る場所による体格の違い（BMI）。生成のときだけ使う */
-  /* 守る場所による体格の違いは、つけていない（投手も野手も、守る場所に関係なく同じ分布）。
-     以前は捕手・一塁手を大きく、遊撃・二塁手を小さくしていた */
-  const POS_BMI = {};
-  const POS_HT = {};
+  /* 守る場所による体格の違い（わずかな差）。捕手・一塁手・外野手は大きめ、
+     遊撃・二塁手は小さめ。投手・三塁手・指名打者は差をつけない */
+  const POS_BMI = { C: 0.4, '1B': 0.5, '2B': -0.2, SS: -0.2 };
+  const POS_HT = { C: 0.6, '1B': 0.8, LF: 0.5, CF: 0.5, RF: 0.5, '2B': -0.7, SS: -0.7 };
   const posHt = (k) => (POS_HT[k] || 0) * SCALE;
   const posBmi = (k) => (POS_BMI[k] || 0) / SCALE;
 
@@ -569,7 +572,7 @@ const Body = (() => {
 
   function setParts(p, parts) {
     p.ht = parts.ht; p.wt = parts.wt; p.phys = parts.phys;
-    p.hv = 2; p.refAdj = 0;
+    p.hv = 3; p.refAdj = 0;
     p.htCap = parts.htCap || HT_HARD_CAP;
     p.htType = parts.htType; p.wtTrend = parts.wtTrend; p.wtResp = parts.wtResp;
     p.tilt = parts.tilt || null;
@@ -675,9 +678,11 @@ const Body = (() => {
     }
     /* 投手と野手の身長の基準をそろえた（hv 2）。それ以前に作られた投手は、
        以前の基準（2cm高い）のまま評価する。移行（上の migrated）した選手は、基準ごと直してあるので不要 */
-    if (p.ht != null && p.hv !== 2) {
-      p.refAdj = (!migrated && p.kind === 'pitcher') ? REF_ADJ_OLD_PITCHER : 0;
-      p.hv = 2;
+    if (p.ht != null && p.hv !== 3) {
+      if (migrated) p.refAdj = 0;
+      else if (p.hv === 2) p.refAdj = -HT_SHIFT_NEW;       // 投手も野手も同じ基準だったころ
+      else p.refAdj = (p.kind === 'pitcher' ? REF_ADJ_OLD_PITCHER : 0) - HT_SHIFT_NEW;
+      p.hv = 3;
     }
     /* 体重の基準を軽くした（wref 2）。それ以前に作られた選手は、基準が動いたぶんだけ
        入部時の標準との差（zW0）をずらして、能力が勝手に動かないようにする */
