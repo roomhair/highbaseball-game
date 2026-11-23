@@ -1168,9 +1168,22 @@ const Screens = (() => {
       const champs = hs.filter((h) => h.result === '優勝').length;
       return '<li><b>' + esc(name) + '</b>　出場 ' + hs.length + '回　優勝 ' + champs + '回</li>';
     };
+    /* 大会ごとの成績（新しい順）。state.history に、大会が終わるたびに1件残っている */
+    const tourName = (k) => ({
+      local: '夏の県大会', national: state.settings.nationalName, fallPref: '秋の県大会',
+      fallDistrict: '秋季地区大会', fallJingu: state.settings.jinguName, spring: state.settings.springName,
+    }[k] || k);
+    const hist = (state.history || []).slice().reverse();
+    const histHtml = hist.length
+      ? '<details class="rosterbox tourhist"><summary>大会の成績（' + hist.length + '大会）</summary>' +
+        '<div class="tablewrap"><table class="growth"><thead><tr><th>年</th><th class="nm">大会</th><th>結果</th></tr></thead><tbody>' +
+        hist.map((h) => '<tr' + (h.result === '優勝' ? ' class="is-champ"' : '') + '><td class="c">' + h.year + '年目</td>' +
+          '<td class="nm">' + esc(tourName(h.tour)) + '</td><td class="c">' + esc(h.result) + '</td></tr>').join('') +
+        '</tbody></table></div></details>'
+      : '';
     UI.html('teaminfo-body',
       '<p class="section-lead">' + esc(t.name) + '　部員' + Team.all(t).length + '人</p>' +
-      '<ul class="tourrec">' + rec('national', state.settings.nationalName) + rec('spring', state.settings.springName) + '</ul>' +
+      '<ul class="tourrec">' + rec('national', state.settings.nationalName) + rec('spring', state.settings.springName) + '</ul>' + histHtml +
       '<h3 class="sub">野手</h3><div id="ti-bat"></div>' +
       '<h3 class="sub">投手</h3><div id="ti-pit"></div>');
     const open = (pid) => {

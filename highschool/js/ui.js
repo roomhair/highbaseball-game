@@ -1261,7 +1261,10 @@ const UI = (() => {
       if (proSortKey === 'war') return '　通算WAR ' + proWarOf(x).toFixed(1);
       return '';
     };
-    const show = () => {
+    /* 選手の詳細から「一覧に戻る」で戻ったとき、一覧の見ていた位置に戻す */
+    let listTop = 0;
+    const panel = () => document.querySelector('.modal__body');
+    const show = (keepPos) => {
       closeModal.back = null;
       html('modal-body',
         '<h3 class="modal__title">プロ入りした選手（' + sorted.length + '人）</h3>' +
@@ -1274,20 +1277,27 @@ const UI = (() => {
           ? '<ul class="proslist">' + sorted.map(row).join('') + '</ul>'
           : '<p class="note">まだプロ入りした選手はいません。引退する3年生が、ドラフトで指名されると、ここに残ります。</p>'));
       const sel = el('modal-body').querySelector('#pl-sort');
-      if (sel) sel.addEventListener('change', () => { proSortKey = sel.value; sorted = sortList(); show(); });
+      if (sel) sel.addEventListener('change', () => { proSortKey = sel.value; sorted = sortList(); listTop = 0; show(); });
+      const pn = panel();
+      if (pn) pn.scrollTop = keepPos ? listTop : 0;
       el('modal-body').querySelectorAll('.pname').forEach((b) => b.addEventListener('click', () => {
         const x = sorted[+b.dataset.i];
+        const pn0 = panel();
+        listTop = pn0 ? pn0.scrollTop : 0;
         Body.ensure(x.player);
         html('modal-body',
           '<p class="proslist__tag"><em class="retire__draft">' + esc(x.text) + '</em>　' + esc(x.school || '') + '　' + draftYear(x) + '</p>' +
           playerDetail(x.player, { rename: false }) + proSection(x) +
           '<div class="actions actions--modal"><button type="button" class="btn" id="pl-back">一覧に戻る</button></div>');
         wireBodyLog(el('modal-body'), x.player);
-        el('modal-body').querySelector('#pl-back').addEventListener('click', show);
-        closeModal.back = show;
+        const backToList = () => show(true);
+        el('modal-body').querySelector('#pl-back').addEventListener('click', backToList);
+        closeModal.back = backToList;
+        const pn1 = panel();
+        if (pn1) pn1.scrollTop = 0;
       }));
     };
-    modal('', { kind: 'pros', onOpen() { show(); } });
+    modal('', { kind: 'pros', onOpen() { show(false); } });
   }
 
   /* ---------- 共通の初期化 ---------- */

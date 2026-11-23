@@ -2455,3 +2455,6 @@ a.appbar__title { text-decoration: none; }
 
 /* チーム情報の、全国大会の記録 */
 .tourrec { list-style: none; margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--line, #e3e6ea); border-radius: 8px; font-size: 13px; line-height: 1.9; }
+
+.tourhist { margin: 0 0 12px; }
+.tourhist tr.is-champ td { font-weight: 800; color: var(--brand); }

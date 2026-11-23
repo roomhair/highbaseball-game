@@ -774,19 +774,25 @@ const Game = (() => {
     return i < 0 ? 1.35 : (i < 4 ? 0.7 : 1);
   }
 
+  let poaching = false;
   function attemptPoach(incoming, outgoing) {
+    if (poaching) return;          // 強奪のボタンが二重に押されたとき
+    poaching = true;
     const round = Tournament.currentRound(state.tour);
     const chance = poachSuccessChance(round ? round.level : 50, state.prestigeScore) * poachRoleFactor(incoming);
     const ok = RNG.chance(Math.max(0.02, Math.min(0.95, chance)));
     if (ok) { doPoach(incoming, outgoing); save(); }
     /* 結果の画面の前に、交渉の演出を入れる（結果はもう決まっている） */
     Screens.poachCinema(incoming, ok, () => {
+      poaching = false;
       if (ok) Screens.poachSuccess(state, incoming, outgoing, () => advanceRound());
       else Screens.poachFailed(state, incoming, () => advanceRound());
     });
   }
 
   function doPoach(incoming, outgoing) {
+    /* 二重に押されても、同じ選手が2人にならないようにする */
+    if (Team.find(state.team, incoming.id)) return;
     /* どこから来たのかを覚えておく。詳細画面と引退のときに出す */
     incoming.from = { year: state.year, grade: incoming.grade, school: state.opponent.name };
     /* スタミナの持ち越し（staminaCarry）はあえて消さない。投手なら、
@@ -1394,6 +1400,8 @@ const Game = (() => {
     if (!state.gid) state.gid = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     Body.setNow(state.clockT);
     ensureBodies(state);
+    if (state.team && state.team.lineup) Team.repair(state.team);        // 同じ選手が2人在籍してしまった保存データを直す（重複を外し、オーダーが9人に満たなければ組み直す）
+    poaching = false;
     if (!state.settings) state.settings = Storage.loadSettings();
     /* 古い保存データの移行。秋・春の大会を追加する前のデータには
        無いフィールドなので、ここで補っておく */

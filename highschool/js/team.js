@@ -131,6 +131,7 @@ const Team = (() => {
   /** 試合が行える人数（野手9人・投手2人以上）にそろえる。足りなければ特別に補う。
       戻り値は補ったかどうか */
   function ensurePlayable(team) {
+    dedupe(team);
     const a = topUpBatters(team, 9);
     const b = topUpPitchers(team, 2);
     if (a || b || (team.lineup || []).length < 9) autoLineup(team);
@@ -356,7 +357,25 @@ const Team = (() => {
   }
 
   /** 打順・守備の並びが壊れていないか直す（強奪や卒業のあと） */
+  /** 同じ選手（同じID）が2回入っていたら、1人にする。
+      強奪の操作が二重に押されたときなどに、同じ選手が2人在籍してしまうことがあった。
+      部員の名簿・オーダー・投手の起用順の、どれからも重複を取り除く */
+  function dedupe(team) {
+    if (!team) return team;
+    const uniq = (list, key) => {
+      const seen = new Set();
+      return (list || []).filter((x) => { const k = key(x); if (seen.has(k)) return false; seen.add(k); return true; });
+    };
+    team.batters = uniq(team.batters, (p) => p.id);
+    team.pitchers = uniq(team.pitchers, (p) => p.id);
+    team.lineup = uniq(team.lineup, (sl) => sl.pid);
+    if (team.rotation) team.rotation = uniq(team.rotation, (id) => id);
+    if (team.pitcherOrder) team.pitcherOrder = uniq(team.pitcherOrder, (id) => id);
+    return team;
+  }
+
   function repair(team) {
+    dedupe(team);
     checkCaptain(team);
     const ids = new Set(team.batters.map((p) => p.id));
     const ok = team.lineup.filter((s) => ids.has(s.pid));
@@ -370,7 +389,7 @@ const Team = (() => {
 
   return {
     create, all, find, defScore, topUpBatters, topUpPitchers, ensurePlayable, autoLineup, autoRotation, orderBatters,
-    bench, defenders, strength, bestPlayer, repair,
+    bench, defenders, strength, bestPlayer, repair, dedupe,
     restPitchers, healPitchers, staminaLabel, staminaTier, staminaPct, staminaGauge,
     captain, checkCaptain,
   };
