@@ -1174,12 +1174,31 @@ const Screens = (() => {
       fallDistrict: '秋季地区大会', fallJingu: state.settings.jinguName, spring: state.settings.springName,
     }[k] || k);
     const hist = (state.history || []).slice().reverse();
+    /* 1試合ぶんの行。「準々決勝　◯◯高校　5-2 ○（勝 …／敗 …）」 */
+    const gameRow = (g) => '<li class="tourgame ' + (g.win ? 'is-win' : 'is-lose') + '">' +
+      '<span class="tourgame__rd">' + esc(g.round) + '</span>' +
+      '<span class="tourgame__vs">' + esc(g.opp) + '</span>' +
+      '<b class="tourgame__sc">' + g.my + '－' + g.op + '</b>' +
+      '<span class="tourgame__res">' + (g.win ? '勝' : '負') +
+        (g.cold ? '（コールド）' : (g.walkoff ? '（サヨナラ）' : (g.inn > 9 ? '（延長' + g.inn + '回）' : ''))) + '</span>' +
+      ((g.wp || g.lp || (g.hr && g.hr.length))
+        ? '<span class="tourgame__note">' +
+          (g.wp ? '勝　' + esc(g.wp) : '') + (g.wp && g.lp ? '　' : '') + (g.lp ? '敗　' + esc(g.lp) : '') +
+          (g.hr && g.hr.length ? ((g.wp || g.lp) ? '　' : '') + '本塁打　' + g.hr.map(esc).join('、') : '') +
+        '</span>' : '') +
+      '</li>';
     const histHtml = hist.length
       ? '<details class="rosterbox tourhist"><summary>大会の成績（' + hist.length + '大会）</summary>' +
-        '<div class="tablewrap"><table class="growth"><thead><tr><th>年</th><th class="nm">大会</th><th>結果</th></tr></thead><tbody>' +
-        hist.map((h) => '<tr' + (h.result === '優勝' ? ' class="is-champ"' : '') + '><td class="c">' + h.year + '年目</td>' +
-          '<td class="nm">' + esc(tourName(h.tour)) + '</td><td class="c">' + esc(h.result) + '</td></tr>').join('') +
-        '</tbody></table></div></details>'
+        hist.map((h) => {
+          const head = '<span class="tourhist__yr">' + h.year + '年目</span><span class="tourhist__nm">' + esc(tourName(h.tour)) +
+            '</span><b class="tourhist__res">' + esc(h.result) + '</b>';
+          const games = h.games || [];
+          if (!games.length) return '<div class="tourhist__item' + (h.result === '優勝' ? ' is-champ' : '') + '"><div class="tourhist__head">' + head + '</div></div>';
+          const w = games.filter((g) => g.win).length;
+          return '<details class="tourhist__item' + (h.result === '優勝' ? ' is-champ' : '') + '"><summary class="tourhist__head">' + head +
+            '<small>' + w + '勝' + (games.length - w) + '敗</small></summary><ul class="tourgames">' + games.map(gameRow).join('') + '</ul></details>';
+        }).join('') +
+        '<p class="tiny">大会をタップすると、試合ごとの結果が見られます（試合ごとの記録は、この更新のあとの大会から残ります）。</p></details>'
       : '';
     UI.html('teaminfo-body',
       '<p class="section-lead">' + esc(t.name) + '　部員' + Team.all(t).length + '人</p>' +

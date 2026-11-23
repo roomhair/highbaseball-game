@@ -687,6 +687,14 @@ const Game = (() => {
       homers,
     };
     state.lastReport = report;
+    /* 大会の成績の履歴に残す、1試合ぶんの記録。大会が終わると state.history に移る */
+    (state.tour.log = state.tour.log || []).push({
+      round: round.name, opp: state.opponent.name, my: my.runs, op: op.runs, win,
+      cold: !!res.cold, walkoff: !!ctx.walkoff, inn: res.innings || 9,
+      wp: state.lastResult.winPitcher ? state.lastResult.winPitcher.name : '',
+      lp: state.lastResult.losePitcher ? state.lastResult.losePitcher.name : '',
+      hr: homers.filter((h) => h.mine).map((h) => h.name + (h.hr > 1 ? h.hr + '本' : '')),
+    });
 
     lastSim = { res, meta: { mySide: state.mySide, roundName: round.name, tourLabel: tourLabel(), report } };
 
@@ -840,6 +848,11 @@ const Game = (() => {
 
   /* ---------- 大会の終わり ---------- */
 
+  /** 大会が終わったときに、その成績を履歴に残す。試合ごとの記録（state.tour.log）も一緒に */
+  function pushHistory(tour, result) {
+    state.history.push({ year: state.year, tour, result, games: ((state.tour && state.tour.log) || []).slice() });
+  }
+
   function finishTournament(won) {
     Team.healPitchers(state.team);       // 大会が終わったら、投手の疲れは抜ける
     /* 優勝の演出（カーテン）は、勝った瞬間・結果画面へ進むところで
@@ -848,7 +861,7 @@ const Game = (() => {
     const kind = state.tour.kind;
     if (won && kind === 'local') {
       state.localFinalLevel = state.tour.finalLevel;
-      state.history.push({ year: state.year, tour: 'local', result: '優勝' });
+      pushHistory('local', '優勝');
       /* 投手の疲れを抜くのは、次の大会が始まる startTournament 側でまとめて行う */
       state.phase = 'localwin';
       save();
@@ -856,7 +869,7 @@ const Game = (() => {
       return;
     }
     if (won && kind === 'national') {
-      state.history.push({ year: state.year, tour: 'national', result: '優勝' });
+      pushHistory('national', '優勝');
       state.phase = 'champion';
       save();
       Screens.champion(state);
@@ -865,7 +878,7 @@ const Game = (() => {
     if (won && kind === 'fallPref') {
       /* 県大会優勝。そのまま地区大会へ */
       state.fallPrefFinalLevel = state.tour.finalLevel;
-      state.history.push({ year: state.year, tour: 'fallPref', result: '優勝' });
+      pushHistory('fallPref', '優勝');
       startTournament('fallDistrict');
       return;
     }
@@ -873,17 +886,17 @@ const Game = (() => {
       /* 地区大会優勝。センバツ相当は確定のうえ、神宮大会相当へ */
       state.fallDistrictFinalLevel = state.tour.finalLevel;
       state.springQualified = true;
-      state.history.push({ year: state.year, tour: 'fallDistrict', result: '優勝' });
+      pushHistory('fallDistrict', '優勝');
       startTournament('fallJingu');
       return;
     }
     if (won && kind === 'fallJingu') {
-      state.history.push({ year: state.year, tour: 'fallJingu', result: '優勝' });
+      pushHistory('fallJingu', '優勝');
       toPostFallTraining();
       return;
     }
     if (won && kind === 'spring') {
-      state.history.push({ year: state.year, tour: 'spring', result: '優勝' });
+      pushHistory('spring', '優勝');
       toPostSpringTraining();
       return;
     }
@@ -895,10 +908,7 @@ const Game = (() => {
     const kind = state.tour.kind;
     const round = state.lastResult.round;
     const isLast = state.lastResult.last;
-    state.history.push({
-      year: state.year, tour: kind,
-      result: round + '敗退',
-    });
+    pushHistory(kind, round + '敗退');
     /* 負けたとき、設定が入っていれば一番いい選手を強奪される。
        誰を取られたのかはオフシーズン画面の頭に出す（ふきだしだと
        読み込み直したときに出しそびれる）ため、夏（地方・全国大会）の
